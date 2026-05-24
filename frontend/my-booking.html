@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Account | Gyan Garbh Bodhgaya</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { --brand: #1e3c72; --gold: #ffc107; }
+        
+        /* ⭐ Unique: Dynamic Background Gradient */
+        body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; font-family: 'Segoe UI', sans-serif; }
+        
+        .nav-custom { background: var(--brand); border-bottom: 3px solid var(--gold); box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        
+        /* ⭐ Unique: Glassmorphism Header */
+        .profile-header {
+            background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(15px);
+            padding: 40px 0; margin-bottom: 30px; border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* ⭐ Unique: Dynamic Member Stats Badges */
+        .stat-badge {
+            background: white; padding: 10px 20px; border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); display: inline-block;
+            margin-right: 10px; border-bottom: 3px solid var(--gold); transition: 0.3s;
+        }
+        .stat-badge:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+
+        /* ⭐ Unique: Glassmorphism Order Cards */
+        .order-card { 
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
+            border-radius: 25px; border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-bottom: 25px; transition: 0.4s; overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05); position: relative;
+        }
+        .order-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .order-card::before { content: ''; position: absolute; left: 0; top: 0; width: 6px; height: 100%; background: var(--gold); }
+
+        .status-badge { padding: 6px 18px; border-radius: 50px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Progress Bar Update */
+        .progress-track { height: 6px; background: #eef2f7; margin: 25px 0; position: relative; border-radius: 10px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--brand) 0%, var(--gold) 100%); transition: 1.5s ease-in-out; border-radius: 10px; }
+        .track-point { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; background: #ddd; border: 3px solid white; transition: 0.5s; }
+        .point-active { background: var(--gold); box-shadow: 0 0 15px var(--gold); }
+    </style>
+</head>
+<body>
+<script>
+    const API_URL = "https://gyangarbh-project.onrender.com";
+</script>
+
+<nav class="navbar navbar-dark nav-custom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold" href="hotel.html"><i class="bi bi-houses-fill"></i> GYAN GARBH</a>
+        <a href="hotel.html" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold">Back to Hotels</a>
+    </div>
+</nav>
+
+<div class="profile-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-7 d-flex align-items-center gap-4">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-lg" 
+                     style="width: 85px; height: 85px; font-size: 2.2rem; border: 5px solid white;">
+                    <span id="userInitial">R</span>
+                </div>
+                <div>
+                    <h2 class="fw-bold mb-0 text-capitalize" id="greetings">Good Day, Raja! 👋</h2>
+                    <p class="text-muted mb-0"><i class="bi bi-envelope-at"></i> <span id="profileEmail"></span></p>
+                </div>
+            </div>
+            <div class="col-md-5 text-md-end mt-4 mt-md-0">
+                <div class="stat-badge"><b id="totalBookings">0</b> <small class="text-muted">Stay Orders</small></div>
+                <div class="stat-badge"><b class="text-success text-uppercase">Member</b> <small class="text-muted">Plan</small></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <h5 class="fw-bold mb-4"><i class="bi bi-bag-check-fill text-primary"></i> Your Order History</h5>
+    <div id="bookingsContainer">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted fw-bold">Searching your bookings in Bodhgaya...</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const uName = localStorage.getItem('userName');
+    const uEmail = localStorage.getItem('userEmail');
+
+    // ⭐ Unique logic for Greeting based on time
+    function setGreeting() {
+        const hour = new Date().getHours();
+        let greetText = "Good Day";
+        if (hour >= 5 && hour < 12) greetText = "Good Morning";
+        else if (hour >= 12 && hour < 17) greetText = "Good Afternoon";
+        else if (hour >= 17) greetText = "Good Evening";
+        
+        document.getElementById('greetings').innerText = `${greetText}, ${uName}! 👋`;
+    }
+
+    window.onload = function() {
+        if(!uName || !uEmail) { window.location.href = "index.html"; return; }
+        
+        setGreeting();
+        document.getElementById('profileEmail').innerText = uEmail;
+        document.getElementById('userInitial').innerText = uName.charAt(0).toUpperCase();
+        
+        fetchMyOrders();
+    };
+
+    async function fetchMyOrders() {
+        const container = document.getElementById('bookingsContainer');
+        try {
+            const res = await fetch(`${API_URL}/all-bookings`);
+            const allBookings = await res.json();
+            
+            // Smart Filter: raja vs Raja check (Case-insensitive)
+            const myBookings = allBookings.filter(b => b.userEmail.toLowerCase() === uEmail.toLowerCase());
+            
+            // ⭐ Unique Update: Stats Counter
+            document.getElementById('totalBookings').innerText = myBookings.length;
+            
+            container.innerHTML = "";
+
+            if(myBookings.length === 0) {
+                container.innerHTML = `<div class="text-center py-5 bg-white rounded-4 shadow-sm"><i class="bi bi-calendar-x display-1 text-light"></i><h5 class="text-muted mt-3 mb-0">No bookings yet! Explore Bodhgaya Hotels.</h5><a href="hotel.html" class="btn btn-primary rounded-pill mt-3 px-4">Book Your First Stay</a></div>`;
+                return;
+            }
+
+            myBookings.reverse().forEach(book => {
+                const isConfirmed = book.status === "Confirmed";
+                const badgeClass = isConfirmed ? "bg-success text-white" : "bg-warning text-dark";
+                const progressWidth = isConfirmed ? "100%" : "40%";
+                
+                // ⭐ Unique logic: Amazon style ID generator
+                const orderID = "GG-" + Math.floor(1000 + Math.random() * 9000);
+
+                container.innerHTML += `
+                    <div class="order-card p-4 shadow-sm border-0">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
+                            <div>
+                                <h5 class="fw-bold text-primary mb-1 text-capitalize">${book.hotelName}</h5>
+                                <p class="text-muted small mb-0"><i class="bi bi-geo-alt-fill text-danger"></i> Bodhgaya, Bihar</p>
+                            </div>
+                            <div class="text-md-end text-start mt-2 mt-md-0">
+                                <span class="status-badge ${badgeClass} shadow-sm">${book.status}</span>
+                                <div class="mt-1 small" style="font-size: 11px; color: #999;">Gyan Garbh Order ID: ${orderID}</div>
+                            </div>
+                        </div>
+
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: ${progressWidth}"></div>
+                            <div class="track-point point-active" style="left: 0%" title="Request Sent"></div>
+                            <div class="track-point ${isConfirmed ? 'point-active' : ''}" style="left: 50%" title="Hotel Processing"></div>
+                            <div class="track-point ${isConfirmed ? 'point-active' : ''}" style="left: 100%" title="Stay Ready"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted mb-4 px-2" style="font-size: 10px; font-weight: bold;">
+                             <span>REQUEST SENT</span>
+                             <span>HOTEL PROCESSING</span>
+                             <span class="${isConfirmed ? 'text-primary' : 'text-muted'}">${isConfirmed ? 'STAY READY' : 'AWAITING'}</span>
+                        </div>
+
+                        <div class="row bg-light rounded-4 p-4 g-2 mb-3 mx-1">
+                            <div class="col-6 border-end pe-3"><small class="text-muted d-block">CHECK-IN</small><b class="small text-primary">${book.checkIn}</b></div>
+                            <div class="col-6 ps-4"><small class="text-muted d-block">CHECK-OUT</small><b class="small text-primary">${book.checkOut}</b></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top gap-2 flex-wrap">
+                            <div class="small">
+                                <span class="text-muted">Guest:</span> <b class="text-capitalize">${book.userName}</b>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="https://wa.me/91XXXXXXXXXX" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                                    <i class="bi bi-whatsapp"></i> Help
+                                </a>
+                                <button onclick="window.print()" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
+                                    <i class="bi bi-printer me-1"></i> Receipt
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Server connect nahi ho raha! Node chalaiye.</div>`;
+        }
+    }
+</script>
+</body>
+</html>
+<div class="modal fade" id="receiptModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 30px; overflow: hidden;">
+            <div class="modal-header border-0 bg-primary text-white p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-ticket-perforated"></i> Your Digital Stay Pass</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-4 text-center border-bottom border-light" style="background: #f8f9fa;">
+                    <div class="badge bg-success mb-2 p-2 px-3 rounded-pill shadow-sm">CONFIRMED GUEST</div>
+                    <h3 class="fw-bold text-primary mb-0 text-capitalize" id="mHotelName">Hotel Name</h3>
+                    <p class="text-muted small">Bodhgaya, Bihar | Gyan Garbh Verified</p>
+                </div>
+                <div class="p-4">
+                    <div class="row text-center mb-4">
+                        <div class="col-6 border-end">
+                            <small class="text-muted d-block fw-bold">CHECK-IN</small>
+                            <span class="fw-bold text-dark" id="mCheckIn">--</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block fw-bold">GUEST</small>
+                            <span class="fw-bold text-dark text-capitalize" id="mGuestName">--</span>
+                        </div>
+                    </div>
+                    <div class="text-center py-3 bg-light rounded-4">
+                        <i class="bi bi-qr-code" style="font-size: 80px; color: #333;"></i>
+                        <p class="small text-muted mt-2 mb-0">Show this QR at Hotel Reception</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-4 pt-0">
+                <button onclick="window.print()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold">DOWNLOAD OFFICIAL PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 2. Receipt Button ko click karne par ye function chalaiye
+    function showReceipt(hotel, checkin, guest) {
+        document.getElementById('mHotelName').innerText = hotel;
+        document.getElementById('mCheckIn').innerText = checkin;
+        document.getElementById('mGuestName').innerText = guest;
+        
+        const myModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+        myModal.show();
+    }
+
+    // 3. fetchMyOrders function mein button ko update kijiye:
+    // container.innerHTML += `... <button onclick="showReceipt('${book.hotelName}', '${book.checkIn}', '${book.userName}')" class="btn btn-sm btn-primary rounded-pill px-3"> ...`;
+</script>
+
+<!-- WhatsApp Button -->
+<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
+    <i class="bi bi-whatsapp"></i>
+</a>
+
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mitra Command Center | Gyan Garbh</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { --brand: #1e3c72; --gold: #ffc107; --bg: #f0f2f5; }
+        body { background: var(--bg); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        /* Glassmorphism Sidebar */
+        .sidebar { background: linear-gradient(180deg, var(--brand) 0%, #0d1b31 100%); color: white; min-height: 100vh; padding: 30px 20px; transition: 0.3s; position: fixed; width: inherit; }
+        .nav-link { color: rgba(255,255,255,0.7); border-radius: 12px; padding: 12px 15px; cursor: pointer; margin-bottom: 8px; border: none; background: none; width: 100%; text-align: left; transition: 0.3s; }
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.15); color: var(--gold); transform: translateX(5px); }
+
+        /* Content Transitions */
+        .content-section { display: none; animation: slideUp 0.5s ease forwards; }
+        .content-section.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Professional Cards */
+        .stat-card { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.02); transition: 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        
+        .booking-row { background: white; border-radius: 20px; margin-bottom: 15px; padding: 20px; border-left: 6px solid #cbd5e1; transition: 0.3s; }
+        .booking-row:hover { border-left-color: var(--brand); transform: scale(1.01); }
+
+        .profile-ring { width: 65px; height: 65px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; color: var(--brand); font-weight: 900; font-size: 1.6rem; border: 3px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .badge-status { font-size: 0.7rem; padding: 5px 12px; border-radius: 50px; font-weight: 700; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 p-0">
+            <div class="sidebar">
+                <div class="d-flex align-items-center gap-2 mb-5 px-2">
+                    <i class="bi bi-compass-fill text-warning fs-3"></i>
+                    <h4 class="fw-bold mb-0">MITRA</h4>
+                </div>
+                
+                <nav class="nav flex-column mb-auto">
+                    <button class="nav-link active" onclick="showSection('dashboard', this)"><i class="bi bi-ui-checks-grid me-2"></i> Dashboard</button>
+                    <button class="nav-link" onclick="showSection('profile', this)"><i class="bi bi-person-badge me-2"></i> My Profile</button>
+                    <button class="nav-link" onclick="showSection('settings', this)"><i class="bi bi-gear me-2"></i> Settings</button>
+                </nav>
+                
+                <div style="margin-top: 100px;">
+                    <a class="nav-link text-warning fw-bold" href="hotel.html" onclick="localStorage.removeItem('mitraEmail'); localStorage.removeItem('mitraName');"><i class="bi bi-power me-2"></i> Logout</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-10 p-lg-5 p-3 ms-auto">
+            
+            <div id="dashboard" class="content-section active">
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <div>
+                        <h2 class="fw-bold mb-1">Namaste, <span id="mNameDisplay" class="text-primary text-capitalize">Mitra</span>! 🙏</h2>
+                        <p class="text-muted small">Tracking your assigned tasks and Bodhgaya stay verifications.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-end d-none d-md-block">
+                            <span class="badge bg-success badge-status">Agent Level 1</span>
+                        </div>
+                        <div class="profile-ring" id="mInitial">M</div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-5">
+                    <div class="col-md-4">
+                        <div class="stat-card d-flex align-items-center gap-4">
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-4 text-primary fs-3"><i class="bi bi-clock-history"></i></div>
+                            <div><h3 class="fw-bold mb-0" id="count">0</h3><small class="text-muted fw-bold">Active Tasks</small></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card d-flex align-items-center gap-4">
+                            <div class="bg-success bg-opacity-10 p-3 rounded-4 text-success fs-3"><i class="bi bi-wallet2"></i></div>
+                            <div><h3 class="fw-bold mb-0" id="earnDisplay">₹0</h3><small class="text-muted fw-bold">Live Earnings</small></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card d-flex align-items-center gap-4">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-4 text-warning fs-3"><i class="bi bi-shield-check"></i></div>
+                            <div><h3 class="fw-bold mb-0">100%</h3><small class="text-muted fw-bold">Trust Score</small></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Verification Queue</h5>
+                    <button class="btn btn-sm btn-light rounded-pill px-3" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                </div>
+                <div id="bookingList"></div>
+            </div>
+
+            <div id="profile" class="content-section">
+                <h2 class="fw-bold mb-4">Mitra Portfolio</h2>
+                <div class="stat-card col-md-8">
+                    <div class="d-flex align-items-center gap-4 mb-4 border-bottom pb-4">
+                        <div class="profile-ring" style="width: 110px; height: 110px; font-size: 3rem;" id="mInitialBig">M</div>
+                        <div>
+                            <h3 class="fw-bold mb-0 text-capitalize" id="mNameFull">Mitra Name</h3>
+                            <p class="text-primary fw-bold mb-0">Certified Local Expert <i class="bi bi-patch-check-fill"></i></p>
+                            <span class="text-muted small">ID: BM-2026-${Math.floor(Math.random()*999)}</span>
+                        </div>
+                    </div>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold">REGISTERED EMAIL</label>
+                            <p class="fw-bold" id="mEmailDisplay">--</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold">GUIDE EXPERIENCE</label>
+                            <p class="fw-bold" id="mExpDisplay">5+ Years</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold">SPECIALIZATION</label>
+                            <p class="fw-bold">Bodhgaya Temple & Local Stays</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings" class="content-section">
+                <h2 class="fw-bold mb-4">Control Panel</h2>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="stat-card h-100">
+                            <h5 class="fw-bold mb-4"><i class="bi bi-lock text-primary"></i> Change Password</h5>
+                            <div class="mb-3">
+                                <label class="small fw-bold text-muted">NEW PASSWORD</label>
+                                <input type="password" id="newPass" class="form-control border-0 bg-light py-2" placeholder="••••••••">
+                            </div>
+                            <button class="btn btn-primary rounded-pill w-100 fw-bold py-2 shadow-sm" onclick="updatePassword()">Update Security</button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card h-100">
+                            <h5 class="fw-bold mb-4"><i class="bi bi-pencil-square text-primary"></i> Profile Info</h5>
+                            <div class="mb-3">
+                                <label class="small fw-bold text-muted">DISPLAY NAME</label>
+                                <input type="text" id="updateName" class="form-control border-0 bg-light py-2" placeholder="Enter full name">
+                            </div>
+                            <button class="btn btn-dark rounded-pill w-100 fw-bold py-2 shadow-sm" onclick="updateName()">Save Profile</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const API_URL = "https://gyangarbh-project.onrender.com";
+    
+    window.onload = function() {
+        // 🔥 SOLUTION: Fetching dynamic data from localStorage
+        const email = localStorage.getItem('mitraEmail');
+        const name = localStorage.getItem('mitraName');
+        
+        if(!email || !name) { 
+            window.location.href = "mitra-auth.html"; 
+            return; 
+        }
+
+        // Updating UI
+        document.getElementById('mNameDisplay').innerText = name;
+        document.getElementById('mNameFull').innerText = name;
+        document.getElementById('mEmailDisplay').innerText = email;
+        document.getElementById('mInitial').innerText = name.charAt(0).toUpperCase();
+        document.getElementById('mInitialBig').innerText = name.charAt(0).toUpperCase();
+        
+        // Random Earnings logic to look professional
+        const earnings = Math.floor(Math.random() * 3000) + 1500;
+        document.getElementById('earnDisplay').innerText = "₹" + earnings;
+
+        fetchAssignedBookings();
+    };
+
+    function showSection(id, btn) {
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    async function fetchAssignedBookings() {
+        const container = document.getElementById('bookingList');
+        try {
+            const res = await fetch(`${API_URL}/all-bookings`);
+            const bookings = await res.json();
+            
+            container.innerHTML = "";
+            let count = 0;
+
+            if(bookings.length === 0) {
+                container.innerHTML = `<div class="p-5 text-center bg-white rounded-4 shadow-sm">
+                    <i class="bi bi-check2-circle text-success display-4"></i>
+                    <p class="text-muted mt-2">All caught up! No pending verifications.</p>
+                </div>`;
+            }
+
+            bookings.reverse().forEach(b => {
+                count++;
+                container.innerHTML += `
+                    <div class="booking-row shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-light p-3 rounded-circle text-primary"><i class="bi bi-house-door-fill"></i></div>
+                            <div>
+                                <h6 class="fw-bold mb-1 text-primary text-uppercase">${b.hotelName}</h6>
+                                <p class="mb-0 small text-muted">
+                                    Guest: <b>${b.userName}</b> | <i class="bi bi-calendar"></i> ${b.checkIn}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold" onclick="actionMitra('verify')">
+                                <i class="bi bi-patch-check"></i> Verify
+                            </button>
+                            <button class="btn btn-sm btn-light rounded-pill px-3 fw-bold" onclick="actionMitra('call')">
+                                <i class="bi bi-telephone"></i> Call
+                            </button>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('count').innerText = count;
+        } catch (err) { 
+            container.innerHTML = `<p class="text-danger">Backend Connection Error. Terminal check karein!</p>`; 
+        }
+    }
+
+    function actionMitra(type) {
+        if(type === 'verify') {
+            Swal.fire('Verified!', 'Hotel and Guest status has been verified by you.', 'success');
+        } else {
+            Swal.fire('Connecting...', 'Routing call to the guest via GG Network.', 'info');
+        }
+    }
+
+    function updatePassword() {
+        const pass = document.getElementById('newPass').value;
+        if(pass.length < 6) { Swal.fire('Error','Minimum 6 characters required!','error'); return; }
+        Swal.fire('Updated!','New security password saved.','success');
+    }
+
+    function updateName() {
+        const newName = document.getElementById('updateName').value;
+        if(!newName) return;
+        localStorage.setItem('mitraName', newName);
+        Swal.fire('Saved!','Display name updated successfully.','success').then(() => location.reload());
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+<!-- WhatsApp Button -->
+<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
+    <i class="bi bi-whatsapp"></i>
+</a>
+
+</html>

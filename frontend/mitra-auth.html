@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bodh-Mitra Portal | Gyan Garbh Network</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { --brand: #1e3c72; --gold: #ffc107; --accent: #2a5298; }
+        body { 
+            background: linear-gradient(135deg, #1e3c72 0%, #0d1b31 100%); 
+            min-height: 100vh; display: flex; align-items: center; font-family: 'Inter', sans-serif; 
+        }
+        .auth-card { 
+            background: #ffffff; border-radius: 40px; box-shadow: 0 25px 80px rgba(0,0,0,0.5); 
+            overflow: hidden; max-width: 480px; width: 100%; margin: auto; padding: 45px; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-mitra { 
+            background: linear-gradient(to right, var(--brand), var(--accent)); 
+            color: white; border-radius: 50px; padding: 14px; font-weight: 700; 
+            width: 100%; border: none; transition: 0.4s; letter-spacing: 0.5px;
+        }
+        .btn-mitra:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(30, 60, 114, 0.4); color: white; }
+        .nav-pills { background: #f1f5f9; border-radius: 50px; padding: 5px; }
+        .nav-pills .nav-link { color: #64748b; font-weight: 600; border-radius: 50px; transition: 0.3s; cursor: pointer; }
+        .nav-pills .nav-link.active { background-color: var(--brand); color: white; }
+        .form-control { 
+            border-radius: 12px; padding: 12px 15px; border: 2px solid #f1f5f9; 
+            background: #f8fafc; font-size: 0.9rem; transition: 0.3s; 
+        }
+        .form-control:focus { border-color: var(--brand); box-shadow: none; background: white; }
+        .brand-icon {
+            width: 70px; height: 70px; background: var(--gold); 
+            border-radius: 22px; display: inline-flex; align-items: center; 
+            justify-content: center; font-size: 1.8rem; color: var(--brand); 
+            box-shadow: 0 10px 20px rgba(255, 193, 7, 0.3);
+        }
+        .pass-wrapper { position: relative; }
+        .toggle-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; z-index: 5; }
+    </style>
+</head>
+<body>
+
+<div class="container my-5">
+    <div class="auth-card">
+        <div class="text-center mb-5">
+            <div class="brand-icon mb-3">
+                <i class="bi bi-person-badge-fill"></i>
+            </div>
+            <h3 class="fw-bold text-dark">Bodh-Mitra <span class="text-primary">Portal</span></h3>
+            <p class="text-muted small">Professional Guide & Agent Network</p>
+        </div>
+
+        <ul class="nav nav-pills nav-fill mb-4" id="mitraTabs">
+            <li class="nav-item"><a class="nav-link active" id="tab-login-btn" onclick="switchMitraTab('login')">Login</a></li>
+            <li class="nav-item"><a class="nav-link" id="tab-signup-btn" onclick="switchMitraTab('signup')">New Agent</a></li>
+        </ul>
+
+        <div class="tab-content">
+            <div id="login-pane">
+                <form onsubmit="handleMitraLogin(event)">
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted mb-1">MITRA EMAIL</label>
+                        <input type="email" id="loginEmail" class="form-control" placeholder="name@example.com" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small fw-bold text-muted mb-1">PASSWORD</label>
+                        <div class="pass-wrapper">
+                            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+                            <i class="bi bi-eye-slash toggle-btn" onclick="togglePass('loginPass', this)"></i>
+                        </div>
+                    </div>
+                    <div class="text-end mb-3">
+                        <a href="javascript:void(0)" onclick="handleMitraForgot()" class="small text-muted text-decoration-none">Forgot Password?</a>
+                    </div>
+                    <button type="submit" class="btn-mitra shadow">SECURE LOGIN <i class="bi bi-arrow-right-short"></i></button>
+                </form>
+            </div>
+
+            <div id="signup-pane" style="display: none;">
+                <div id="mitraSignupFields">
+                    <form onsubmit="initiateMitraSignup(event)">
+                        <div class="mb-3">
+                            <label class="small fw-bold text-muted mb-1">FULL NAME</label>
+                            <input type="text" id="sName" class="form-control" placeholder="Enter full name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="small fw-bold text-muted mb-1">EMAIL ADDRESS</label>
+                            <input type="email" id="sEmail" class="form-control" placeholder="name@example.com" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="small fw-bold text-muted mb-1">EXPERIENCE</label>
+                            <select id="sExp" class="form-select form-control">
+                                <option value="1-3">1-3 Years</option>
+                                <option value="4-7">4-7 Years</option>
+                                <option value="8+">8+ Years</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="small fw-bold text-muted mb-1">CREATE PASSWORD</label>
+                            <div class="pass-wrapper">
+                                <input type="password" id="sPass" class="form-control" placeholder="••••••••" required>
+                                <i class="bi bi-eye-slash toggle-btn" onclick="togglePass('sPass', this)"></i>
+                            </div>
+                        </div>
+                        <button type="submit" id="signupBtn" class="btn-mitra shadow">VERIFY & REGISTER <i class="bi bi-shield-lock"></i></button>
+                    </form>
+                </div>
+
+                <div id="mitraOTPFields" style="display: none;" class="text-center">
+                    <i class="bi bi-envelope-check display-4 text-primary mb-3"></i>
+                    <h5 class="fw-bold">Verify OTP</h5>
+                    <p class="text-muted small">Sent to <b id="showEmail"></b></p>
+                    <input type="number" id="mitraOTP" class="form-control form-control-lg text-center mb-4 fw-bold" placeholder="000000" style="letter-spacing: 8px;">
+                    <button onclick="finalMitraRegister()" class="btn btn-success w-100 py-3 rounded-pill fw-bold">FINISH & ENTER DASHBOARD</button>
+                    <p class="mt-3"><a href="javascript:void(0)" onclick="location.reload()" class="text-muted small">Change Details</a></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="hotel.html" class="text-muted small text-decoration-none border-bottom">
+                <i class="bi bi-house me-1"></i> Back to Gyan Garbh
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const API_URL = "https://gyangarbh-project.onrender.com";
+
+    function switchMitraTab(tab) {
+        document.getElementById('login-pane').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('signup-pane').style.display = tab === 'signup' ? 'block' : 'none';
+        document.getElementById('tab-login-btn').classList.toggle('active', tab === 'login');
+        document.getElementById('tab-signup-btn').classList.toggle('active', tab === 'signup');
+        // Reset signup UI if switching back
+        if(tab === 'login') {
+            document.getElementById('mitraSignupFields').style.display = 'block';
+            document.getElementById('mitraOTPFields').style.display = 'none';
+        }
+    }
+
+    function togglePass(id, icon) {
+        const input = document.getElementById(id);
+        if(input.type === 'password') {
+            input.type = 'text';
+            icon.classList.replace('bi-eye-slash', 'bi-eye');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('bi-eye', 'bi-eye-slash');
+        }
+    }
+
+    // ⭐ FORGOT PASSWORD LOGIC
+    async function handleMitraForgot() {
+        const { value: email } = await Swal.fire({
+            title: 'Mitra Password Reset',
+            input: 'email',
+            inputPlaceholder: 'Enter registered email',
+            showCancelButton: true
+        });
+        if (!email) return;
+
+        try {
+            const res = await fetch(`${API_URL}/send-otp`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email, isReset: true })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const { value: formValues } = await Swal.fire({
+                    title: 'Reset Password',
+                    html: '<input id="otp-m" class="swal2-input" placeholder="OTP"><input id="pass-m" type="password" class="swal2-input" placeholder="New Password">',
+                    preConfirm: () => [document.getElementById('otp-m').value, document.getElementById('pass-m').value]
+                });
+                if (formValues) {
+                    const [otp, newPassword] = formValues;
+                    const vRes = await fetch(`${API_URL}/verify-otp`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ email, otp })
+                    });
+                    if (vRes.ok) {
+                        const rRes = await fetch(`${API_URL}/reset-password`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ email, newPassword, userType: 'user' })
+                        });
+                        if (rRes.ok) Swal.fire('Success!', 'Password updated. Login now.', 'success');
+                    } else { Swal.fire('Error', 'Invalid OTP', 'error'); }
+                }
+            } else { Swal.fire('Wait!', data.message, 'warning'); }
+        } catch (e) { Swal.fire('Error', 'Server Error!', 'error'); }
+    }
+
+    // ⭐ SIGNUP LOGIC
+    async function initiateMitraSignup(e) {
+        e.preventDefault();
+        const email = document.getElementById('sEmail').value;
+        const btn = document.getElementById('signupBtn');
+        btn.innerText = "Checking..."; btn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_URL}/send-otp`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email, isReset: false })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                document.getElementById('showEmail').innerText = email;
+                document.getElementById('mitraSignupFields').style.display = 'none';
+                document.getElementById('mitraOTPFields').style.display = 'block';
+                Swal.fire('OTP Sent!', 'Check your email.', 'info');
+            } else {
+                Swal.fire({ icon: 'info', title: 'Already Registered!', text: data.message, confirmButtonText: 'Login Now' })
+                .then(() => switchMitraTab('login'));
+                btn.innerText = "VERIFY & REGISTER"; btn.disabled = false;
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Server error!', 'error');
+            btn.innerText = "VERIFY & REGISTER"; btn.disabled = false;
+        }
+    }
+
+    async function finalMitraRegister() {
+        const name = document.getElementById('sName').value;
+        const email = document.getElementById('sEmail').value;
+        const password = document.getElementById('sPass').value;
+        const exp = document.getElementById('sExp').value;
+        const otp = document.getElementById('mitraOTP').value;
+
+        try {
+            const otpRes = await fetch(`${API_URL}/verify-otp`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email, otp })
+            });
+            if(otpRes.ok) {
+                const regRes = await fetch(`${API_URL}/register`, { 
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, email, password, role: 'mitra', experience: exp })
+                });
+                if(regRes.ok) {
+                    localStorage.setItem('mitraEmail', email);
+                    localStorage.setItem('mitraName', name);
+                    Swal.fire({ icon: 'success', title: 'Welcome!', text: 'Account created!', timer: 2000, showConfirmButton: false })
+                    .then(() => { window.location.href = "mitra-dashboard.html"; });
+                }
+            } else { Swal.fire('Invalid OTP', 'Sahi code daalein.', 'error'); }
+        } catch (err) { Swal.fire('Error', 'Registration Failed!', 'error'); }
+    }
+
+    // ⭐ LOGIN LOGIC
+    async function handleMitraLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPass').value;
+        try {
+            const res = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                localStorage.setItem('mitraEmail', email);
+                localStorage.setItem('mitraName', data.name);
+                window.location.href = "mitra-dashboard.html";
+            } else { Swal.fire('Error', 'Invalid credentials!', 'error'); }
+        } catch (err) { Swal.fire('Error', 'Server error!', 'error'); }
+    }
+</script>
+
+<!-- WhatsApp Button -->
+<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
+    <i class="bi bi-whatsapp"></i>
+</a>
+
+</body>
+</html>

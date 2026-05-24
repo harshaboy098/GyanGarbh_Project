@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏛️ Bodhi Path - Explore Bodh Gaya Heritage</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%),
+                        url('https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200') center/cover;
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-weight: bold;
+        }
+
+        .header p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container-main {
+            max-width: 1200px;
+            margin: -50px auto 0;
+            padding: 0 20px;
+        }
+
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .filters h5 {
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: 2px solid #eee;
+            background: white;
+            color: #333;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .heritage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .heritage-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .heritage-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .card-content {
+            padding: 25px;
+        }
+
+        .card-category {
+            display: inline-block;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .card-title {
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 15px 0;
+            line-height: 1.3;
+        }
+
+        .card-description {
+            color: #666;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .card-meta {
+            font-size: 0.85rem;
+            color: #999;
+        }
+
+        .explore-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .explore-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* MODAL STYLES */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal.show {
+            display: block;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            margin: 30px auto;
+            padding: 0;
+            max-width: 900px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px 20px 0 0;
+            position: relative;
+            min-height: 350px;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .modal-header .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.3);
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+
+        .modal-header .close-btn:hover {
+            background: rgba(0,0,0,0.5);
+        }
+
+        .modal-header-content {
+            width: 100%;
+        }
+
+        .modal-header h2 {
+            font-size: 2.5rem;
+            margin: 0 0 10px 0;
+            font-weight: bold;
+        }
+
+        .modal-header .significance {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            margin-bottom: 0;
+        }
+
+        .modal-body {
+            padding: 40px;
+        }
+
+        .modal-section {
+            margin-bottom: 40px;
+        }
+
+        .modal-section h3 {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .modal-section p {
+            color: #555;
+            line-height: 1.8;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        .facts-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .facts-list li {
+            padding: 12px 0 12px 30px;
+            position: relative;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .facts-list li:before {
+            content: "🏛️";
+            position: absolute;
+            left: 0;
+            top: 10px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .info-box strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .back-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #764ba2;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: white;
+        }
+
+        .empty-state h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            background: rgba(0,0,0,0.2);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+
+            .heritage-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                margin: 10px;
+                width: 95%;
+            }
+
+            .modal-header h2 {
+                font-size: 1.8rem;
+            }
+
+            .modal-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>🏛️ Bodhi Path</h1>
+    <p>Explore the Rich Spiritual Heritage of Bodh Gaya</p>
+    <p style="font-size: 1rem; opacity: 0.85; margin-top: 10px;">Discover temples, monuments, and the sacred traditions of this holy city</p>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="container-main">
+    <!-- FILTERS -->
+    <div class="filters">
+        <h5><i class="bi bi-funnel"></i> Filter by Category</h5>
+        <button class="filter-btn active" onclick="filterCategory('all')">
+            <i class="bi bi-asterisk"></i> All
+        </button>
+        <button class="filter-btn" onclick="filterCategory('temple')">
+            <i class="bi bi-building"></i> Temples
+        </button>
+        <button class="filter-btn" onclick="filterCategory('monument')">
+            <i class="bi bi-star"></i> Monuments
+        </button>
+        <button class="filter-btn" onclick="filterCategory('history')">
+            <i class="bi bi-book"></i> History
+        </button>
+        <button class="filter-btn" onclick="filterCategory('festival')">
+            <i class="bi bi-calendar-event"></i> Festivals
+        </button>
+        <button class="filter-btn" onclick="filterCategory('tradition')">
+            <i class="bi bi-heart"></i> Traditions
+        </button>
+    </div>
+
+    <!-- HERITAGE CARDS -->
+    <div id="heritageContainer" class="heritage-grid">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading Bodh Gaya's sacred heritage...</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div id="heritageModal" class="modal">
+    <div class="modal-content">
+        <div id="modalInner"></div>
+        <button class="back-btn" style="margin-left: 40px;" onclick="closeModal()">← Back to Heritage</button>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    <p><i class="bi bi-heart-fill"></i> Discover the spiritual essence of Bodh Gaya</p>
+    <p style="font-size: 0.9rem; margin-top: 10px; opacity: 0.8;">Connect with Gyan Garbh for your sacred journey</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const API_URL = 'https://gyangarbh-project.onrender.com';
+    let allHeritageData = [];
+    let currentFilter = 'all';
+
+    window.addEventListener('load', loadHeritageData);
+
+    async function loadHeritageData() {
+        try {
+            const response = await fetch(`${API_URL}/bodhi-path/all`);
+            const data = await response.json();
+
+            if (data.success && data.bodhiPaths) {
+                allHeritageData = data.bodhiPaths;
+                displayHeritage(allHeritageData);
+            } else {
+                showEmptyState();
+            }
+        } catch (error) {
+            console.error('Error loading heritage data:', error);
+            showEmptyState();
+        }
+    }
+
+    function displayHeritage(heritageList) {
+        const container = document.getElementById('heritageContainer');
+
+        if (heritageList.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <h2>No Heritage Sites Found</h2>
+                    <p>Check back soon for more information</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = heritageList.map(item => `
+            <div class="heritage-card" onclick="openModal('${item._id}')">
+                <img src="${item.imageUrl || 'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=400'}" alt="${item.title}" class="card-image">
+                <div class="card-content">
+                    <div class="card-category">${item.category.toUpperCase()}</div>
+                    <div class="card-title">${item.title}</div>
+                    <div class="card-description">${item.shortDescription}</div>
+                    <div class="card-footer">
+                        <span class="card-meta">
+                            <i class="bi bi-clock"></i> ${item.estimatedVisitTime || '2-3 hours'}
+                        </span>
+                        <button class="explore-btn" onclick="event.stopPropagation();">
+                            Explore <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function filterCategory(category) {
+        currentFilter = category;
+
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        if (category === 'all') {
+            displayHeritage(allHeritageData);
+        } else {
+            const filtered = allHeritageData.filter(item => item.category === category);
+            displayHeritage(filtered);
+        }
+    }
+
+    async function openModal(id) {
+        const item = allHeritageData.find(h => h._id === id);
+        if (!item) return;
+
+        const modalInner = document.getElementById('modalInner');
+        const imageUrl = item.imageUrl || 'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=900';
+
+        modalInner.innerHTML = `
+            <div class="modal-header" style="background-image: url('${imageUrl}');">
+                <button class="close-btn" onclick="closeModal()">✕</button>
+                <div class="modal-header-content">
+                    <h2>${item.title}</h2>
+                    ${item.spiritualSignificance ? `<p class="significance">${item.spiritualSignificance}</p>` : ''}
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h3><i class="bi bi-book"></i> About</h3>
+                    <p>${item.fullDescription}</p>
+                </div>
+
+                ${item.significance ? `
+                    <div class="modal-section">
+                        <h3><i class="bi bi-star"></i> Spiritual Significance</h3>
+                        <p>${item.significance}</p>
+                    </div>
+                ` : ''}
+
+                ${item.historicalFacts && item.historicalFacts.length > 0 ? `
+                    <div class="modal-section">
+                        <h3><i class="bi bi-hourglass-split"></i> Historical Facts</h3>
+                        <ul class="facts-list">
+                            ${item.historicalFacts.map(fact => `<li>${fact}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+
+                <div class="info-box">
+                    <strong>📍 Location</strong>
+                    ${item.location && item.location.address ? item.location.address : 'Bodh Gaya, Bihar'}
+                </div>
+
+                ${item.bestTimeToVisit ? `
+                    <div class="info-box">
+                        <strong>📅 Best Time to Visit</strong>
+                        ${item.bestTimeToVisit}
+                    </div>
+                ` : ''}
+
+                ${item.visitingHours ? `
+                    <div class="info-box">
+                        <strong>🕐 Visiting Hours</strong>
+                        ${item.visitingHours}
+                    </div>
+                ` : ''}
+
+                ${item.entryFee ? `
+                    <div class="info-box">
+                        <strong>💵 Entry Fee</strong>
+                        ${item.entryFee}
+                    </div>
+                ` : ''}
+
+                ${item.relatedTemples && item.relatedTemples.length > 0 ? `
+                    <div class="modal-section">
+                        <h3><i class="bi bi-link"></i> Related Sites</h3>
+                        <p>${item.relatedTemples.join(', ')}</p>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        document.getElementById('heritageModal').classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('heritageModal').classList.remove('show');
+    }
+
+    function showEmptyState() {
+        const container = document.getElementById('heritageContainer');
+        container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1/-1; color: white;">
+                <h2>Heritage Data Coming Soon</h2>
+                <p>We're compiling the sacred stories of Bodh Gaya's most important sites</p>
+            </div>
+        `;
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('heritageModal').addEventListener('click', (e) => {
+        if (e.target.id === 'heritageModal') closeModal();
+    });
+</script>
+
+</body>
+</html>
+

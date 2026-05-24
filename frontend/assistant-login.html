@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔓 Assistant Login | Gyan Garbh</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header-section h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 1.8rem;
+        }
+
+        .header-section p {
+            color: #999;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        .icon-badge {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 1.8rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: 0.3s;
+            background: #f8f9fa;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 25px 0;
+            color: #ccc;
+        }
+
+        .divider:before {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #eee;
+        }
+
+        .divider span {
+            padding: 0 10px;
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .divider:after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #eee;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .back-link a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .info-box strong {
+            color: #667eea;
+        }
+
+        .error-message {
+            background: #ffe0e0;
+            border-left: 4px solid #ff6b6b;
+            color: #c92a2a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .success-message {
+            background: #e0ffe0;
+            border-left: 4px solid #51cf66;
+            color: #2b8a2b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+
+            .header-section h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <div class="header-section">
+        <div class="icon-badge">
+            <i class="bi bi-person-check"></i>
+        </div>
+        <h2>Assistant Login</h2>
+        <p>Access your management dashboard</p>
+    </div>
+
+    <div id="errorMessage" class="error-message"></div>
+    <div id="successMessage" class="success-message"></div>
+
+    <div class="info-box">
+        <strong><i class="bi bi-info-circle-fill"></i> Note:</strong> Only authorized assistants can login. Contact your admin if you don't have credentials.
+    </div>
+
+    <form id="assistantLoginForm" onsubmit="handleAssistantLogin(event)">
+        <div class="form-group">
+            <label for="assistantEmail">Email Address</label>
+            <input type="email" id="assistantEmail" placeholder="your@email.com" required>
+        </div>
+
+        <div class="form-group">
+            <label for="assistantPassword">Password</label>
+            <input type="password" id="assistantPassword" placeholder="••••••••••••" required>
+        </div>
+
+        <button type="submit" class="login-btn">
+            <i class="bi bi-lock-fill"></i> Login
+        </button>
+    </form>
+
+    <div class="divider">
+        <span>Need Help?</span>
+    </div>
+
+    <div class="back-link">
+        <a href="index.html">
+            <i class="bi bi-arrow-left"></i> Back to Login
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const API_URL = "https://gyangarbh-project.onrender.com";
+
+    async function handleAssistantLogin(event) {
+        event.preventDefault();
+
+        const email = document.getElementById('assistantEmail').value;
+        const password = document.getElementById('assistantPassword').value;
+
+        const errorMsg = document.getElementById('errorMessage');
+        const successMsg = document.getElementById('successMessage');
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+
+        try {
+            const response = await fetch(`${API_URL}/assistant-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Store assistant data in localStorage
+                localStorage.setItem('assistantEmail', data.assistant.email);
+                localStorage.setItem('assistantName', data.assistant.name);
+                localStorage.setItem('assistantRole', data.assistant.role);
+                localStorage.setItem('assistantPermissions', JSON.stringify(data.assistant.permissions));
+                localStorage.setItem('assistantId', data.assistant._id);
+
+                successMsg.textContent = '✅ Login successful! Redirecting...';
+                successMsg.style.display = 'block';
+
+                setTimeout(() => {
+                    window.location.href = 'assistant-dashboard.html';
+                }, 1500);
+            } else {
+                errorMsg.textContent = '❌ ' + (data.message || 'Invalid credentials');
+                errorMsg.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            errorMsg.textContent = '❌ Server connection error. Please check backend.';
+            errorMsg.style.display = 'block';
+        }
+    }
+
+    // Check if already logged in
+    window.addEventListener('load', () => {
+        const assistantEmail = localStorage.getItem('assistantEmail');
+        if (assistantEmail) {
+            window.location.href = 'assistant-dashboard.html';
+        }
+    });
+</script>
+
+</body>
+</html>
+

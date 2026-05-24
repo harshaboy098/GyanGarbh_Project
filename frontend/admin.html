@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyan Garbh Admin | Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1e3c72;
+            --accent: #ffc107;
+            --success: #28a745;
+            --danger: #dc3545;
+            --sidebar-width: 250px;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .sidebar {
+            background: var(--primary);
+            color: white;
+            min-height: 100vh;
+            width: var(--sidebar-width);
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 20px;
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 12px 15px;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: block;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .search-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        .table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .btn-action {
+            padding: 5px 10px;
+            margin: 0 2px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-confirmed { background: #d1e7dd; color: #0f5132; }
+        .status-pending { background: #fff3cd; color: #664d03; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .whatsapp-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #25d366;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .whatsapp-btn:hover {
+            background: #128c7e;
+            color: white;
+            text-decoration: none;
+        }
+        .section-title {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+        }
+        .password-field {
+            position: relative;
+        }
+        .inventory-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+            padding: 25px;
+            margin-top: 30px;
+        }
+        .inventory-card h3 {
+            margin-bottom: 18px;
+            color: var(--primary);
+        }
+        .inventory-card label {
+            display: block;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+        .inventory-card select,
+        .inventory-card input[type="number"],
+        .inventory-card input[type="file"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #ced4da;
+            margin-top: 8px;
+        }
+        .amenities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .amenities-grid label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f1f5f9;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .btn-save {
+            margin-top: 18px;
+            background: var(--accent);
+            border: none;
+            color: #1e3c72;
+            font-weight: 700;
+            padding: 12px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .btn-save:hover {
+            background: #e0a800;
+            color: #102847;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <h4 class="fw-bold mb-5 text-center">GYAN GARBH</h4>
+    <p class="text-warning text-center mb-4">Admin Panel</p>
+    <hr>
+    <nav class="nav flex-column">
+        <a class="nav-link active" href="#hotels" onclick="showSection('hotels')">
+            <i class="fas fa-hotel me-2"></i>Hotels
+        </a>
+        <a class="nav-link" href="#mitras" onclick="showSection('mitras')">
+            <i class="fas fa-users me-2"></i>Mitras
+        </a>
+        <a class="nav-link" href="#customers" onclick="showSection('customers')">
+            <i class="fas fa-user-friends me-2"></i>Customers
+        </a>
+        <a class="nav-link" href="#bookings" onclick="showSection('bookings')">
+            <i class="fas fa-calendar-check me-2"></i>Bookings
+        </a>
+    </nav>
+    <div class="mt-auto">
+        <button class="btn btn-outline-light w-100 mt-3" onclick="location.reload()">
+            <i class="fas fa-sync me-2"></i>Refresh Data
+        </button>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="row">
+            <div class="col-md-8">
+                <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Search Hotels or Mitras by name or address...">
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary btn-lg w-100" onclick="performSearch()">
+                    <i class="fas fa-search me-2"></i>Search
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hotels Section -->
+    <div id="hotels-section" class="section">
+        <h3 class="section-title"><i class="fas fa-hotel me-2"></i>Hotels Management</h3>
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Hotel Name</th>
+                            <th>Owner Email</th>
+                            <th>Location</th>
+                            <th>Room Rate</th>
+                            <th>Rating</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hotelsTable">
+                        <!-- Hotels data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="inventory-card">
+        <h3>Room Details Update</h3>
+        
+        <label>Room Category:</label>
+        <select id="roomType">
+            <option value="ac">AC Luxury Room</option>
+            <option value="non-ac">Standard Non-AC</option>
+            <option value="deluxe">Deluxe Suite</option>
+        </select>
+
+        <div class="amenities-grid">
+            <h4 style="grid-column: 1 / -1; margin-bottom: 0;">Select Amenities (Tick mark karein):</h4>
+            <label><input type="checkbox" value="WiFi"> Free WiFi</label>
+            <label><input type="checkbox" value="AC"> Air Conditioning</label>
+            <label><input type="checkbox" value="TV"> LED TV</label>
+            <label><input type="checkbox" value="Geyser"> Hot Water/Geyser</label>
+            <label><input type="checkbox" value="Breakfast"> Free Breakfast</label>
+            <label><input type="checkbox" value="Fridge"> Mini Fridge</label>
+        </div>
+
+        <label>Price per Night (₹):</label>
+        <input type="number" id="roomPrice" placeholder="Price likhein">
+
+        <label>Upload Room Photos:</label>
+        <input type="file" id="roomImages" multiple>
+        
+        <button onclick="saveRoomData()" class="btn-save">Update Inventory</button>
+    </div>
+
+    <!-- Mitras Section -->
+    <div id="mitras-section" class="section" style="display: none;">
+        <h3 class="section-title"><i class="fas fa-users me-2"></i>Mitras Management</h3>
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Experience</th>
+                            <th>Joined Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mitrasTable">
+                        <!-- Mitras data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customers Section -->
+    <div id="customers-section" class="section" style="display: none;">
+        <h3 class="section-title"><i class="fas fa-user-friends me-2"></i>Customers Management</h3>
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customersTable">
+                        <!-- Customers data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bookings Section -->
+    <div id="bookings-section" class="section" style="display: none;">
+        <h3 class="section-title"><i class="fas fa-calendar-check me-2"></i>Bookings Management</h3>
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Guest Name</th>
+                            <th>Guest Email</th>
+                            <th>Hotel</th>
+                            <th>Room Type</th>
+                            <th>Check-In/Out</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsTable">
+                        <!-- Bookings data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- WhatsApp Support Button -->
+<a href="https://wa.me/919102596348?text=Hello%20Gyan%20Garbh%20Support" class="whatsapp-btn" target="_blank" title="Chat with Support">
+    <i class="fab fa-whatsapp"></i>
+</a>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // 🔐 IMMEDIATE ROUTE PROTECTION
+    (function() {
+        const adminToken = localStorage.getItem('adminLoggedIn');
+        const adminEmail = localStorage.getItem('adminEmail');
+        if (!adminToken || adminToken !== 'true' || !adminEmail) {
+            // Clear invalid session and redirect
+            localStorage.removeItem('adminLoggedIn');
+            localStorage.removeItem('adminEmail');
+            window.location.href = 'index.html';
+            throw new Error('Access denied. Please login.');
+        }
+    })();
+
+    const API_URL = "https://gyangarbh-project.onrender.com";
+
+    // Room Prices Object
+    const roomPrices = {
+        'Deluxe Room': 1500,
+        'Executive Double': 2800,
+        'Family Suite': 4500
+    };
+
+    // Current active section
+    let currentSection = 'hotels';
+
+    // ⭐ ADMIN LOGIN CHECK
+    window.onload = function() {
+        const isAdminLoggedIn = localStorage.getItem('adminLoggedIn');
+        if (!isAdminLoggedIn || isAdminLoggedIn !== 'true') {
+            showAdminLogin();
+        } else {
+            loadSectionData('hotels');
+        }
+    };
+
+    // ⭐ ADMIN LOGIN MODAL
+    function showAdminLogin() {
+        const loginHTML = `
+            <div class="modal show" style="display: block; background: rgba(0,0,0,0.5);" id="adminLoginModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="fas fa-lock me-2"></i>Admin Panel Login</h5>
+                        </div>
+                        <div class="modal-body p-4">
+                            <form onsubmit="event.preventDefault(); adminLogin();">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Admin Email</label>
+                                    <input type="email" id="adminEmail" class="form-control" placeholder="admin@gyangarbh.com" required>
+                                </div>
+                                <div class="mb-3 password-field">
+                                    <label class="form-label fw-bold">Admin Password</label>
+                                    <input type="password" id="adminPassword" class="form-control" placeholder="••••••••" required>
+                                    <i class="fas fa-eye password-toggle" onclick="togglePassword()"></i>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 fw-bold py-2">LOGIN TO ADMIN PANEL</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', loginHTML);
+    }
+
+    // Toggle password visibility
+    function togglePassword() {
+        const passwordField = document.getElementById('adminPassword');
+        const toggleIcon = document.querySelector('.password-toggle');
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordField.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+        }
+    }
+
+    // ⭐ ADMIN LOGIN HANDLER
+    async function adminLogin() {
+        const email = document.getElementById('adminEmail').value;
+        const password = document.getElementById('adminPassword').value;
+        
+        try {
+            const res = await fetch(`${API_URL}/admin-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                localStorage.setItem('adminLoggedIn', 'true');
+                localStorage.setItem('adminEmail', email);
+                document.getElementById('adminLoginModal')?.remove();
+                Swal.fire('Success!', 'Welcome to Admin Panel!', 'success').then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', 'Invalid admin credentials!', 'error');
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Server connection failed!', 'error');
+        }
+    }
+
+    // ⭐ ADMIN LOGOUT
+    function adminLogout() {
+        localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('adminEmail');
+        location.reload();
+    }
+
+    // Show specific section
+    function showSection(sectionName) {
+        // Hide all sections
+        document.querySelectorAll('.section').forEach(section => {
+            section.style.display = 'none';
+        });
+
+        // Show selected section
+        document.getElementById(sectionName + '-section').style.display = 'block';
+
+        // Update active nav link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        document.querySelector(`[href="#${sectionName}"]`).classList.add('active');
+
+        currentSection = sectionName;
+
+        // Load data for the section
+        loadSectionData(sectionName);
+    }
+
+    // Load data for specific section
+    async function loadSectionData(section) {
+        switch(section) {
+            case 'hotels':
+                await loadHotels();
+                break;
+            case 'mitras':
+                await loadMitras();
+                break;
+            case 'customers':
+                await loadCustomers();
+                break;
+            case 'bookings':
+                await loadBookings();
+                break;
+        }
+    }
+
+    // Load Hotels
+    async function loadHotels() {
+        try {
+            const response = await fetch(`${API_URL}/all-hotels`);
+            if (!response.ok) throw new Error('Server Down');
+            const hotels = await response.json();
+
+            const table = document.getElementById('hotelsTable');
+            table.innerHTML = hotels.map(hotel => `
+                <tr>
+                    <td><strong>${hotel.hotelName}</strong></td>
+                    <td>${hotel.ownerEmail}</td>
+                    <td>${hotel.location}</td>
+                    <td>₹${hotel.roomRate}</td>
+                    <td><i class="fas fa-star text-warning"></i> ${hotel.rating}</td>
+                    <td>
+                        <button class="btn btn-warning btn-action" onclick="editHotel('${hotel._id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-action" onclick="deleteHotel('${hotel._id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            console.error("Error loading hotels:", err);
+            document.getElementById('hotelsTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Server Down - Unable to load hotels</td></tr>';
+        }
+    }
+
+    async function saveRoomData() {
+        const roomType = document.getElementById('roomType').value;
+        const roomPrice = Number(document.getElementById('roomPrice').value);
+        const amenityInputs = document.querySelectorAll('.amenities-grid input[type="checkbox"]:checked');
+        const amenities = Array.from(amenityInputs).map(input => input.value);
+        const imageFiles = document.getElementById('roomImages').files;
+        const images = Array.from(imageFiles).map(file => file.name);
+
+        if (!roomPrice || roomPrice <= 0) {
+            Swal.fire('Oops!', 'Please enter a valid room price.', 'warning');
+            return;
+        }
+
+        const payload = {
+            roomType,
+            price: roomPrice,
+            roomsAvailable: 1,
+            amenities,
+            images,
+            status: 'Available'
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/admin/add-room`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                Swal.fire('Saved!', 'Room data has been sent to the backend.', 'success');
+            } else {
+                Swal.fire('Error', result.message || 'Unable to save room data.', 'error');
+            }
+        } catch (err) {
+            console.error('saveRoomData error:', err);
+            Swal.fire('Error', 'Server connection failed.', 'error');
+        }
+    }
+
+    // Load Mitras
+    async function loadMitras() {
+        try {
+            const response = await fetch(`${API_URL}/all-mitras`);
+            if (!response.ok) throw new Error('Server Down');
+            const mitras = await response.json();
+
+            const table = document.getElementById('mitrasTable');
+            table.innerHTML = mitras.map(mitra => `
+                <tr>
+                    <td><strong>${mitra.name}</strong></td>
+                    <td>${mitra.email}</td>
+                    <td>${mitra.experience || 'N/A'}</td>
+                    <td>${new Date(mitra.date).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-warning btn-action" onclick="editMitra('${mitra._id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-action" onclick="deleteMitra('${mitra._id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            console.error("Error loading mitras:", err);
+            document.getElementById('mitrasTable').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Server Down - Unable to load mitras</td></tr>';
+        }
+    }
+
+    // Load Customers
+    async function loadCustomers() {
+        try {
+            const response = await fetch(`${API_URL}/admin/enquiries`);
+            if (!response.ok) throw new Error('Server Down');
+            const customers = await response.json();
+
+            const table = document.getElementById('customersTable');
+            table.innerHTML = customers.map(customer => `
+                <tr>
+                    <td><strong>${customer.customerName}</strong></td>
+                    <td>${customer.customerEmail}</td>
+                    <td>${customer.customerPhone}</td>
+                    <td><span class="status-badge status-${customer.status.toLowerCase()}">${customer.status}</span></td>
+                    <td>${new Date(customer.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-warning btn-action" onclick="editCustomer('${customer._id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-action" onclick="deleteCustomer('${customer._id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            console.error("Error loading customers:", err);
+            document.getElementById('customersTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Server Down - Unable to load customers</td></tr>';
+        }
+    }
+
+    // Load Bookings
+    async function loadBookings() {
+        try {
+            const response = await fetch(`${API_URL}/all-bookings`);
+            if (!response.ok) throw new Error('Server Down');
+            const bookings = await response.json();
+
+            const table = document.getElementById('bookingsTable');
+            table.innerHTML = bookings.map(booking => {
+                const checkIn = new Date(booking.checkIn);
+                const checkOut = new Date(booking.checkOut);
+                const statusClass = booking.status.toLowerCase();
+
+                return `
+                    <tr>
+                        <td><strong>${booking.userName}</strong></td>
+                        <td>${booking.userEmail}</td>
+                        <td>${booking.hotelName}</td>
+                        <td>${booking.roomType}</td>
+                        <td>
+                            <small>${checkIn.toLocaleDateString()}</small><br>
+                            <small class="text-muted">to ${checkOut.toLocaleDateString()}</small>
+                        </td>
+                        <td><span class="status-badge status-${statusClass}">${booking.status}</span></td>
+                        <td>
+                            <button class="btn btn-warning btn-action" onclick="editBooking('${booking._id}')">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-danger btn-action" onclick="deleteBooking('${booking._id}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (err) {
+            console.error("Error loading bookings:", err);
+            document.getElementById('bookingsTable').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Server Down - Unable to load bookings</td></tr>';
+        }
+    }
+
+    // Search functionality
+    function performSearch() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        if (currentSection === 'hotels') {
+            searchHotels(searchTerm);
+        } else if (currentSection === 'mitras') {
+            searchMitras(searchTerm);
+        }
+    }
+
+    // Search Hotels
+    async function searchHotels(term) {
+        try {
+            const response = await fetch(`${API_URL}/all-hotels`);
+            if (!response.ok) throw new Error('Server Down');
+            const hotels = await response.json();
+
+            const filtered = hotels.filter(hotel =>
+                hotel.hotelName.toLowerCase().includes(term) ||
+                hotel.ownerEmail.toLowerCase().includes(term) ||
+                hotel.location.toLowerCase().includes(term)
+            );
+
+            const table = document.getElementById('hotelsTable');
+            table.innerHTML = filtered.map(hotel => `
+                <tr>
+                    <td><strong>${hotel.hotelName}</strong></td>
+                    <td>${hotel.ownerEmail}</td>
+                    <td>${hotel.location}</td>
+                    <td>₹${hotel.roomRate}</td>
+                    <td><i class="fas fa-star text-warning"></i> ${hotel.rating}</td>
+                    <td>
+                        <button class="btn btn-warning btn-action" onclick="editHotel('${hotel._id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-action" onclick="deleteHotel('${hotel._id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            if (filtered.length === 0) {
+                table.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hotels found matching your search.</td></tr>';
+            }
+        } catch (err) {
+            console.error("Error searching hotels:", err);
+        }
+    }
+
+    // Search Mitras
+    async function searchMitras(term) {
+        try {
+            const response = await fetch(`${API_URL}/all-mitras`);
+            if (!response.ok) throw new Error('Server Down');
+            const mitras = await response.json();
+
+            const filtered = mitras.filter(mitra =>
+                mitra.name.toLowerCase().includes(term) ||
+                mitra.email.toLowerCase().includes(term) ||
+                (mitra.experience && mitra.experience.toLowerCase().includes(term))
+            );
+
+            const table = document.getElementById('mitrasTable');
+            table.innerHTML = filtered.map(mitra => `
+                <tr>
+                    <td><strong>${mitra.name}</strong></td>
+                    <td>${mitra.email}</td>
+                    <td>${mitra.experience || 'N/A'}</td>
+                    <td>${new Date(mitra.date).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-warning btn-action" onclick="editMitra('${mitra._id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-action" onclick="deleteMitra('${mitra._id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            if (filtered.length === 0) {
+                table.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No mitras found matching your search.</td></tr>';
+            }
+        } catch (err) {
+            console.error("Error searching mitras:", err);
+        }
+    }
+
+    // Edit functions
+    async function editHotel(id) {
+        try {
+            const response = await fetch(`${API_URL}/all-hotels`);
+            if (!response.ok) throw new Error('Server Down');
+            const hotels = await response.json();
+            const hotel = hotels.find(h => h._id === id);
+
+            if (!hotel) {
+                Swal.fire('Error', 'Hotel not found!', 'error');
+                return;
+            }
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Edit Hotel',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Hotel Name</label>
+                            <input id="edit-hotel-name" class="form-control" value="${hotel.hotelName}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Owner Email</label>
+                            <input id="edit-owner-email" type="email" class="form-control" value="${hotel.ownerEmail}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input id="edit-phone" type="tel" class="form-control" value="${hotel.phone || ''}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <textarea id="edit-address" class="form-control" rows="2">${hotel.address || ''}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Location</label>
+                            <input id="edit-location" class="form-control" value="${hotel.location}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Room Rate (₹)</label>
+                            <input id="edit-room-rate" type="number" class="form-control" value="${hotel.roomRate}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Rating</label>
+                            <input id="edit-rating" type="number" step="0.1" min="1" max="5" class="form-control" value="${hotel.rating}" required>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Update Hotel',
+                preConfirm: () => {
+                    return {
+                        hotelId: id,
+                        hotelName: document.getElementById('edit-hotel-name').value,
+                        ownerEmail: document.getElementById('edit-owner-email').value,
+                        phone: document.getElementById('edit-phone').value,
+                        address: document.getElementById('edit-address').value,
+                        location: document.getElementById('edit-location').value,
+                        roomRate: document.getElementById('edit-room-rate').value,
+                        rating: document.getElementById('edit-rating').value
+                    };
+                }
+            });
+
+            if (formValues) {
+                const updateResponse = await fetch(`${API_URL}/admin/update-hotel`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formValues)
+                });
+
+                const result = await updateResponse.json();
+
+                if (result.success) {
+                    Swal.fire('Success!', 'Hotel updated successfully!', 'success');
+                    loadSectionData('hotels');
+                } else {
+                    Swal.fire('Error!', result.message || 'Failed to update hotel', 'error');
+                }
+            }
+        } catch (err) {
+            console.error('Error editing hotel:', err);
+            Swal.fire('Error!', 'Failed to load hotel data', 'error');
+        }
+    }
+
+    async function editMitra(id) {
+        try {
+            const response = await fetch(`${API_URL}/all-mitras`);
+            if (!response.ok) throw new Error('Server Down');
+            const mitras = await response.json();
+            const mitra = mitras.find(m => m._id === id);
+
+            if (!mitra) {
+                Swal.fire('Error', 'Mitra not found!', 'error');
+                return;
+            }
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Edit Mitra',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input id="edit-mitra-name" class="form-control" value="${mitra.name}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input id="edit-mitra-email" type="email" class="form-control" value="${mitra.email}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input id="edit-mitra-phone" type="tel" class="form-control" value="${mitra.phone || ''}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <textarea id="edit-mitra-address" class="form-control" rows="2">${mitra.address || ''}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Experience</label>
+                            <input id="edit-mitra-experience" class="form-control" value="${mitra.experience || ''}">
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Update Mitra',
+                preConfirm: () => {
+                    return {
+                        mitraId: id,
+                        name: document.getElementById('edit-mitra-name').value,
+                        email: document.getElementById('edit-mitra-email').value,
+                        phone: document.getElementById('edit-mitra-phone').value,
+                        address: document.getElementById('edit-mitra-address').value,
+                        experience: document.getElementById('edit-mitra-experience').value
+                    };
+                }
+            });
+
+            if (formValues) {
+                const updateResponse = await fetch(`${API_URL}/admin/update-mitra`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formValues)
+                });
+
+                const result = await updateResponse.json();
+
+                if (result.success) {
+                    Swal.fire('Success!', 'Mitra updated successfully!', 'success');
+                    loadSectionData('mitras');
+                } else {
+                    Swal.fire('Error!', result.message || 'Failed to update mitra', 'error');
+                }
+            }
+        } catch (err) {
+            console.error('Error editing mitra:', err);
+            Swal.fire('Error!', 'Failed to load mitra data', 'error');
+        }
+    }
+
+    async function editCustomer(id) {
+        try {
+            const response = await fetch(`${API_URL}/admin/enquiries`);
+            if (!response.ok) throw new Error('Server Down');
+            const customers = await response.json();
+            const customer = customers.find(c => c._id === id);
+
+            if (!customer) {
+                Swal.fire('Error', 'Customer not found!', 'error');
+                return;
+            }
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Edit Customer',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input id="edit-customer-name" class="form-control" value="${customer.customerName}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input id="edit-customer-email" type="email" class="form-control" value="${customer.customerEmail}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input id="edit-customer-phone" type="tel" class="form-control" value="${customer.customerPhone}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select id="edit-customer-status" class="form-control">
+                                <option value="Pending" ${customer.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Confirmed" ${customer.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                                <option value="Cancelled" ${customer.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Update Customer',
+                preConfirm: () => {
+                    return {
+                        customerId: id,
+                        customerName: document.getElementById('edit-customer-name').value,
+                        customerEmail: document.getElementById('edit-customer-email').value,
+                        customerPhone: document.getElementById('edit-customer-phone').value,
+                        status: document.getElementById('edit-customer-status').value
+                    };
+                }
+            });
+
+            if (formValues) {
+                const updateResponse = await fetch(`${API_URL}/admin/update-customer`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formValues)
+                });
+
+                const result = await updateResponse.json();
+
+                if (result.success) {
+                    Swal.fire('Success!', 'Customer updated successfully!', 'success');
+                    loadSectionData('customers');
+                } else {
+                    Swal.fire('Error!', result.message || 'Failed to update customer', 'error');
+                }
+            }
+        } catch (err) {
+            console.error('Error editing customer:', err);
+            Swal.fire('Error!', 'Failed to load customer data', 'error');
+        }
+    }
+
+    async function editBooking(id) {
+        try {
+            const response = await fetch(`${API_URL}/all-bookings`);
+            if (!response.ok) throw new Error('Server Down');
+            const bookings = await response.json();
+            const booking = bookings.find(b => b._id === id);
+
+            if (!booking) {
+                Swal.fire('Error', 'Booking not found!', 'error');
+                return;
+            }
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Edit Booking',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Guest Name</label>
+                            <input id="edit-booking-name" class="form-control" value="${booking.userName}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Guest Email</label>
+                            <input id="edit-booking-email" type="email" class="form-control" value="${booking.userEmail}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Hotel</label>
+                            <input id="edit-booking-hotel" class="form-control" value="${booking.hotelName}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Room Type</label>
+                            <select id="edit-booking-room" class="form-control">
+                                <option value="Deluxe Room" ${booking.roomType === 'Deluxe Room' ? 'selected' : ''}>Deluxe Room</option>
+                                <option value="Executive Double" ${booking.roomType === 'Executive Double' ? 'selected' : ''}>Executive Double</option>
+                                <option value="Family Suite" ${booking.roomType === 'Family Suite' ? 'selected' : ''}>Family Suite</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Check-In Date</label>
+                            <input id="edit-checkin" type="date" class="form-control" value="${booking.checkIn.split('T')[0]}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Check-Out Date</label>
+                            <input id="edit-checkout" type="date" class="form-control" value="${booking.checkOut.split('T')[0]}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select id="edit-booking-status" class="form-control">
+                                <option value="Pending" ${booking.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Confirmed" ${booking.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                                <option value="Cancelled" ${booking.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Update Booking',
+                preConfirm: () => {
+                    return {
+                        bookingId: id,
+                        userName: document.getElementById('edit-booking-name').value,
+                        userEmail: document.getElementById('edit-booking-email').value,
+                        hotelName: document.getElementById('edit-booking-hotel').value,
+                        roomType: document.getElementById('edit-booking-room').value,
+                        checkIn: document.getElementById('edit-checkin').value,
+                        checkOut: document.getElementById('edit-checkout').value,
+                        status: document.getElementById('edit-booking-status').value
+                    };
+                }
+            });
+
+            if (formValues) {
+                const updateResponse = await fetch(`${API_URL}/update-booking-status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bookingId: id, status: formValues.status })
+                });
+
+                const result = await updateResponse.json();
+
+                if (result.success) {
+                    Swal.fire('Success!', 'Booking updated successfully!', 'success');
+                    loadSectionData('bookings');
+                } else {
+                    Swal.fire('Error!', result.message || 'Failed to update booking', 'error');
+                }
+            }
+        } catch (err) {
+            console.error('Error editing booking:', err);
+            Swal.fire('Error!', 'Failed to load booking data', 'error');
+        }
+    }
+
+    // Delete functions
+    async function deleteHotel(id) {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: 'This will permanently delete the hotel!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`${API_URL}/admin/delete-hotel`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hotelId: id })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire('Deleted!', 'Hotel has been deleted.', 'success');
+                    loadSectionData('hotels');
+                } else {
+                    Swal.fire('Error!', data.message || 'Failed to delete hotel', 'error');
+                }
+            } catch (err) {
+                console.error('Error deleting hotel:', err);
+                Swal.fire('Error!', 'Failed to delete hotel', 'error');
+            }
+        }
+    }
+
+    async function deleteMitra(id) {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: 'This will permanently delete the mitra!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`${API_URL}/admin/delete-mitra`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mitraId: id })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire('Deleted!', 'Mitra has been deleted.', 'success');
+                    loadSectionData('mitras');
+                } else {
+                    Swal.fire('Error!', data.message || 'Failed to delete mitra', 'error');
+                }
+            } catch (err) {
+                console.error('Error deleting mitra:', err);
+                Swal.fire('Error!', 'Failed to delete mitra', 'error');
+            }
+        }
+    }
+
+    async function deleteCustomer(id) {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: 'This will permanently delete the customer enquiry!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`${API_URL}/admin/delete-customer`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerId: id })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire('Deleted!', 'Customer enquiry has been deleted.', 'success');
+                    loadSectionData('customers');
+                } else {
+                    Swal.fire('Error!', data.message || 'Failed to delete customer', 'error');
+                }
+            } catch (err) {
+                console.error('Error deleting customer:', err);
+                Swal.fire('Error!', 'Failed to delete customer', 'error');
+            }
+        }
+    }
+
+    async function deleteBooking(id) {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: 'This will permanently delete the booking!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                // Note: No delete endpoint for bookings in backend, so just show message
+                Swal.fire('Info', 'Booking deletion not implemented in backend yet.', 'info');
+            } catch (err) {
+                console.error('Error deleting booking:', err);
+                Swal.fire('Error!', 'Failed to delete booking', 'error');
+            }
+        }
+    }
+</script>
+</body>
+</html>
+

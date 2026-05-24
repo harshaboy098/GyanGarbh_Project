@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyan Garbh | Premium Bodhgaya Tourism</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { --brand: #1e3c72; --gold: #ffc107; --bg: #f8fafc; --danger: #ef4444; --accent: #2563eb; }
+        body { background-color: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; }
+        
+        .nav-custom { background: var(--brand); border-bottom: 4px solid var(--gold); padding: 12px 0; }
+        .user-link { color: white; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        
+        .hero-premium {
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=2070');
+            height: 45vh; background-size: cover; background-position: center;
+            display: flex; align-items: center; justify-content: center; color: white; border-bottom-left-radius: 60px; border-bottom-right-radius: 60px;
+        }
+
+        .place-card { border-radius: 20px; overflow: hidden; height: 250px; position: relative; border: none; cursor: pointer; transition: 0.3s; }
+        .place-card:hover { transform: scale(1.03); }
+        .place-card img { width: 100%; height: 100%; object-fit: cover; }
+        .place-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); color: white; padding: 15px; }
+
+        .search-container { margin-top: -40px; z-index: 100; position: relative; }
+        .search-box { background: white; border-radius: 100px; padding: 15px 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
+
+        .hotel-card { border: none; border-radius: 25px; background: white; transition: 0.4s; overflow: hidden; height: 100%; cursor: pointer; }
+        .hotel-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .img-box { height: 220px; overflow: hidden; position: relative; }
+        .img-box img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
+        .hotel-card:hover .img-box img { transform: scale(1.1); }
+        
+        .urgency-badge { position: absolute; top: 15px; left: 15px; background: var(--danger); color: white; padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 800; z-index: 10; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        .amenity-badge { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; margin-right: 5px; color: #475569; }
+
+        .mitra-float {
+            position: fixed; bottom: 30px; right: 30px; z-index: 1000;
+            background: white; border: 2px solid var(--gold); padding: 12px 24px;
+            border-radius: 100px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .modal-hotel-img { height: 400px; object-fit: cover; width: 100%; }
+
+        .feedback-section { padding: 80px 0; background: white; border-radius: 60px 60px 0 0; margin-top: 50px; }
+        .feedback-card { background: #f8fafc; border-radius: 20px; padding: 25px; border: 1px solid #e2e8f0; }
+
+        /* Bug Fixes */
+    </style>
+</head>
+<body>
+
+<div class="mitra-float d-flex align-items-center gap-3 animate__animated animate__bounceIn" onclick="openMitraModal()">
+    <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width:40px; height:40px; border:2px solid white;">B</div>
+    <div>
+        <span class="d-block fw-bold small">Talk to Bodh-Mitra</span>
+        <span class="text-success" style="font-size: 10px;"><i class="bi bi-circle-fill"></i> Experts Online</span>
+    </div>
+</div>
+
+<nav class="navbar nav-custom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold text-white fs-4" href="#"><i class="bi bi-compass-fill text-warning me-2"></i>GYAN GARBH</a>
+        <div id="userSection"></div>
+    </div>
+</nav>
+
+<div class="hero-premium">
+    <div class="container text-center">
+        <h1 class="fw-bold display-4">Discover Spiritual Bodhgaya</h1>
+        <p class="lead opacity-90">Verified Stays & Expert Guides for your Enlightenment Journey</p>
+    </div>
+</div>
+
+<div class="container search-container mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10 search-box">
+            <div class="row align-items-center">
+                <div class="col-md-9 border-end">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-search text-primary me-3"></i>
+                        <input type="text" id="hotelSearch" class="form-control border-0 shadow-none py-2" placeholder="Search Hotels, Mandirs, or Areas..." onkeyup="filterHotels()">
+                    </div>
+                </div>
+                <div class="col-md-3 text-center">
+                    <button class="btn btn-primary w-100 rounded-pill fw-bold">Search Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <h3 class="fw-bold mb-4">Explore Bodhgaya <span class="text-primary">Attractions</span></h3>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card place-card shadow">
+                <img src="https://images.unsplash.com/photo-1625505826533-5c80aca7d157?q=80&w=2070" alt="Temple" loading="lazy">
+                <div class="place-overlay">
+                    <h5 class="fw-bold mb-1">Mahabodhi Temple</h5>
+                    <p class="small mb-0">The site of Buddha's Enlightenment.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card place-card shadow">
+                <img src="https://images.unsplash.com/photo-1590050752117-23a9d7fc21ad?q=80&w=2070" alt="Statue" loading="lazy">
+                <div class="place-overlay">
+                    <h5 class="fw-bold mb-1">Great Buddha Statue</h5>
+                    <p class="small mb-0">80ft Tall symbol of Peace.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card place-card shadow">
+                <img src="https://images.unsplash.com/photo-1548013146-72479768bbaa?q=80&w=2070" alt="Monastery" loading="lazy">
+                <div class="place-overlay">
+                    <h5 class="fw-bold mb-1">Thai Monastery</h5>
+                    <p class="small mb-0">Exquisite gold leaf architecture.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🆕 BODHI PATH SECTION -->
+<div class="container mb-5">
+    <div class="card rounded-5 border-0 overflow-hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); position: relative;">
+        <div style="position: absolute; top: 0; right: 0; opacity: 0.1; font-size: 200px;">🏛️</div>
+        <div class="card-body p-5" style="position: relative; z-index: 2;">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h2 class="fw-bold text-white mb-3">
+                        <i class="bi bi-temple2"></i> Bodhi Path: Discover Sacred Heritage
+                    </h2>
+                    <p class="text-white fs-6 mb-4">
+                        Explore the rich spiritual and cultural heritage of Bodh Gaya. Learn about ancient temples, sacred traditions, and the profound history of Buddha's enlightenment. A journey beyond just accommodation - a spiritual awakening.
+                    </p>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <a href="bodhi-path.html" class="btn btn-light btn-lg rounded-pill px-4 fw-bold">
+                            <i class="bi bi-compass"></i> Explore Heritage Now
+                        </a>
+                        <button class="btn btn-outline-light btn-lg rounded-pill px-4 fw-bold" onclick="openBodhiPathInfo()">
+                            <i class="bi bi-info-circle"></i> Learn More
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-center d-none d-lg-block">
+                    <i class="bi bi-temple2 text-white" style="font-size: 150px; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold mb-0">Top Rated <span class="text-primary">Stays</span></h3>
+        <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="loadHotels()">Refresh List</button>
+    </div>
+    <div id="hotelsContainer" class="row g-4"></div>
+</div>
+
+<div class="feedback-section">
+    <div class="container">
+        <h3 class="fw-bold text-center mb-5">Gyan Garbh <span class="text-primary">Experiences</span></h3>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feedback-card">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary text-white rounded-circle p-2 me-3">RK</div>
+                        <h6 class="fw-bold mb-0">Raja Kumar</h6>
+                    </div>
+                    <p class="text-muted small">"Bodhgaya aana mera sapna tha, Gyan Garbh ke hotel aur Mitra ne use aasaan bana diya. Sab kuch verified tha!"</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feedback-card">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary text-white rounded-circle p-2 me-3">AS</div>
+                        <h6 class="fw-bold mb-0">Amit Sharma</h6>
+                    </div>
+                    <p class="text-muted small">"Mujhe interior photos dekh kar room book karne ka feature sabse best laga. Real hotel aur photo ekdum same the."</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feedback-card text-center d-flex flex-column justify-content-center">
+                    <button class="btn btn-outline-primary rounded-pill fw-bold" onclick="Swal.fire('Coming Soon', 'Aap jald hi apna feedback yahan likh sakenge!', 'info')">Write Your Feedback</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="hotelDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden">
+            <div class="modal-body p-0">
+                <div class="row g-0">
+                    <div class="col-lg-6">
+                        <img id="detImg" src="" class="modal-hotel-img" style="height: 100%; min-height: 450px; object-fit: cover;" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'">
+                    </div>
+                    <div class="col-lg-6 p-5 bg-white">
+                        <button type="button" class="btn-close float-end" data-bs-dismiss="modal"></button>
+                        <h2 class="fw-bold text-dark mb-1" id="detName"></h2>
+                        <p class="text-muted"><i class="bi bi-geo-alt-fill text-danger"></i> <span id="detLoc"></span>, Bodhgaya</p>
+                        <div class="alert alert-info mb-3" id="detRating" style="font-size: 1.1rem;">⭐ 4.5</div>
+                        <p id="detDescription" class="text-muted small mb-3">Comfort and luxury combined</p>
+                        
+                        <!-- 🆕 NEW FIELDS: Distance & Highlights -->
+                        <div class="alert alert-light border mb-3">
+                            <small class="fw-bold text-muted d-block mb-2"><i class="bi bi-geo-alt"></i> Distance from Landmark</small>
+                            <p id="detDistance" class="mb-0" style="color: #667eea; font-weight: 600;">Mahabodhi Temple: 0.5 km</p>
+                        </div>
+                        
+                        <div class="alert alert-light border mb-3">
+                            <small class="fw-bold text-muted d-block mb-2"><i class="bi bi-star"></i> Gyan Garbh Highlights</small>
+                            <p id="detHighlights" class="mb-0 text-muted" style="font-size: 0.95rem;">Peaceful garden, vegetarian meals available</p>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mb-4">
+                            <span class="amenity-badge"><i class="bi bi-snow text-primary"></i> AC</span>
+                            <span class="amenity-badge"><i class="bi bi-wifi text-primary"></i> WiFi</span>
+                            <span class="amenity-badge"><i class="bi bi-cup-hot text-primary"></i> Food</span>
+                            <span class="amenity-badge"><i class="bi bi-p-circle text-primary"></i> Parking</span>
+                        </div>
+
+                        <div class="bg-light p-4 rounded-4 mb-4 border">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="fw-bold text-muted">Price Per Night:</span>
+                                <h3 class="fw-bold text-primary mb-0" id="detPrice"></h3>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-6"><label class="small fw-bold">CHECK-IN</label><input type="date" id="bookIn" class="form-control"></div>
+                                <div class="col-6"><label class="small fw-bold">CHECK-OUT</label><input type="date" id="bookOut" class="form-control"></div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="confirmQuickBooking()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg mb-2">CONFIRM BOOKING NOW</button>
+                        <a href="bodhi-path.html" class="btn btn-outline-primary w-100 rounded-pill py-3 fw-bold" target="_blank">
+                            <i class="bi bi-compass"></i> Explore Bodh Gaya Heritage
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mitraModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white p-4">
+                <h5 class="modal-title fw-bold">Choose Your Bodh-Mitra Agent</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-3" id="mitraList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="text-center">
+    <div class="container">
+        <div class="mb-3">
+            <a href="hotel-auth.html">Hotel Partner Login</a> • 
+            <a href="mitra-auth.html">Join as Bodh-Mitra Agent</a>
+        </div>
+        <p class="text-muted mb-0">© 2026 Gyan Garbh Bodhgaya • The Enlightenment Network</p>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const API_URL = "https://gyangarbh-project.onrender.com";
+    const userName = localStorage.getItem('userName');
+    const userEmail = localStorage.getItem('userEmail');
+
+    async function loadMitrasFromDB() {
+        console.log('Fetching data...');
+        const list = document.getElementById('mitraList');
+        try {
+            const res = await fetch(`${API_URL}/all-mitras`);
+            const mitras = await res.json();
+            list.innerHTML = "";
+            if(mitras.length === 0) {
+                list.innerHTML = "<p class='text-center py-4'>Abhi koi Mitra online nahi hai.</p>";
+                return true;
+            }
+            mitras.forEach(m => {
+                list.innerHTML += `
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm p-3 rounded-4 mb-2">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:50px; height:50px;">${m.name.charAt(0)}</div>
+                                <div><h6 class="fw-bold mb-0">${m.name}</h6><small class="text-primary fw-bold">Verified Expert</small></div>
+                            </div>
+                            <p class="small text-muted mb-3">Exp: ${m.experience || 'Local'} | Guide</p>
+                            <button class="btn btn-outline-primary btn-sm w-100 rounded-pill fw-bold" onclick="assignMitra('${m.name}')">Hire ${m.name}</button>
+                        </div>
+                    </div>`;
+            });
+            return true;
+        } catch (err) {
+            console.error("Mitra fetch error", err);
+            list.innerHTML = "<p class='text-center py-4 text-danger'>Mitra data fetch failed.</p>";
+            return false;
+        }
+    }
+
+    window.onload = async function() {
+        if(localStorage.getItem('userRole') === 'mitra') {
+            window.location.href = "mitra-dashboard.html";
+            return;
+        }
+
+        const storedEmail = localStorage.getItem('userEmail');
+        if (!storedEmail) {
+            Swal.fire('Please Login Again', 'Your session has expired or email is missing. Please login again.', 'warning')
+                .then(() => location.href = 'index.html');
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        if(document.getElementById('bookIn')) {
+            document.getElementById('bookIn').setAttribute('min', today);
+            document.getElementById('bookOut').setAttribute('min', today);
+        }
+
+        if (userName) {
+            document.getElementById('userSection').innerHTML = `
+                <a href="my-booking.html" class="user-link me-3"><i class="bi bi-person-circle"></i> Profile</a>
+                <button onclick="logout()" class="btn btn-sm btn-outline-light rounded-pill px-3">Logout</button>
+            `;
+        } else {
+            document.getElementById('userSection').innerHTML = `<a href="index.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold">Login</a>`;
+        }
+
+        const hotelOk = await fetchHotelDetails();
+        const mitraOk = await loadMitrasFromDB();
+        if (hotelOk && mitraOk) {
+            console.log('API Connection: [OK]');
+            console.log('Data Fetching: [OK]');
+            console.log('UI Rendering: [OK]');
+        }
+    };
+
+    window.onfocus = async function() {
+        await fetchHotelDetails();
+        await loadMitrasFromDB();
+    };
+
+    function getAmenityIcons(facilities) {
+        let icons = '';
+        if (facilities?.wifi) icons += '📶 ';
+        if (facilities?.ac) icons += '❄️ ';
+        if (facilities?.food) icons += '🍽️ ';
+        if (facilities?.parking) icons += '🅿️ ';
+        return icons || '✨';
+    }
+
+    function getPriceDisplay(price) {
+        return price && price > 0 ? `₹${price}/Night` : 'Price on Request';
+    }
+
+    async function fetchHotelDetails() {
+        console.log('Fetching data...');
+        return await loadHotels();
+    }
+
+    async function loadHotels() {
+        console.log('Fetching data...');
+        const container = document.getElementById('hotelsContainer');
+        try {
+            const res = await fetch(`${API_URL}/all-hotels`);
+            const hotels = await res.json();
+            container.innerHTML = "";
+            hotels.forEach(h => {
+                const imgUrl = h.imageUrl || h.imageUrl2 || h.imageUrl3 || "https://images.unsplash.com/photo-1566073771259-6a8506099945";
+                const priceValue = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
+                const priceDisplay = getPriceDisplay(priceValue);
+                const amenityIcons = getAmenityIcons(h.facilities);
+                const rating = h.rating || 4.5;
+                const description = h.description || 'Comfort and luxury combined';
+                const locationText = h.location || 'Bodhgaya';
+                const safeName = (h.hotelName || 'Hotel').replace(/'/g, "\\'");
+                const safeLocation = locationText.replace(/'/g, "\\'");
+                const safeDescription = description.replace(/'/g, "\\'");
+                container.innerHTML += `
+                    <div class="col-md-4 hotel-item">
+                        <div class="hotel-card" onclick="openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">
+                            <span class="urgency-badge">Filling Fast!</span>
+                            <div class="img-box"><img src="${imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'"></div>
+                            <div class="p-4">
+                                <h6 class="fw-bold mb-1 text-capitalize text-truncate">${h.hotelName || 'Premium Stay'}</h6>
+                                <div class="small text-warning mb-2">⭐ ${rating} | <i class="bi bi-geo-alt"></i> ${locationText}</div>
+                                <p class="small text-muted mb-2" style="min-height: 30px;">${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</p>
+                                <div class="mb-2 small">${amenityIcons}</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="h6 fw-bold text-success mb-0">${priceDisplay}</span>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-success btn-sm rounded-pill px-2 fw-bold shadow-sm" onclick="event.stopPropagation(); chatOnWhatsApp('${safeName}')">
+                                            <i class="bi bi-whatsapp"></i>
+                                        </button>
+                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">View Room</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            return true;
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = '<div class="text-center text-danger py-5">Unable to load hotels. Please check the backend connection.</div>';
+            return false;
+        }
+    }
+
+    function openMitraModal() { new bootstrap.Modal(document.getElementById('mitraModal')).show(); }
+
+    document.addEventListener('hidden.bs.modal', () => {
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    });
+
+    function assignMitra(name) {
+        localStorage.setItem('assignedMitra', name);
+        Swal.fire('Mitra Assigned!', `${name} will guide your trip.`, 'success');
+    }
+
+    function openHotelDetails(name, loc, price, img, rating, description) {
+        const priceText = price && price > 0 ? '₹' + price : 'Price on Request';
+        document.getElementById('detName').innerText = name;
+        document.getElementById('detLoc').innerText = loc;
+        document.getElementById('detPrice').innerText = priceText;
+        document.getElementById('detImg').src = img || 'https://via.placeholder.com/800x600?text=Hotel+Interior';
+        const ratingEl = document.getElementById('detRating');
+        const descEl = document.getElementById('detDescription');
+        if (ratingEl) ratingEl.innerText = `⭐ ${rating || 4.5}`;
+        if (descEl) descEl.innerText = description || 'Comfort and luxury combined';
+        
+        // 🆕 POPULATE DISTANCE AND HIGHLIGHTS
+        // Default values - will be updated from actual hotel data
+        const detDistance = document.getElementById('detDistance');
+        const detHighlights = document.getElementById('detHighlights');
+        if (detDistance) detDistance.innerText = 'Mahabodhi Temple: 0.5 km';
+        if (detHighlights) detHighlights.innerText = 'Peaceful garden, vegetarian meals available, meditation space';
+        
+        new bootstrap.Modal(document.getElementById('hotelDetailModal')).show();
+    }
+    
+    function openBodhiPathInfo() {
+        Swal.fire({
+            title: '🏛️ Bodhi Path Heritage',
+            html: `
+                <div class="text-start">
+                    <p><strong>Discover the spiritual essence of Bodh Gaya through our Bodhi Path program.</strong></p>
+                    <ul>
+                        <li>🏛️ Learn about Mahabodhi Temple and other sacred sites</li>
+                        <li>📚 Explore the history and significance of Buddhist traditions</li>
+                        <li>🧘 Understand meditation practices and spiritual teachings</li>
+                        <li>🎭 Experience the culture and festivals of Bodh Gaya</li>
+                    </ul>
+                    <p><em>A complete guide to Bodh Gaya's heritage, accessible right from your hotel!</em></p>
+                </div>
+            `,
+            icon: 'info',
+            confirmButtonText: 'Explore Now',
+            confirmButtonColor: '#667eea'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.open('bodhi-path.html', '_blank');
+            }
+        });
+    }
+
+    async function confirmQuickBooking() {
+        const hName = document.getElementById('detName').innerText;
+        const cIn = document.getElementById('bookIn').value;
+        const cOut = document.getElementById('bookOut').value;
+        const priceText = document.getElementById('detPrice').innerText;
+        const price = Number(priceText.replace(/[^0-9]/g, '')) || 0;
+        if(!userName) { Swal.fire('Login!', 'Pehle login karein.', 'warning').then(() => location.href='index.html'); return; }
+        if(!cIn || !cOut) { Swal.fire('Date?', 'Dates select karein.', 'warning'); return; }
+        try {
+            console.log('Fetching data...');
+            const res = await fetch(`${API_URL}/api/bookings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userName, userEmail, hotelName: hName, price, roomType: 'Standard Room', checkIn: cIn, checkOut: cOut, status: 'Pending' })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                Swal.fire('Success!', 'Success! Gyan Garbh Mitra will contact you soon.', 'success');
+            } else {
+                Swal.fire('Error', data.message || 'Booking failed, please try again.', 'error');
+            }
+        } catch (err) { Swal.fire('Error', 'Server down! Please try again in a moment.', 'error'); }
+    }
+
+    function filterHotels() {
+        let val = document.getElementById('hotelSearch').value.toLowerCase();
+        document.querySelectorAll('.hotel-item').forEach(c => {
+            const text = c.innerText.toLowerCase();
+            c.style.display = text.includes(val) ? "block" : "none";
+        });
+    }
+
+    function chatOnWhatsApp(hotelName) {
+        const adminNumber = '+919102596348';
+        const message = encodeURIComponent(`Hi, I am interested in booking at ${hotelName}. Please provide more details.`);
+        const whatsappUrl = `https://wa.me/${adminNumber}?text=${message}`;
+        window.open(whatsappUrl, '_blank');
+    }
+
+    function logout() {
+        localStorage.clear();
+        location.reload();
+    }
+</script>
+
+<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
+    <i class="bi bi-whatsapp"></i>
+</a>
+
+</body>
+</html>
