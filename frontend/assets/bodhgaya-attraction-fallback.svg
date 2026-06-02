@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Bodhgaya attraction image fallback">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#102847"/>
+      <stop offset="0.58" stop-color="#1e3c72"/>
+      <stop offset="1" stop-color="#ffc107"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7d6" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffc107" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#sky)"/>
+  <circle cx="930" cy="170" r="86" fill="url(#glow)" opacity="0.9"/>
+  <path d="M0 618c126-55 249-71 370-47 103 20 171 72 292 84 151 14 274-63 538-23v168H0z" fill="#0f172a" opacity="0.38"/>
+  <path d="M454 566h292v86H454z" fill="#f8fafc" opacity="0.92"/>
+  <path d="M500 438h200l46 128H454z" fill="#f8fafc" opacity="0.95"/>
+  <path d="M600 276l120 162H480z" fill="#fff7d6" opacity="0.95"/>
+  <rect x="565" y="526" width="70" height="126" rx="35" fill="#1e3c72"/>
+  <text x="600" y="716" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" fill="#ffffff">Bodhgaya Heritage</text>
+</svg>

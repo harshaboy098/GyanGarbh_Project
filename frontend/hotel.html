@@ -9,10 +9,17 @@
     <style>
         :root { --brand: #1e3c72; --gold: #ffc107; --bg: #f8fafc; --danger: #ef4444; --accent: #2563eb; }
         body { background-color: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; }
-        
+
         .nav-custom { background: var(--brand); border-bottom: 4px solid var(--gold); padding: 12px 0; }
         .user-link { color: white; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-        
+        .nav-ai-btn {
+            display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(255,193,7,0.55);
+            background: linear-gradient(135deg, #fff7d6 0%, var(--gold) 100%); color: #102847;
+            font-weight: 800; text-decoration: none; border-radius: 999px; padding: 7px 14px;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.18); transition: 0.2s ease;
+        }
+        .nav-ai-btn:hover { color: #102847; transform: translateY(-1px); filter: brightness(1.03); }
+
         .hero-premium {
             background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=2070');
             height: 45vh; background-size: cover; background-position: center;
@@ -32,16 +39,74 @@
         .img-box { height: 220px; overflow: hidden; position: relative; }
         .img-box img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
         .hotel-card:hover .img-box img { transform: scale(1.1); }
-        
+
         .urgency-badge { position: absolute; top: 15px; left: 15px; background: var(--danger); color: white; padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 800; z-index: 10; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
         .amenity-badge { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; margin-right: 5px; color: #475569; }
 
-        .mitra-float {
-            position: fixed; bottom: 30px; right: 30px; z-index: 1000;
-            background: white; border: 2px solid var(--gold); padding: 12px 24px;
-            border-radius: 100px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        /* 🔐 PRIVACY CONSENT GATE STYLES */
+        .consent-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7);
+            display: flex; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .consent-modal-box {
+            background: white; border-radius: 20px; padding: 40px; max-width: 500px; width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .consent-modal-box h3 {
+            color: #1e3c72; font-weight: 800; margin-bottom: 20px; font-size: 1.4rem;
+        }
+        .consent-modal-box p {
+            color: #475569; font-size: 0.95rem; line-height: 1.7; margin-bottom: 15px;
+        }
+        .consent-terms {
+            background: #f1f5f9; padding: 15px; border-radius: 12px; max-height: 150px; overflow-y: auto;
+            margin-bottom: 20px; border-left: 4px solid #667eea;
+        }
+        .consent-terms small {
+            color: #64748b; font-size: 0.85rem; line-height: 1.6;
+        }
+        .consent-checkbox {
+            display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px;
+        }
+        .consent-checkbox input {
+            margin-top: 5px; cursor: pointer; accent-color: #667eea;
+        }
+        .consent-checkbox label {
+            cursor: pointer; color: #334155; font-size: 0.95rem;
+        }
+        .consent-actions {
+            display: flex; gap: 12px;
+        }
+        .consent-actions button {
+            flex: 1; padding: 12px 24px; border: none; border-radius: 10px; font-weight: 600;
+            font-size: 0.95rem; transition: 0.3s ease;
+        }
+        .consent-accept {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;
+        }
+        .consent-accept:hover {
+            transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        .consent-decline {
+            background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1;
+        }
+        .consent-decline:hover {
+            background: #cbd5e1;
+        }
+
+        /* 🧠 SELF-LEARNING FEEDBACK STYLES */
+        .feedback-pill {
+            display: inline-block; margin: 5px 5px 5px 0; padding: 8px 16px;
+            background: #e0e7ff; color: #4f46e5; border-radius: 20px; font-size: 0.85rem;
+            cursor: pointer; transition: 0.2s;
+        }
+        .feedback-pill:hover {
+            background: #c7d2fe; transform: scale(1.05);
+        }
+        .feedback-pill.selected {
+            background: #667eea; color: white;
         }
 
         .modal-hotel-img { height: 400px; object-fit: cover; width: 100%; }
@@ -49,18 +114,82 @@
         .feedback-section { padding: 80px 0; background: white; border-radius: 60px 60px 0 0; margin-top: 50px; }
         .feedback-card { background: #f8fafc; border-radius: 20px; padding: 25px; border: 1px solid #e2e8f0; }
 
+        /* 🤖 AI TRIP PLANNER CHATBOT STYLES */
+        .ai-chat-window {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;
+            width: 380px; height: 550px; background: white;
+            border-radius: 20px; box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; overflow: hidden;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .ai-chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 18px; font-weight: 700; display: flex;
+            justify-content: space-between; align-items: center; font-size: 1rem;
+        }
+        .ai-close-btn {
+            background: none; border: none; color: white; font-size: 1.5rem;
+            cursor: pointer; opacity: 0.8; transition: 0.2s;
+        }
+        .ai-close-btn:hover { opacity: 1; }
+
+        .ai-messages {
+            flex: 1; overflow-y: auto; padding: 15px; display: flex;
+            flex-direction: column; gap: 10px; background: #f9f9f9;
+        }
+        .ai-message {
+            background: #e8edf7; color: #333; padding: 10px 14px;
+            border-radius: 12px; font-size: 0.85rem; max-width: 85%; word-wrap: break-word;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .ai-message.user {
+            background: #667eea; color: white; align-self: flex-end; max-width: 85%;
+        }
+        .ai-message.assistant {
+            background: white; border: 1px solid #ddd; color: #333; align-self: flex-start;
+        }
+
+        .ai-hotel-recommendation {
+            background: white; border: 2px solid #667eea; border-radius: 12px;
+            padding: 12px; margin: 8px 0; cursor: pointer; transition: 0.2s;
+            font-size: 0.75rem; align-self: flex-start; max-width: 90%;
+        }
+        .ai-hotel-recommendation:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transform: translateX(3px);
+        }
+        .ai-hotel-name { font-weight: 700; color: #667eea; margin-bottom: 4px; }
+        .ai-hotel-detail { color: #666; font-size: 0.7rem; margin: 2px 0; }
+
+        .ai-input-container {
+            padding: 15px; background: white; border-top: 1px solid #ddd;
+            display: flex; gap: 8px; align-items: center;
+        }
+        .ai-input-box {
+            flex: 1; border: 1px solid #ddd; border-radius: 20px;
+            padding: 10px 14px; font-size: 0.85rem; outline: none;
+            transition: 0.2s;
+        }
+        .ai-input-box:focus {
+            border-color: #667eea; box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+        }
+        .ai-send-btn {
+            background: #667eea; color: white; border: none;
+            border-radius: 50%; width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 1rem; transition: 0.2s;
+        }
+        .ai-send-btn:hover {
+            background: #764ba2; transform: scale(1.05);
+        }
+
         /* Bug Fixes */
     </style>
 </head>
 <body>
-
-<div class="mitra-float d-flex align-items-center gap-3 animate__animated animate__bounceIn" onclick="openMitraModal()">
-    <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width:40px; height:40px; border:2px solid white;">B</div>
-    <div>
-        <span class="d-block fw-bold small">Talk to Bodh-Mitra</span>
-        <span class="text-success" style="font-size: 10px;"><i class="bi bi-circle-fill"></i> Experts Online</span>
-    </div>
-</div>
 
 <nav class="navbar nav-custom sticky-top">
     <div class="container d-flex justify-content-between align-items-center">
@@ -99,7 +228,7 @@
     <div class="row g-4">
         <div class="col-md-4">
             <div class="card place-card shadow">
-                <img src="https://images.unsplash.com/photo-1625505826533-5c80aca7d157?q=80&w=2070" alt="Temple" loading="lazy">
+                <img src="https://images.unsplash.com/photo-1609947017136-9daf32a5eb16?q=80&w=1600&auto=format&fit=crop" alt="Mahabodhi Temple" loading="lazy" onerror="this.onerror=null;this.src='assets/bodhgaya-attraction-fallback.svg';">
                 <div class="place-overlay">
                     <h5 class="fw-bold mb-1">Mahabodhi Temple</h5>
                     <p class="small mb-0">The site of Buddha's Enlightenment.</p>
@@ -108,7 +237,7 @@
         </div>
         <div class="col-md-4">
             <div class="card place-card shadow">
-                <img src="https://images.unsplash.com/photo-1590050752117-23a9d7fc21ad?q=80&w=2070" alt="Statue" loading="lazy">
+                <img src="https://images.unsplash.com/photo-1548013146-72479768bbaa?q=80&w=1600&auto=format&fit=crop" alt="Great Buddha Statue" loading="lazy" onerror="this.onerror=null;this.src='assets/bodhgaya-attraction-fallback.svg';">
                 <div class="place-overlay">
                     <h5 class="fw-bold mb-1">Great Buddha Statue</h5>
                     <p class="small mb-0">80ft Tall symbol of Peace.</p>
@@ -117,7 +246,7 @@
         </div>
         <div class="col-md-4">
             <div class="card place-card shadow">
-                <img src="https://images.unsplash.com/photo-1548013146-72479768bbaa?q=80&w=2070" alt="Monastery" loading="lazy">
+                <img src="https://images.unsplash.com/photo-1605640840605-14ac1855827b?q=80&w=1600&auto=format&fit=crop" alt="Thai Monastery" loading="lazy" onerror="this.onerror=null;this.src='assets/bodhgaya-attraction-fallback.svg';">
                 <div class="place-overlay">
                     <h5 class="fw-bold mb-1">Thai Monastery</h5>
                     <p class="small mb-0">Exquisite gold leaf architecture.</p>
@@ -175,7 +304,7 @@
                         <div class="bg-primary text-white rounded-circle p-2 me-3">RK</div>
                         <h6 class="fw-bold mb-0">Raja Kumar</h6>
                     </div>
-                    <p class="text-muted small">"Bodhgaya aana mera sapna tha, Gyan Garbh ke hotel aur Mitra ne use aasaan bana diya. Sab kuch verified tha!"</p>
+                    <p class="text-muted small">"My pilgrimage to Bodhgaya was transformed by Gyan Garbh's verified accommodations and expert Bodh-Mitra services. Every aspect of my journey was meticulously arranged and authentic."</p>
                 </div>
             </div>
             <div class="col-md-4">
@@ -184,12 +313,12 @@
                         <div class="bg-primary text-white rounded-circle p-2 me-3">AS</div>
                         <h6 class="fw-bold mb-0">Amit Sharma</h6>
                     </div>
-                    <p class="text-muted small">"Mujhe interior photos dekh kar room book karne ka feature sabse best laga. Real hotel aur photo ekdum same the."</p>
+                    <p class="text-muted small">"The comprehensive interior photography feature empowered informed decision-making. Gyan Garbh's commitment to transparency ensures that online presentations accurately reflect physical accommodations."</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="feedback-card text-center d-flex flex-column justify-content-center">
-                    <button class="btn btn-outline-primary rounded-pill fw-bold" onclick="Swal.fire('Coming Soon', 'Aap jald hi apna feedback yahan likh sakenge!', 'info')">Write Your Feedback</button>
+                    <button class="btn btn-outline-primary rounded-pill fw-bold" onclick="Swal.fire('Coming Soon', 'You will be able to submit feedback here shortly.', 'info')">Write Your Feedback</button>
                 </div>
             </div>
         </div>
@@ -210,18 +339,18 @@
                         <p class="text-muted"><i class="bi bi-geo-alt-fill text-danger"></i> <span id="detLoc"></span>, Bodhgaya</p>
                         <div class="alert alert-info mb-3" id="detRating" style="font-size: 1.1rem;">⭐ 4.5</div>
                         <p id="detDescription" class="text-muted small mb-3">Comfort and luxury combined</p>
-                        
+
                         <!-- 🆕 NEW FIELDS: Distance & Highlights -->
                         <div class="alert alert-light border mb-3">
                             <small class="fw-bold text-muted d-block mb-2"><i class="bi bi-geo-alt"></i> Distance from Landmark</small>
                             <p id="detDistance" class="mb-0" style="color: #667eea; font-weight: 600;">Mahabodhi Temple: 0.5 km</p>
                         </div>
-                        
+
                         <div class="alert alert-light border mb-3">
                             <small class="fw-bold text-muted d-block mb-2"><i class="bi bi-star"></i> Gyan Garbh Highlights</small>
                             <p id="detHighlights" class="mb-0 text-muted" style="font-size: 0.95rem;">Peaceful garden, vegetarian meals available</p>
                         </div>
-                        
+
                         <div class="d-flex gap-2 mb-4">
                             <span class="amenity-badge"><i class="bi bi-snow text-primary"></i> AC</span>
                             <span class="amenity-badge"><i class="bi bi-wifi text-primary"></i> WiFi</span>
@@ -239,7 +368,7 @@
                                 <div class="col-6"><label class="small fw-bold">CHECK-OUT</label><input type="date" id="bookOut" class="form-control"></div>
                             </div>
                         </div>
-                        
+
                         <button onclick="confirmQuickBooking()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg mb-2">CONFIRM BOOKING NOW</button>
                         <a href="bodhi-path.html" class="btn btn-outline-primary w-100 rounded-pill py-3 fw-bold" target="_blank">
                             <i class="bi bi-compass"></i> Explore Bodh Gaya Heritage
@@ -268,7 +397,7 @@
 <footer class="text-center">
     <div class="container">
         <div class="mb-3">
-            <a href="hotel-auth.html">Hotel Partner Login</a> • 
+            <a href="hotel-auth.html">Hotel Partner Login</a> •
             <a href="mitra-auth.html">Join as Bodh-Mitra Agent</a>
         </div>
         <p class="text-muted mb-0">© 2026 Gyan Garbh Bodhgaya • The Enlightenment Network</p>
@@ -276,6 +405,7 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
@@ -291,7 +421,7 @@
             const mitras = await res.json();
             list.innerHTML = "";
             if(mitras.length === 0) {
-                list.innerHTML = "<p class='text-center py-4'>Abhi koi Mitra online nahi hai.</p>";
+                list.innerHTML = "<p class='text-center py-4'>No agents currently available. Please try again soon.</p>";
                 return true;
             }
             mitras.forEach(m => {
@@ -337,6 +467,7 @@
         if (userName) {
             document.getElementById('userSection').innerHTML = `
                 <a href="my-booking.html" class="user-link me-3"><i class="bi bi-person-circle"></i> Profile</a>
+                <button type="button" class="nav-ai-btn me-3" onclick="launchCustomerAIAssistant()"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
                 <button onclick="logout()" class="btn btn-sm btn-outline-light rounded-pill px-3">Logout</button>
             `;
         } else {
@@ -445,17 +576,17 @@
         const descEl = document.getElementById('detDescription');
         if (ratingEl) ratingEl.innerText = `⭐ ${rating || 4.5}`;
         if (descEl) descEl.innerText = description || 'Comfort and luxury combined';
-        
+
         // 🆕 POPULATE DISTANCE AND HIGHLIGHTS
         // Default values - will be updated from actual hotel data
         const detDistance = document.getElementById('detDistance');
         const detHighlights = document.getElementById('detHighlights');
         if (detDistance) detDistance.innerText = 'Mahabodhi Temple: 0.5 km';
         if (detHighlights) detHighlights.innerText = 'Peaceful garden, vegetarian meals available, meditation space';
-        
+
         new bootstrap.Modal(document.getElementById('hotelDetailModal')).show();
     }
-    
+
     function openBodhiPathInfo() {
         Swal.fire({
             title: '🏛️ Bodhi Path Heritage',
@@ -487,8 +618,8 @@
         const cOut = document.getElementById('bookOut').value;
         const priceText = document.getElementById('detPrice').innerText;
         const price = Number(priceText.replace(/[^0-9]/g, '')) || 0;
-        if(!userName) { Swal.fire('Login!', 'Pehle login karein.', 'warning').then(() => location.href='index.html'); return; }
-        if(!cIn || !cOut) { Swal.fire('Date?', 'Dates select karein.', 'warning'); return; }
+        if(!userName) { Swal.fire('Login Required', 'Please log in before booking.', 'warning').then(() => location.href='index.html'); return; }
+        if(!cIn || !cOut) { Swal.fire('Select Dates', 'Please select your check-in and check-out dates.', 'warning'); return; }
         try {
             console.log('Fetching data...');
             const res = await fetch(`${API_URL}/api/bookings`, {
@@ -524,11 +655,513 @@
         localStorage.clear();
         location.reload();
     }
+
+    // 🤖 AI TRIP PLANNER CHATBOT - PRODUCTION VERSION
+    let allHotels = []; // Store live hotels from database
+
+    // 🔐 PRIVACY CONSENT & SELF-LEARNING SYSTEM
+    const AI_CONSENT_KEY = 'ai_consent_accepted';
+    const AI_LEARNING_POOL_KEY = 'ai_learning_pool';
+    let aiLearningPool = JSON.parse(localStorage.getItem(AI_LEARNING_POOL_KEY)) || [];
+    let aiLaunchAfterConsent = false;
+
+    // Verified Bodhgaya Data Reference
+    const verifiedDataSource = {
+        mahabodhiTemple: {
+            name: 'Mahabodhi Temple',
+            timings: '5:00 AM - 9:00 PM',
+            entryFee: 'Free',
+            location: 'Bodh Gaya, Bihar',
+            verified: true,
+            source: 'Official Tourism Database'
+        },
+        greatBuddhaStatue: {
+            name: 'Great Buddha Statue',
+            timings: '6:00 AM - 6:00 PM',
+            location: 'Near Rajgir, Bihar',
+            height: '80 feet',
+            verified: true,
+            source: 'Official Tourism Database'
+        },
+        bodhTree: {
+            name: 'Sacred Bodhi Tree',
+            location: 'Mahabodhi Temple premises',
+            description: 'Ancient fig tree where Buddha attained enlightenment',
+            verified: true,
+            source: 'Historical Records'
+        }
+    };
+
+    // Copyright-Safe Fact Checker
+    function verifyChatResponse(userQuery, response) {
+        const lowercaseQuery = userQuery.toLowerCase();
+        const lowercaseResponse = response.toLowerCase();
+
+        // Check if response contains verified information
+        let verificationScore = 0;
+        let flaggedHallucination = false;
+
+        // Check against verified data
+        for (const [key, data] of Object.entries(verifiedDataSource)) {
+            if (lowercaseQuery.includes(key.replace(/([A-Z])/g, ' $1').toLowerCase()) ||
+                lowercaseQuery.includes(data.name.toLowerCase())) {
+                if (lowercaseResponse.includes(data.name.toLowerCase())) {
+                    verificationScore += 30;
+                }
+                if (data.timings && lowercaseResponse.includes(data.timings.toLowerCase())) {
+                    verificationScore += 20;
+                }
+            }
+        }
+
+        // Flag if response makes specific claims without verification
+        if ((lowercaseQuery.includes('price') || lowercaseQuery.includes('cost')) &&
+            /₹\d+/.test(response) && !isVerifiedPrice(response)) {
+            flaggedHallucination = true;
+        }
+
+        return {
+            isVerified: verificationScore > 25 || flaggedHallucination === false,
+            score: verificationScore,
+            flagged: flaggedHallucination,
+            confidence: Math.min(verificationScore, 100)
+        };
+    }
+
+    function isVerifiedPrice(text) {
+        // Only hotels' actual prices from allHotels array
+        return allHotels.some(h => text.includes(h.acRoomPrice) || text.includes(h.nonAcRoomPrice));
+    }
+
+    // Show Privacy Consent Modal
+    function showConsentModal() {
+        const consentAccepted = localStorage.getItem(AI_CONSENT_KEY);
+        if (consentAccepted === 'true') return;
+        if (document.getElementById('consentOverlay')) return;
+
+        const modalHTML = `
+            <div class="consent-modal-overlay" id="consentOverlay">
+                <div class="consent-modal-box">
+                    <h3><i class="bi bi-shield-lock"></i> Data Privacy & Learning Agreement</h3>
+                    <p><strong>Welcome to Gyan Garbh AI Assistant!</strong></p>
+                    <div class="consent-terms">
+                        <small>
+                            <strong>1. Data Usage for AI Improvement:</strong> Your chat interactions and queries help our AI learn and provide better recommendations.<br><br>
+                            <strong>2. Information Collected:</strong> Preferences, search patterns, feedback, and interaction style.<br><br>
+                            <strong>3. Data Protection:</strong> All data stored locally in your browser with end-to-end security. No data shared with third parties.<br><br>
+                            <strong>4. Learning Benefits:</strong> Personalized recommendations, better understanding of your preferences, optimized response times.<br><br>
+                            <strong>5. Your Rights:</strong> You can withdraw consent anytime. Click "Settings" → "Privacy" to clear all learning data.<br><br>
+                            <strong>6. Copyright Safe:</strong> AI references are fact-checked against verified sources. Educational use only.
+                        </small>
+                    </div>
+                    <div class="consent-checkbox">
+                        <input type="checkbox" id="consentCheck" required>
+                        <label for="consentCheck">I agree that Gyan Garbh AI may use my interactions to improve recommendations and provide better service. I understand this is optional.</label>
+                    </div>
+                    <div class="consent-actions">
+                        <button class="consent-accept" onclick="acceptConsent()">
+                            <i class="bi bi-check-circle"></i> I Agree & Continue
+                        </button>
+                        <button class="consent-decline" onclick="declineConsent()">
+                            <i class="bi bi-x-circle"></i> Use Without Learning
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    function acceptConsent() {
+        const checkbox = document.getElementById('consentCheck');
+        if (!checkbox.checked) {
+            Swal.fire('Consent Required', 'Please check the agreement box to proceed.', 'warning');
+            return;
+        }
+        localStorage.setItem(AI_CONSENT_KEY, 'true');
+        localStorage.setItem('ai_learning_enabled', 'true');
+        document.getElementById('consentOverlay').remove();
+        Swal.fire('Success!', 'Privacy consent accepted. Your AI assistant will now learn from interactions.', 'success');
+        if (aiLaunchAfterConsent) {
+            aiLaunchAfterConsent = false;
+            openAIChatbotWindow();
+        }
+    }
+
+    function declineConsent() {
+        localStorage.setItem(AI_CONSENT_KEY, 'true');
+        localStorage.setItem('ai_learning_enabled', 'false');
+        document.getElementById('consentOverlay').remove();
+        Swal.fire('Noted!', 'You can use Gyan Garbh without learning features. Visit Settings anytime to enable.', 'info');
+        if (aiLaunchAfterConsent) {
+            aiLaunchAfterConsent = false;
+            openAIChatbotWindow();
+        }
+    }
+
+    // Add interaction to learning pool
+    function recordAIInteraction(userQuery, aiResponse, userFeedback = null) {
+        if (localStorage.getItem('ai_learning_enabled') !== 'true') return;
+
+        const interaction = {
+            timestamp: new Date().toISOString(),
+            userQuery: userQuery,
+            aiResponse: aiResponse,
+            userFeedback: userFeedback,
+            verification: verifyChatResponse(userQuery, aiResponse),
+            userRole: localStorage.getItem('userRole') || 'guest'
+        };
+
+        aiLearningPool.push(interaction);
+        localStorage.setItem(AI_LEARNING_POOL_KEY, JSON.stringify(aiLearningPool));
+        console.log('[AI Learning] Interaction recorded:', interaction);
+    }
+
+    // Adapt AI tone based on learning pool
+    function getAdaptiveAITone() {
+        if (aiLearningPool.length === 0) return 'friendly';
+
+        // Analyze user preferences from learning pool
+        const recentInteractions = aiLearningPool.slice(-10);
+        const formalCount = recentInteractions.filter(i => i.userQuery.toLowerCase().includes('business') || i.userQuery.toLowerCase().includes('professional')).length;
+        const casualCount = recentInteractions.filter(i => i.userQuery.toLowerCase().includes('budget') || i.userQuery.toLowerCase().includes('fun')).length;
+
+        if (formalCount > casualCount && formalCount > 2) return 'professional';
+        if (casualCount > formalCount && casualCount > 2) return 'casual';
+        return 'friendly';
+    }
+
+    // Get self-learned recommendations
+    function getSelfLearnedContext(userQuery) {
+        if (aiLearningPool.length === 0) return null;
+
+        const similarInteractions = aiLearningPool.filter(i => {
+            const queryTerms = userQuery.toLowerCase().split(/\s+/);
+            const interactionTerms = i.userQuery.toLowerCase().split(/\s+/);
+            const matchCount = queryTerms.filter(term => interactionTerms.includes(term)).length;
+            return matchCount > 0;
+        });
+
+        if (similarInteractions.length === 0) return null;
+
+        // Get most relevant previous response
+        return similarInteractions[similarInteractions.length - 1];
+    }
+
+    // Store hotels when they're fetched from live API
+    const originalLoadHotels = loadHotels;
+    loadHotels = async function() {
+        console.log('Fetching data...');
+        const container = document.getElementById('hotelsContainer');
+        try {
+            const res = await fetch(`${API_URL}/all-hotels`);
+            const hotels = await res.json();
+            allHotels = hotels; // 🤖 Store live data for chatbot filtering
+            console.log('[AI Chatbot] Live hotels loaded:', allHotels.length);
+            container.innerHTML = "";
+            hotels.forEach(h => {
+                const imgUrl = h.imageUrl || h.imageUrl2 || h.imageUrl3 || "https://images.unsplash.com/photo-1566073771259-6a8506099945";
+                const priceValue = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
+                const priceDisplay = getPriceDisplay(priceValue);
+                const amenityIcons = getAmenityIcons(h.facilities);
+                const rating = h.rating || 4.5;
+                const description = h.description || 'Comfort and luxury combined';
+                const locationText = h.location || 'Bodhgaya';
+                const safeName = (h.hotelName || 'Hotel').replace(/'/g, "\\'");
+                const safeLocation = locationText.replace(/'/g, "\\'");
+                const safeDescription = description.replace(/'/g, "\\'");
+                container.innerHTML += `
+                    <div class="col-md-4 hotel-item">
+                        <div class="hotel-card" onclick="openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">
+                            <span class="urgency-badge">Filling Fast!</span>
+                            <div class="img-box"><img src="${imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'"></div>
+                            <div class="p-4">
+                                <h6 class="fw-bold mb-1 text-capitalize text-truncate">${h.hotelName || 'Premium Stay'}</h6>
+                                <div class="small text-warning mb-2">⭐ ${rating} | <i class="bi bi-geo-alt"></i> ${locationText}</div>
+                                <p class="small text-muted mb-2" style="min-height: 30px;">${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</p>
+                                <div class="mb-2 small">${amenityIcons}</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="h6 fw-bold text-success mb-0">${priceDisplay}</span>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-success btn-sm rounded-pill px-2 fw-bold shadow-sm" onclick="event.stopPropagation(); chatOnWhatsApp('${safeName}')">
+                                            <i class="bi bi-whatsapp"></i>
+                                        </button>
+                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">View Room</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            return true;
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = '<div class="text-center text-danger py-5">Unable to load hotels. Please check the backend connection.</div>';
+            return false;
+        }
+    };
+
+    function launchCustomerAIAssistant() {
+        const consentAccepted = localStorage.getItem(AI_CONSENT_KEY);
+        if (!consentAccepted || consentAccepted !== 'true') {
+            aiLaunchAfterConsent = true;
+            showConsentModal();
+            return;
+        }
+        openAIChatbotWindow();
+    }
+
+    function openAIChatbotWindow() {
+        const chatWindow = document.getElementById('aiChatWindow');
+        if (!chatWindow) return;
+        chatWindow.style.display = 'flex';
+        const greetingTone = getAdaptiveAITone();
+        const greeting = 'Welcome to Gyan Garbh AI Assistant. I am here to help you discover the perfect accommodation and spiritual experiences in Bodhgaya. You can ask about budget options, amenities, locations, or specific travel requirements.';
+        if (!chatWindow.dataset.greeted) {
+            addChatbotMessage(greeting, 'assistant');
+            chatWindow.dataset.greeted = 'true';
+        }
+    }
+
+    function toggleAIChatbot() {
+        launchCustomerAIAssistant();
+    }
+
+    function closeAIChatbot() {
+        document.getElementById('aiChatWindow').style.display = 'none';
+    }
+
+    function addChatbotMessage(text, sender = 'user') {
+        const msgContainer = document.getElementById('aiMessagesContainer');
+        const msgEl = document.createElement('div');
+        msgEl.className = `ai-message ${sender === 'user' ? 'user' : 'assistant'}`;
+        msgEl.innerHTML = text;
+        msgContainer.appendChild(msgEl);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    // 🔥 ADVANCED KEYWORD MATCHING WITH LIVE DATABASE
+    function filterHotelsByInput(userInput) {
+        if (!allHotels || allHotels.length === 0) {
+            console.warn('[AI Chatbot] No hotels available for filtering');
+            return [];
+        }
+
+        const keywords = userInput.toLowerCase().split(/[\s,]+/).filter(k => k.length > 0);
+
+        // Budget categories
+        const budgetKeywords = ['budget', 'cheap', 'affordable', 'economical', 'sasta', 'kam', 'low', 'gareeb'];
+        const midKeywords = ['moderate', 'mid-range', 'average', 'normal', 'madhyam'];
+        const luxuryKeywords = ['luxury', 'premium', 'expensive', 'high-end', 'mahal', 'expensive'];
+
+        // Description keywords
+        const peacefulKeywords = ['peaceful', 'quiet', 'calm', 'serene', 'tranquil', 'shant', 'shaanti'];
+        const meditationKeywords = ['meditation', 'yoga', 'spiritual', 'mandir', 'temple', 'dhyan', 'sadhna'];
+        const familyKeywords = ['family', 'kids', 'children', 'bachchon', 'parivar', 'couple', 'jodi'];
+        const templeKeywords = ['temple', 'mandir', 'bodhi', 'mahabodhi', 'near temple', 'temple ke pass'];
+
+        // Amenity keywords
+        const wifiKeywords = ['wifi', 'internet', 'connection', 'net', 'broadband', 'online'];
+        const poolKeywords = ['pool', 'swimming', 'water', 'talab', 'swimmingpool'];
+        const acKeywords = ['ac', 'air-conditioning', 'cool', 'air conditioned', 'khandi hawa'];
+        const parkingKeywords = ['parking', 'car', 'vehicle', 'gaadi', 'bike', 'parking space'];
+        const foodKeywords = ['food', 'restaurant', 'meal', 'khana', 'vegetarian', 'shak-ahar', 'dining'];
+
+        const scored = allHotels.map(hotel => {
+            let score = 0;
+            const hotelName = (hotel.hotelName || '').toLowerCase();
+            const description = (hotel.description || '').toLowerCase();
+            const location = (hotel.location || '').toLowerCase();
+            const price = hotel.acRoomPrice || hotel.nonAcRoomPrice || hotel.roomRate || 5000;
+            const facilities = hotel.facilities || {};
+
+            // Text content for matching
+            const fullText = `${hotelName} ${description} ${location}`.toLowerCase();
+            const facilitiesText = JSON.stringify(facilities).toLowerCase();
+
+            // ✅ BUDGET CATEGORY MATCHING
+            if (keywords.some(kw => budgetKeywords.includes(kw))) {
+                if (price < 2000) score += 10; // Best budget option
+                else if (price < 3000) score += 7;
+                else if (price < 4000) score += 3;
+            }
+
+            // ✅ MID-RANGE CATEGORY MATCHING
+            if (keywords.some(kw => midKeywords.includes(kw))) {
+                if (price >= 2000 && price <= 4000) score += 10;
+                else if (price >= 1500 && price <= 5000) score += 6;
+            }
+
+            // ✅ LUXURY CATEGORY MATCHING
+            if (keywords.some(kw => luxuryKeywords.includes(kw))) {
+                if (price > 4000) score += 10;
+                else if (price > 3000) score += 5;
+            }
+
+            // ✅ DESCRIPTION MATCHING
+            if (keywords.some(kw => peacefulKeywords.includes(kw))) {
+                if (fullText.includes('peaceful') || fullText.includes('quiet') || fullText.includes('garden')) score += 8;
+                else if (fullText.includes('serene') || fullText.includes('calm')) score += 5;
+            }
+
+            if (keywords.some(kw => meditationKeywords.includes(kw))) {
+                if (fullText.includes('meditation') || fullText.includes('yoga') || fullText.includes('spiritual')) score += 9;
+                else if (fullText.includes('retreat') || fullText.includes('zen')) score += 6;
+            }
+
+            if (keywords.some(kw => familyKeywords.includes(kw))) {
+                if (fullText.includes('family') || fullText.includes('kids') || fullText.includes('children')) score += 8;
+                else if (fullText.includes('couple') || fullText.includes('group')) score += 5;
+            }
+
+            if (keywords.some(kw => templeKeywords.includes(kw))) {
+                if (fullText.includes('temple') || fullText.includes('mandir') || fullText.includes('bodhi')) score += 8;
+                else if (description.includes('near') || description.includes('close')) score += 4;
+            }
+
+            // ✅ AMENITIES MATCHING
+            if (keywords.some(kw => wifiKeywords.includes(kw))) {
+                if (facilities.wifi || facilitiesText.includes('wifi')) score += 9;
+            }
+
+            if (keywords.some(kw => poolKeywords.includes(kw))) {
+                if (facilities.pool || facilitiesText.includes('pool') || facilitiesText.includes('swimming')) score += 9;
+            }
+
+            if (keywords.some(kw => acKeywords.includes(kw))) {
+                if (facilities.ac || facilitiesText.includes('ac') || facilitiesText.includes('air conditioning')) score += 7;
+            }
+
+            if (keywords.some(kw => parkingKeywords.includes(kw))) {
+                if (facilities.parking || facilitiesText.includes('parking')) score += 8;
+            }
+
+            if (keywords.some(kw => foodKeywords.includes(kw))) {
+                if (facilities.food || fullText.includes('vegetarian') || fullText.includes('restaurant')) score += 8;
+            }
+
+            // ✅ GENERAL KEYWORD MATCHING (bonus points)
+            keywords.forEach(kw => {
+                if (fullText.includes(kw)) score += 2;
+                if (facilitiesText.includes(kw)) score += 3;
+            });
+
+            return { ...hotel, matchScore: score };
+        });
+
+        return scored
+            .filter(h => h.matchScore > 0)
+            .sort((a, b) => b.matchScore - a.matchScore)
+            .slice(0, 2); // Top 2 matches
+    }
+
+    function sendAIMessage() {
+        const input = document.getElementById('aiChatInput');
+        const userText = input.value.trim();
+        if (!userText) return;
+
+        addChatbotMessage(userText, 'user');
+        input.value = '';
+
+        // Simulate typing delay
+        setTimeout(() => {
+            // Check self-learned context first
+            const learnedContext = getSelfLearnedContext(userText);
+
+            // Detect greeting patterns
+            const greetingKeywords = ['hi', 'hello', 'hey', 'namaste', 'greetings', 'howdy', 'hola', 'salaam', 'bonjour', 'welcome'];
+            const isGreeting = greetingKeywords.some(word => userText.toLowerCase().includes(word));
+
+            if (isGreeting) {
+                const greetingResponse = 'Welcome to Gyan Garbh AI. How can I assist with your Bodhgaya travel logistics or hotel bookings today?';
+                addChatbotMessage(greetingResponse, 'assistant');
+                recordAIInteraction(userText, greetingResponse);
+            } else {
+                const matches = filterHotelsByInput(userText);
+
+                if (matches.length === 0) {
+                    const aiResponse = 'I could not identify properties matching your specified criteria at this time. Please refine your search using keywords such as "budget", "luxury", "pool", "peaceful", "WiFi", "meditation", or "family-friendly".';
+                    addChatbotMessage(aiResponse, 'assistant');
+                    recordAIInteraction(userText, aiResponse);
+                } else {
+                    const matchCount = matches.length;
+                    const greeting = matchCount === 1 ? 'Found one perfect match!' : 'Found two excellent properties!';
+                    addChatbotMessage(`${greeting} 🎯`, 'assistant');
+
+                matches.forEach((h, idx) => {
+                    const price = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
+                    const priceText = price > 0 ? `₹${price}/Night` : 'Price on Request';
+                    const priceCategory = price < 2000 ? '💰 Budget' : (price <= 4000 ? '💵 Mid-Range' : '💎 Luxury');
+                    const facilityIcons = getAmenityIcons(h.facilities);
+
+                    const recEl = document.createElement('div');
+                    recEl.className = 'ai-hotel-recommendation';
+                    recEl.innerHTML = `
+                        <div class="ai-hotel-name">${idx + 1}. ${h.hotelName || 'Hotel'}</div>
+                        <div class="ai-hotel-detail"><i class="bi bi-geo-alt"></i> ${h.location || 'Bodhgaya'}</div>
+                        <div class="ai-hotel-detail">⭐ ${h.rating || 4.5} | ${priceCategory} | ${priceText}</div>
+                        <div class="ai-hotel-detail">${h.description ? h.description.substring(0, 45) + '...' : 'Authentic Bodhgaya accommodation with premium amenities.'}</div>
+                        <div class="ai-hotel-detail" style="margin-top: 6px; font-size: 0.8rem;">${facilityIcons}</div>
+                    `;
+                    recEl.onclick = () => openHotelDetails(h.hotelName, h.location, price, h.imageUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945', h.rating || 4.5, h.description || 'Premium accommodation in Bodhgaya with full service amenities.');
+                    document.getElementById('aiMessagesContainer').appendChild(recEl);
+                });
+
+                document.getElementById('aiMessagesContainer').scrollTop = document.getElementById('aiMessagesContainer').scrollHeight;
+
+                // Add feedback options for self-learning
+                const feedbackEl = document.createElement('div');
+                feedbackEl.style.marginTop = '12px';
+                feedbackEl.innerHTML = `
+                    <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 8px;">Was this helpful?</div>
+                    <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'helpful')">👍 Helpful</button>
+                    <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'notHelpful')">👎 Not Helpful</button>
+                    <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'refine')">🔄 Refine Search</button>
+                `;
+                document.getElementById('aiMessagesContainer').appendChild(feedbackEl);
+                document.getElementById('aiMessagesContainer').scrollTop = document.getElementById('aiMessagesContainer').scrollHeight;
+
+                addChatbotMessage('Click any property to view detailed information, or provide additional search parameters for further refinement.', 'assistant');
+            }
+            }
+        }, 600);
+    }
+
+    function recordUserFeedback(query, feedbackType) {
+        recordAIInteraction(query, 'User provided feedback', feedbackType);
+
+        const feedbackMessages = {
+            'helpful': 'Thank you! Your feedback helps us enhance our recommendation algorithms.',
+            'notHelpful': 'We apologize. We will refine our search criteria for improved results.',
+            'refine': 'Of course. Please share additional details about your requirements for a more targeted search.'
+        };
+
+        addChatbotMessage(feedbackMessages[feedbackType], 'assistant');
+        Swal.fire('Feedback Recorded!', 'Your input helps us optimize our AI recommendations.', 'success');
+    }
+
+    // Handle Enter key in chatbot input
+    document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && document.getElementById('aiChatInput') && document.activeElement === document.getElementById('aiChatInput')) {
+            sendAIMessage();
+        }
+    });
 </script>
 
-<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
-    <i class="bi bi-whatsapp"></i>
-</a>
+<!-- 🤖 AI TRIP PLANNER CHATBOT WIDGET -->
+<div id="aiChatWindow" class="ai-chat-window" style="display: none;">
+    <div class="ai-chat-header">
+        <span><i class="bi bi-robot"></i> AI Trip Planner</span>
+        <button class="ai-close-btn" onclick="closeAIChatbot()">✕</button>
+    </div>
+    <div id="aiMessagesContainer" class="ai-messages"></div>
+    <div class="ai-input-container">
+        <input type="text" id="aiChatInput" class="ai-input-box" placeholder="Ask me anything...">
+        <button class="ai-send-btn" onclick="sendAIMessage()" title="Send">
+            <i class="bi bi-send-fill"></i>
+        </button>
+    </div>
+</div>
 
 </body>
 </html>

@@ -6,6 +6,7 @@
     <title>My Account | Gyan Garbh Bodhgaya</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="api-client.js" defer></script>
     <style>
         :root { --brand: #1e3c72; --gold: #ffc107; }
         
@@ -181,7 +182,7 @@
                                 <a href="https://wa.me/91XXXXXXXXXX" class="btn btn-sm btn-outline-success rounded-pill px-3">
                                     <i class="bi bi-whatsapp"></i> Help
                                 </a>
-                                <button onclick="window.print()" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
+                                <button onclick="showReceipt('${book.hotelName}', '${book.checkIn}', '${book.userName}')" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
                                     <i class="bi bi-printer me-1"></i> Receipt
                                 </button>
                             </div>
@@ -190,12 +191,10 @@
                 `;
             });
         } catch (err) {
-            container.innerHTML = `<div class="alert alert-danger">Server connect nahi ho raha! Node chalaiye.</div>`;
+            container.innerHTML = `<div class="alert alert-danger">Unable to connect to the booking service. Please try again shortly.</div>`;
         }
     }
 </script>
-</body>
-</html>
 <div class="modal fade" id="receiptModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 30px; overflow: hidden;">
@@ -234,7 +233,6 @@
 </div>
 
 <script>
-    // 2. Receipt Button ko click karne par ye function chalaiye
     function showReceipt(hotel, checkin, guest) {
         document.getElementById('mHotelName').innerText = hotel;
         document.getElementById('mCheckIn').innerText = checkin;
@@ -244,14 +242,8 @@
         myModal.show();
     }
 
-    // 3. fetchMyOrders function mein button ko update kijiye:
-    // container.innerHTML += `... <button onclick="showReceipt('${book.hotelName}', '${book.checkIn}', '${book.userName}')" class="btn btn-sm btn-primary rounded-pill px-3"> ...`;
+    window.addEventListener('gyangarbh:realtime', fetchMyOrders);
 </script>
-
-<!-- WhatsApp Button -->
-<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
-    <i class="bi bi-whatsapp"></i>
-</a>
 
 </body>
 </html>

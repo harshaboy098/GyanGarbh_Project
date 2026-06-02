@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="api-client.js"></script>
     <script>
         const GOOGLE_CLIENT_ID = '47696856369-b8pck7a7n94fsp303ltmmh5qpk4a55dh.apps.googleusercontent.com';
         let googleClientInitialized = false;
@@ -40,6 +41,7 @@
                         localStorage.setItem('userEmail', body.email);
                         localStorage.setItem('userRole', body.role);
                         localStorage.setItem('googleLogin', 'true');
+                        localStorage.setItem('authToken', body.sessionToken);
                         Swal.fire({ icon: 'success', title: 'Welcome!', text: `Hello ${body.name}!`, timer: 1500, showConfirmButton: false })
                             .then(() => {
                                 if (body.role === 'mitra') window.location.href = 'mitra-dashboard.html';
@@ -79,37 +81,13 @@
         .password-toggle:hover { color: var(--brand); }
         .otp-timer { font-size: 0.85rem; text-align: center; margin-top: 8px; }
         .timer-active { color: #ff6b6b; font-weight: 600; }
-        .whatsapp-float {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 60px;
-            height: 60px;
-            background: #25d366;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 28px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 999;
-            text-decoration: none;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        .whatsapp-float:hover { transform: scale(1.15); text-decoration: none; color: white; }
     </style>
 </head>
 <body>
 
 <!-- WhatsApp Support Button -->
-<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" class="whatsapp-float" title="Chat with us on WhatsApp">
-    <i class="bi bi-whatsapp"></i>
-</a>
+
+
 
 <div class="auth-container">
     <div class="auth-tabs">
@@ -129,7 +107,7 @@
                 <div class="mb-3">
                     <label class="small fw-bold text-muted text-uppercase">Password</label>
                     <div class="password-wrapper">
-                        <input type="password" id="logPass" class="form-control" placeholder="••••••••••••••" required>
+                        <input type="password" id="logPass" class="form-control" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required>
                         <button type="button" class="password-toggle" onclick="togglePasswordVisibility('logPass')">
                             <i class="bi bi-eye" id="logPassIcon"></i>
                         </button>
@@ -189,7 +167,7 @@
                     <div class="mb-3">
                         <label class="small fw-bold text-muted text-uppercase">Password</label>
                         <div class="password-wrapper">
-                            <input type="password" id="regPass" class="form-control" placeholder="••••••••••••••" required>
+                        <input type="password" id="regPass" class="form-control" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" minlength="8" required>
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility('regPass')">
                                 <i class="bi bi-eye" id="regPassIcon"></i>
                             </button>
@@ -218,7 +196,7 @@
                     <p class="text-muted small">OTP sent to: <b id="showEmail"></b></p>
                 </div>
                 <div class="mb-3">
-                    <input type="number" id="regOTPInput" class="form-control form-control-lg text-center" placeholder="000000" style="letter-spacing: 10px; font-size: 1.5rem;" required>
+                    <input type="text" id="regOTPInput" class="form-control form-control-lg text-center" placeholder="000000" inputmode="numeric" pattern="\d{6}" maxlength="6" style="letter-spacing: 10px; font-size: 1.5rem;" required>
                 </div>
                 <button onclick="verifyAndRegister()" class="btn btn-success w-100 py-3">CONFIRM & REGISTER</button>
                 <div class="otp-timer">
@@ -351,10 +329,11 @@
                     });
 
                     if (vRes.ok) {
+                        const verifyData = await vRes.json();
                         const rRes = await fetch(`${API_URL}/reset-password`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email, newPassword, userType: 'user' })
+                            body: JSON.stringify({ email, newPassword, userType: 'user', resetToken: verifyData.resetToken })
                         });
                         if (rRes.ok) Swal.fire('Success!', 'Password updated! Please login.', 'success');
                     } else {
@@ -442,6 +421,7 @@
                 localStorage.setItem('userEmail', email);
                 localStorage.setItem('userName', data.name || name);
                 localStorage.setItem('userRole', data.role || 'guest');
+                localStorage.setItem('authToken', data.sessionToken);
 
                 Swal.fire({ icon: 'success', title: 'Verified!', text: data.message || 'Registration complete.', timer: 1800, showConfirmButton: false })
                     .then(() => {
@@ -483,6 +463,7 @@
                 localStorage.setItem('userName', data.name);
                 localStorage.setItem('userEmail', data.email);
                 localStorage.setItem('userRole', data.role);
+                localStorage.setItem('authToken', data.sessionToken);
 
                 Swal.fire({ icon: 'success', title: 'Welcome!', timer: 1000, showConfirmButton: false })
                     .then(() => {

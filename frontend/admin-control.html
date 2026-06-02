@@ -20,7 +20,10 @@
 <div class="admin-nav">
     <div class="container d-flex justify-content-between align-items-center">
         <h4 class="mb-0 fw-bold"><i class="bi bi-shield-lock-fill text-warning me-2"></i>GYAN GARBH ADMIN PANEL</h4>
-        <button class="btn btn-outline-light btn-sm rounded-pill" onclick="fetchEnquiries()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
+            <button type="button" class="ai-navbar-btn" onclick="openRoleAIAssistant('admin')"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
+            <button class="btn btn-outline-light btn-sm rounded-pill" onclick="fetchEnquiries()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
     </div>
 </div>
 
@@ -28,7 +31,7 @@
     <div class="row mb-4">
         <div class="col-md-12">
             <h2 class="fw-bold text-dark">Bodh-Mitra Hire Requests</h2>
-            <p class="text-muted">Customer jab help mangega, uska data yahan automatic aayega.</p>
+            <p class="text-muted">Incoming client inquiries will automatically synchronize in this panel.</p>
         </div>
     </div>
 
@@ -53,6 +56,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="ai-navbar.js"></script>
 <script>
     const API_URL = "https://gyangarbh-project.onrender.com";
 
@@ -64,7 +68,7 @@
             tableBody.innerHTML = "";
 
             if(!data || data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-5 text-muted">Abhi koi request nahi hai.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-5 text-muted">No active hire requests found.</td></tr>';
                 return;
             }
 

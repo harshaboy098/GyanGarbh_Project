@@ -41,7 +41,7 @@
             <div class="mb-2">
                 <label class="small fw-bold text-muted text-uppercase mb-1">Password</label>
                 <div class="pass-container">
-                    <input type="password" id="hotelPass" class="form-control" placeholder="••••••••" required>
+                    <input type="password" id="hotelPass" class="form-control" placeholder="••••••••" minlength="8" required>
                     <i class="bi bi-eye-slash toggle-pass" onclick="togglePass(this)"></i>
                 </div>
             </div>
@@ -60,6 +60,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
 <script>
     const API_URL = "https://gyangarbh-project.onrender.com";
 
@@ -101,7 +102,7 @@
                     preConfirm: () => {
                         const otp = document.getElementById('otp-h').value;
                         const pass = document.getElementById('pass-h').value;
-                        if (!otp || !pass) return Swal.showValidationMessage('Dono bharna zaroori hai!');
+                        if (!otp || !pass) return Swal.showValidationMessage('Please complete both fields.');
                         return [otp, pass];
                     }
                 });
@@ -113,15 +114,16 @@
                     });
 
                     if (vRes.ok) {
+                        const verifyData = await vRes.json();
                         const rRes = await fetch(`${API_URL}/reset-password`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ email, newPassword: fv[1], userType: 'hotel' })
+                            body: JSON.stringify({ email, newPassword: fv[1], userType: 'hotel', resetToken: verifyData.resetToken })
                         });
-                        if(rRes.ok) Swal.fire('Success!', 'Password update ho gaya.', 'success');
-                    } else { Swal.fire('Error', 'OTP galat hai!', 'error'); }
+                        if(rRes.ok) Swal.fire('Success!', 'Password updated.', 'success');
+                    } else { Swal.fire('Error', 'The OTP is invalid.', 'error'); }
                 }
             } else { Swal.fire('Error', data.message, 'error'); }
-        } catch (e) { Swal.fire('Error', 'Server down hai!', 'error'); }
+        } catch (e) { Swal.fire('Error', 'The server is currently unavailable.', 'error'); }
     }
 
     // ⭐ LOGIN LOGIC (BUGS FIXED: Added userRole storage)
@@ -146,24 +148,20 @@
                 localStorage.setItem('hotelOwnerEmail', data.ownerEmail);
                 localStorage.setItem('hotelName', data.hotelName);
                 localStorage.setItem('userRole', 'hotel'); 
+                localStorage.setItem('authToken', data.sessionToken);
                 
-                Swal.fire({ icon: 'success', title: 'Welcome!', text: 'Dashboard khul raha hai...', timer: 1500, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'Welcome!', text: 'Opening your dashboard...', timer: 1500, showConfirmButton: false });
                 setTimeout(() => { window.location.href = "hotel-dashboard.html"; }, 1500);
             } else {
-                Swal.fire('Login Fail', 'Email ya Password galat hai!', 'error');
+                Swal.fire('Login Failed', 'The email or password is incorrect.', 'error');
                 btn.innerText = "SIGN IN TO PANEL"; btn.disabled = false;
             }
         } catch (err) {
-            Swal.fire('Error', 'Server connect nahi ho raha!', 'error');
+            Swal.fire('Error', 'Unable to connect to the server.', 'error');
             btn.innerText = "SIGN IN TO PANEL"; btn.disabled = false;
         }
     }
 </script>
-
-<!-- WhatsApp Button -->
-<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
-    <i class="bi bi-whatsapp"></i>
-</a>
 
 </body>
 </html>

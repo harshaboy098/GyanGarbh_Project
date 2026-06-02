@@ -7,13 +7,19 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        :root { --brand: #1e3c72; --gold: #ffc107; --success: #28a745; }
-        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+        :root { --brand: #1e3c72; --gold: #ffc107; --bg: #f4f7fb; }
+        body { background: var(--bg); font-family: 'Segoe UI', sans-serif; }
         .sidebar { background: var(--brand); color: white; min-height: 100vh; padding: 30px 20px; position: fixed; width: 250px; }
-        .main-content { margin-left: 250px; padding: 40px; }
-        .card-stat { border: none; border-radius: 20px; padding: 25px; background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .status-badge { padding: 6px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: bold; }
+        .sidebar .nav-link { color: rgba(255,255,255,0.75); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; text-decoration: none; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.12); color: white; }
+        .main-content { margin-left: 250px; padding: 36px; }
+        .card-stat { border: none; border-radius: 18px; padding: 24px; background: white; box-shadow: 0 8px 24px rgba(15,23,42,0.06); }
+        .status-badge { padding: 6px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; }
         .btn-action { border-radius: 10px; width: 35px; height: 35px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+        @media (max-width: 768px) {
+            .sidebar { position: relative; width: 100%; min-height: auto; }
+            .main-content { margin-left: 0; padding: 20px; }
+        }
     </style>
 </head>
 <body>
@@ -21,223 +27,201 @@
 <div class="sidebar">
     <h4 class="fw-bold text-warning mb-5">GYAN GARBH</h4>
     <nav class="nav flex-column">
-        <a class="nav-link text-white mb-3 fw-bold"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-        <a class="nav-link text-white-50 mb-3" onclick="logout()"><i class="bi bi-box-arrow-left me-2"></i> Logout</a>
+        <a class="nav-link active"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+        <a class="nav-link ai-sidebar-link" onclick="openRoleAIAssistant('business')"><i class="bi bi-robot me-2"></i> 🤖 Chat with AI</a>
+        <a class="nav-link text-warning" onclick="logout()"><i class="bi bi-box-arrow-left me-2"></i> Logout</a>
     </nav>
 </div>
 
-<div class="main-content">
-    <div class="d-flex justify-content-between align-items-center mb-5">
-        <h2 class="fw-bold">Hotel Control Panel: <span id="hotelHeaderName" class="text-primary">...</span></h2>
-        <div class="badge bg-success p-2 px-3 rounded-pill">Status: Online</div>
+<main class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-5 flex-wrap gap-3">
+        <div>
+            <h2 class="fw-bold mb-1">Hotel Control Panel: <span id="hotelHeaderName" class="text-primary">Loading...</span></h2>
+            <small class="text-muted" id="ownerEmailText"></small>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+            <button type="button" class="ai-navbar-btn" onclick="openRoleAIAssistant('business')"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
+            <span class="badge bg-success p-2 px-3 rounded-pill" id="statusBadge">Status: Online</span>
+        </div>
     </div>
 
     <div class="row g-4 mb-5">
-        <div class="col-md-4">
-            <div class="card-stat border-start border-primary border-5">
-                <small class="text-muted fw-bold">TOTAL EARNINGS</small>
-                <h2 class="fw-bold mt-2 text-success" id="totalEarnings">₹0</h2>
+        <div class="col-md-3">
+            <div class="card-stat border-start border-success border-5">
+                <small class="text-muted fw-bold">REALIZED EARNINGS</small>
+                <h3 class="fw-bold mt-2 text-success" id="confirmedCash">Rs 0</h3>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card-stat border-start border-warning border-5">
-                <small class="text-muted fw-bold">TOTAL BOOKINGS</small>
-                <h2 class="fw-bold mt-2" id="totalBookings">0</h2>
+                <small class="text-muted fw-bold">PENDING REVENUE</small>
+                <h3 class="fw-bold mt-2 text-warning" id="pendingCash">Rs 0</h3>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="card-stat border-start border-primary border-5">
+                <small class="text-muted fw-bold">TOTAL BOOKINGS</small>
+                <h3 class="fw-bold mt-2" id="totalBookings">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
             <div class="card-stat border-start border-info border-5">
                 <small class="text-muted fw-bold">CURRENT PRICE</small>
-                <h2 class="fw-bold mt-2" id="displayPrice">₹0</h2>
+                <h3 class="fw-bold mt-2" id="displayPrice">Rs 0</h3>
             </div>
         </div>
     </div>
 
     <div class="card-stat mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <h5 class="fw-bold m-0"><i class="bi bi-calendar2-check me-2"></i> Recent Reservations</h5>
-            <button class="btn btn-sm btn-primary" onclick="loadDashboardData()">Refresh Data</button>
+            <button class="btn btn-sm btn-primary rounded-pill px-3" onclick="loadDashboardData()"><i class="bi bi-arrow-clockwise"></i> Refresh Data</button>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
                         <th>Guest Name</th>
-                        <th>Check-In</th>
+                        <th>Check-In / Out</th>
                         <th>Price</th>
                         <th>Status</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="bookingList">
-                    </tbody>
+                    <tr><td colspan="5" class="text-center py-5 text-muted">Loading bookings...</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
 
     <div class="row g-4">
-        <div class="col-md-8">
+        <div class="col-lg-8">
             <div class="card-stat">
                 <h5 class="fw-bold mb-4">Manage Property Details</h5>
-                <form id="updateForm">
+                <form onsubmit="event.preventDefault(); savePropertyChanges();">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="small fw-bold">Hotel Name</label>
-                            <input type="text" id="hotelNameInput" class="form-control">
+                            <label class="small fw-bold text-muted">Hotel Name</label>
+                            <input type="text" id="hotelNameInput" class="form-control" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="small fw-bold">Room Rate (Per Night)</label>
-                            <input type="number" id="hotelPriceInput" class="form-control">
+                            <label class="small fw-bold text-muted">Room Rate (Per Night)</label>
+                            <input type="number" id="hotelPriceInput" class="form-control" min="100" required>
                         </div>
                         <div class="col-12">
-                            <label class="small fw-bold">Image URL</label>
-                            <input type="text" id="hotelImageInput" class="form-control">
+                            <label class="small fw-bold text-muted">Image URL</label>
+                            <input type="url" id="hotelImageInput" class="form-control">
                         </div>
-                        <div class="col-12 mt-4">
-                            <button type="button" onclick="savePropertyChanges()" class="btn btn-primary w-100 fw-bold">UPDATE PROPERTY</button>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold py-2">UPDATE PROPERTY</button>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
-    </div>
-</div>
-<div class="row g-4 mb-5">
-    <div class="col-md-3">
-        <div class="card-stat border-primary border-start border-5">
-            <small class="text-muted fw-bold">REALIZED EARNINGS</small>
-            <h3 class="fw-bold mt-1 text-success" id="confirmedCash">₹0</h3>
-            <small class="text-muted small">Confirmed Bookings</small>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card-stat border-warning border-start border-5">
-            <small class="text-muted fw-bold">PENDING REVENUE</small>
-            <h3 class="fw-bold mt-1 text-warning" id="pendingCash">₹0</h3>
-            <small class="text-muted small">Waiting for Action</small>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card-stat">
-            <small class="text-muted fw-bold">PROPERTY STATUS</small>
-            <div class="form-check form-switch mt-2">
-                <input class="form-check-input" type="checkbox" id="availStatus" onchange="toggleAvailability(this.checked)">
-                <label class="form-check-label fw-bold" id="statusLabel">Online</label>
+        <div class="col-lg-4">
+            <div class="card-stat h-100">
+                <h5 class="fw-bold mb-4">Availability</h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="availStatus" onchange="toggleAvailability(this.checked)" checked>
+                    <label class="form-check-label fw-bold" id="statusLabel">Online (Accepting Guests)</label>
+                </div>
             </div>
         </div>
     </div>
-</div>
+</main>
 
-<script>
-    // Logic to calculate specific earnings
-    async function loadDashboardData() {
-        // ... (fetch logic)
-        let confirmedTotal = 0;
-        let pendingTotal = 0;
-
-        myBookings.forEach(book => {
-            if(book.status === "Confirmed") confirmedTotal += book.totalAmount;
-            if(book.status === "Pending") pendingTotal += book.totalAmount;
-            
-            // Table row with Check-in & Check-out dates
-            tableBody.innerHTML += `
-                <tr>
-                    <td>${book.userName}</td>
-                    <td>${book.checkIn} to ${book.checkOut}</td>
-                    <td class="fw-bold">₹${book.totalAmount}</td>
-                    <td><span class="badge ${getStatusClass(book.status)}">${book.status}</span></td>
-                    <td>
-                         <button onclick="updateStatus('${book._id}', 'Confirmed')" class="btn btn-sm btn-success">Confirm</button>
-                    </td>
-                </tr>
-            `;
-        });
-        document.getElementById('confirmedCash').innerText = "₹" + confirmedTotal;
-        document.getElementById('pendingCash').innerText = "₹" + pendingTotal;
-    }
-
-    async function toggleAvailability(status) {
-        const label = document.getElementById('statusLabel');
-        label.innerText = status ? "Online (Accepting Guests)" : "Offline (Sold Out)";
-        label.style.color = status ? "green" : "red";
-        
-        await fetch(`${API_URL}/update-hotel-status`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ownerEmail: hEmail, isAvailable: status })
-        });
-    }
-</script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
+<script src="ai-navbar.js"></script>
 <script>
     const API_URL = "https://gyangarbh-project.onrender.com";
-    const hEmail = localStorage.getItem('hotelEmail');
+    const hEmail = localStorage.getItem('hotelOwnerEmail') || localStorage.getItem('hotelEmail');
     const hName = localStorage.getItem('hotelName');
+    window.gyanGarbhDashboardData = { hotelName: hName, ownerEmail: hEmail, hotel: {}, bookings: [] };
 
-   window.onload = function() {
-    const hEmail = localStorage.getItem('hotelEmail'); // Partner ka email alag key mein save kijiye
-    
-    if (!hEmail) {
-        // Agar hotel owner nahi hai, toh use normal login par bhej do
-        Swal.fire({
-            title: 'Partner Only!',
-            text: 'Ye page sirf hotel owners ke liye hai.',
-            icon: 'info'
-        }).then(() => {
-            window.location.href = "hotel-auth.html"; 
-        });
-        return;
+    window.onload = function() {
+        if (!hEmail || !hName) {
+            Swal.fire('Partner Access Only', 'Please log in with your hotel partner credentials.', 'info')
+                .then(() => window.location.href = "hotel-auth.html");
+            return;
+        }
+        document.getElementById('hotelHeaderName').innerText = hName;
+        document.getElementById('ownerEmailText').innerText = hEmail;
+        loadDashboardData();
+    };
+
+    function money(value) {
+        return `Rs ${Number(value || 0).toLocaleString('en-IN')}`;
     }
-    // ... baki dashboard ka code
-};
+
+    function bookingAmount(book, fallbackRate) {
+        return Number(book.totalAmount || book.price || book.roomRate || fallbackRate || 0);
+    }
+
+    function statusClass(status) {
+        const clean = String(status || '').toLowerCase();
+        if (clean === 'confirmed') return 'bg-success';
+        if (clean === 'cancelled') return 'bg-danger';
+        return 'bg-warning text-dark';
+    }
 
     async function loadDashboardData() {
+        const tableBody = document.getElementById('bookingList');
         try {
-            // 1. Get Hotel Info
-            const hotelRes = await fetch(`${API_URL}/all-hotels`);
-            const hotels = await hotelRes.json();
-            const myHotel = hotels.find(h => h.ownerEmail === hEmail);
-            
-            if (myHotel) {
-                document.getElementById('displayPrice').innerText = "₹" + myHotel.roomRate;
-                document.getElementById('hotelNameInput').value = myHotel.hotelName;
-                document.getElementById('hotelPriceInput').value = myHotel.roomRate;
-                document.getElementById('hotelImageInput').value = myHotel.imageUrl;
-            }
+            const hotelRes = await fetch(`${API_URL}/hotel-details/${encodeURIComponent(hEmail)}`);
+            const hotelData = await hotelRes.json();
+            const hotel = hotelData.hotel || {};
+            window.gyanGarbhDashboardData.hotel = hotel;
 
-            // 2. Get Bookings Info
+            const rate = hotel.roomRate || hotel.acRoomPrice || hotel.nonAcRoomPrice || 0;
+            document.getElementById('displayPrice').innerText = money(rate);
+            document.getElementById('hotelNameInput').value = hotel.hotelName || hName;
+            document.getElementById('hotelPriceInput').value = rate;
+            document.getElementById('hotelImageInput').value = hotel.imageUrl || '';
+            document.getElementById('availStatus').checked = hotel.isAvailable !== false;
+            updateAvailabilityUI(hotel.isAvailable !== false);
+
             const bookRes = await fetch(`${API_URL}/all-bookings`);
             const bookings = await bookRes.json();
-            const myBookings = bookings.filter(b => b.hotelName === hName);
+            const myBookings = bookings.filter((b) => b.hotelName === (hotel.hotelName || hName));
+            window.gyanGarbhDashboardData.bookings = myBookings;
 
-            document.getElementById('totalBookings').innerText = myBookings.length;
-            
-            // Calculate Total Earnings (Confirmed only)
-            let earnings = 0;
-            const tableBody = document.getElementById('bookingList');
+            let confirmedTotal = 0;
+            let pendingTotal = 0;
             tableBody.innerHTML = "";
 
-            myBookings.forEach(book => {
-                if(book.status === "Confirmed") earnings += parseInt(book.price || 0);
+            if (!myBookings.length) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">No bookings found for this hotel.</td></tr>';
+            }
 
-                let badge = book.status === "Confirmed" ? "bg-success" : (book.status === "Cancelled" ? "bg-danger" : "bg-warning text-dark");
-                
+            myBookings.forEach((book) => {
+                const amount = bookingAmount(book, rate);
+                if (book.status === "Confirmed") confirmedTotal += amount;
+                if (book.status !== "Confirmed" && book.status !== "Cancelled") pendingTotal += amount;
+
                 tableBody.innerHTML += `
                     <tr>
-                        <td class="fw-bold">${book.userName}</td>
-                        <td>${new Date(book.checkIn).toLocaleDateString()}</td>
-                        <td>₹${book.price || 0}</td>
-                        <td><span class="status-badge ${badge}">${book.status}</span></td>
+                        <td class="fw-bold">${book.userName || 'Guest'}</td>
+                        <td>${book.checkIn || '-'} to ${book.checkOut || '-'}</td>
+                        <td class="fw-bold">${money(amount)}</td>
+                        <td><span class="status-badge ${statusClass(book.status)}">${book.status || 'Pending'}</span></td>
                         <td>
-                            <button class="btn btn-action btn-success me-1" onclick="updateBookingStatus('${book._id}', 'Confirmed')"><i class="bi bi-check"></i></button>
-                            <button class="btn btn-action btn-danger" onclick="updateBookingStatus('${book._id}', 'Cancelled')"><i class="bi bi-x"></i></button>
+                            <button class="btn btn-action btn-success me-1" onclick="updateBookingStatus('${book._id}', 'Confirmed')" title="Confirm"><i class="bi bi-check"></i></button>
+                            <button class="btn btn-action btn-danger" onclick="updateBookingStatus('${book._id}', 'Cancelled')" title="Cancel"><i class="bi bi-x"></i></button>
                         </td>
                     </tr>
                 `;
             });
-            document.getElementById('totalEarnings').innerText = "₹" + earnings;
 
-        } catch (err) { console.error("Error loading dashboard"); }
+            document.getElementById('confirmedCash').innerText = money(confirmedTotal);
+            document.getElementById('pendingCash').innerText = money(pendingTotal);
+            document.getElementById('totalBookings').innerText = myBookings.length;
+        } catch (err) {
+            console.error('Partner dashboard error:', err);
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-5">Unable to load dashboard data.</td></tr>';
+        }
     }
 
     async function updateBookingStatus(id, newStatus) {
@@ -247,33 +231,66 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ bookingId: id, status: newStatus })
             });
-            if (res.ok) {
-                Swal.fire('Updated', `Booking ${newStatus}`, 'success');
-                loadDashboardData();
-            }
-        } catch (err) { Swal.fire('Error', 'Update fail', 'error'); }
-    }
-
-    async function savePropertyChanges() {
-        const updatedData = {
-            ownerEmail: hEmail,
-            hotelName: document.getElementById('hotelNameInput').value,
-            roomRate: document.getElementById('hotelPriceInput').value,
-            imageUrl: document.getElementById('hotelImageInput').value,
-            location: "Bodhgaya" // Manual or dynamic
-        };
-        const res = await fetch(`${API_URL}/update-hotel`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedData)
-        });
-        if (res.ok) {
-            Swal.fire('Success', 'Property Details Updated!', 'success');
+            if (!res.ok) throw new Error('Update failed');
+            Swal.fire('Updated', `Booking ${newStatus}`, 'success');
             loadDashboardData();
+        } catch (err) {
+            Swal.fire('Error', 'Booking update failed.', 'error');
         }
     }
 
-    function logout() { localStorage.clear(); window.location.href = "hotel-auth.html"; }
+    async function savePropertyChanges() {
+        const payload = {
+            ownerEmail: hEmail,
+            hotelName: document.getElementById('hotelNameInput').value.trim(),
+            roomRate: Number(document.getElementById('hotelPriceInput').value),
+            imageUrl: document.getElementById('hotelImageInput').value.trim()
+        };
+
+        try {
+            const res = await fetch(`${API_URL}/hotel/update-details`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Unable to update property');
+            localStorage.setItem('hotelName', data.hotel.hotelName);
+            Swal.fire('Success', 'Property details updated.', 'success');
+            loadDashboardData();
+        } catch (err) {
+            Swal.fire('Error', err.message || 'Property update failed.', 'error');
+        }
+    }
+
+    function updateAvailabilityUI(status) {
+        const label = document.getElementById('statusLabel');
+        const badge = document.getElementById('statusBadge');
+        label.innerText = status ? "Online (Accepting Guests)" : "Offline (Sold Out)";
+        label.style.color = status ? "green" : "red";
+        badge.className = `badge p-2 px-3 rounded-pill ${status ? 'bg-success' : 'bg-danger'}`;
+        badge.innerText = status ? 'Status: Online' : 'Status: Offline';
+    }
+
+    async function toggleAvailability(status) {
+        updateAvailabilityUI(status);
+        try {
+            await fetch(`${API_URL}/update-hotel-status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerEmail: hEmail, isAvailable: status })
+            });
+        } catch (err) {
+            Swal.fire('Error', 'Availability update failed.', 'error');
+        }
+    }
+
+    window.addEventListener('gyangarbh:realtime', loadDashboardData);
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = "hotel-auth.html";
+    }
 </script>
 </body>
 </html>

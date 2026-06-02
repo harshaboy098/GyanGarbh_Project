@@ -62,7 +62,7 @@
                     <div class="mb-4">
                         <label class="small fw-bold text-muted text-uppercase">Create Password</label>
                         <div class="password-wrapper">
-                            <input type="password" id="hPass" class="form-control" placeholder="••••••••" required>
+                            <input type="password" id="hPass" class="form-control" placeholder="••••••••" minlength="8" required>
                             <i class="bi bi-eye-slash toggle-password" id="toggleEye" onclick="togglePassView()"></i>
                         </div>
                     </div>
@@ -82,7 +82,7 @@
                 <h4 class="fw-bold">Security Check</h4>
                 <p class="text-muted small">OTP sent to: <b><span id="displayEmail"></span></b></p>
                 <div class="mb-4">
-                    <input type="number" id="hOTPInput" class="form-control form-control-lg text-center fw-bold" placeholder="000000" style="letter-spacing: 10px;">
+                    <input type="text" id="hOTPInput" class="form-control form-control-lg text-center fw-bold" placeholder="000000" inputmode="numeric" pattern="\d{6}" maxlength="6" style="letter-spacing: 10px;">
                 </div>
                 <button type="button" onclick="verifyAndSaveHotel()" class="btn btn-success w-100 py-3 rounded-4 fw-bold shadow">CONFIRM & REGISTER</button>
                 <p class="mt-3"><a href="#" onclick="location.reload()" class="text-muted small">Go Back / Edit Details</a></p>
@@ -92,6 +92,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
 <script>
     const API_URL = "https://gyangarbh-project.onrender.com";
 
@@ -111,7 +112,7 @@
     async function handleHotelForgot() {
         const { value: email } = await Swal.fire({
             title: 'Partner Password Reset',
-            text: 'Apna owner email daliye:',
+            text: 'Enter your registered owner email:',
             input: 'email',
             showCancelButton: true
         });
@@ -141,11 +142,12 @@
                     });
 
                     if (vRes.ok) {
+                        const verifyData = await vRes.json();
                         const rRes = await fetch(`${API_URL}/reset-password`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ email, newPassword, userType: 'hotel' })
+                            body: JSON.stringify({ email, newPassword, userType: 'hotel', resetToken: verifyData.resetToken })
                         });
-                        if (rRes.ok) Swal.fire('Done!', 'Password update ho gaya. Ab login karein.', 'success').then(() => { window.location.href='hotel-auth.html'; });
+                        if (rRes.ok) Swal.fire('Done!', 'Password updated. Please log in.', 'success').then(() => { window.location.href='hotel-auth.html'; });
                     } else { Swal.fire('Error', 'OTP invalid!', 'error'); }
                 }
             } else { Swal.fire('Wait!', data.message, 'warning'); }
@@ -157,7 +159,7 @@
         const hName = document.getElementById('hName').value.trim();
         const hPass = document.getElementById('hPass').value;
 
-        if(!hEmail || !hName || !hPass) return Swal.fire('Wait!', 'Sab bhariye!', 'warning');
+        if(!hEmail || !hName || !hPass) return Swal.fire('Please Wait...', 'Please complete every required field.', 'warning');
 
         const btn = document.getElementById('regBtn');
         btn.innerText = "Checking..."; btn.disabled = true;
@@ -182,7 +184,7 @@
                 document.getElementById('displayEmail').innerText = hEmail;
                 document.getElementById('regInitial').style.display = 'none';
                 document.getElementById('regOTPStep').style.display = 'block';
-                Swal.fire('Sent!', 'OTP check karein.', 'success');
+                Swal.fire('Sent!', 'Please check your email for the OTP.', 'success');
             } else {
                 // ⭐ ALREADY REGISTERED CHECK WITH EXACT BACKEND KEY MATCH
                 const errorText = (data.message || '').toLowerCase();
@@ -191,7 +193,7 @@
                 Swal.fire({
                     icon: alreadyRegistered ? 'info' : 'warning',
                     title: alreadyRegistered ? 'Already Registered!' : 'Check Details',
-                    text: data.message || 'Registration details check karein.',
+                    text: data.message || 'Please review your registration details.',
                     confirmButtonText: alreadyRegistered ? 'Login Portal' : 'OK'
                 }).then(() => {
                     if (alreadyRegistered) window.location.href = "hotel-auth.html";
@@ -221,8 +223,9 @@
                 localStorage.setItem('hotelOwnerEmail', data.email || hEmail);
                 localStorage.setItem('hotelName', data.name || hName);
                 localStorage.setItem('userRole', 'hotel');
+                localStorage.setItem('authToken', data.sessionToken);
                 Swal.fire('Success!', 'Registration Complete!', 'success').then(() => window.location.href = "hotel-auth.html");
-            } else { Swal.fire('Wrong OTP', 'Code galat hai.', 'error'); }
+            } else { Swal.fire('Wrong OTP', 'The verification code is invalid.', 'error'); }
         } catch (err) { Swal.fire('Error', 'Process failed!', 'error'); }
     }
 </script>

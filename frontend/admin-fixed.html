@@ -487,6 +487,10 @@
           <span>Activity Log</span>
           <span>Feed</span>
         </a>
+        <a class="ai-sidebar-link" href="#ai" onclick="openRoleAIAssistant('admin'); return false;">
+          <span>🤖 Chat with AI</span>
+          <span>Command</span>
+        </a>
       </nav>
 
       <div class="section-title">Help</div>
@@ -505,7 +509,8 @@
           <h2>Admin Dashboard</h2>
           <p>Fast control of hotels, assistants, customers, and Bodhi Path content. Updates refresh automatically every 30 seconds.</p>
         </div>
-        <div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="ai-navbar-btn" onclick="openRoleAIAssistant('admin')">🤖 Chat with AI</button>
           <div class="status-chip" id="live-status">
             <span></span>
             <div>
@@ -711,6 +716,7 @@
     </div>
   </div>
 
+  <script src="ai-navbar.js"></script>
   <script>
     const API_URL = 'https://gyangarbh-project.onrender.com';
     const adminEmail = sessionStorage.getItem('adminEmail') || 'sirsonu122@gmail.com';

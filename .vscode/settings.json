@@ -1,0 +1,4 @@
+{
+    "chat.agent.maxRequests": 99,
+    "claudeCodeChat.permissions.yoloMode": false
+}

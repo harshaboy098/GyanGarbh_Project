@@ -68,7 +68,7 @@
                     <div class="mb-2">
                         <label class="small fw-bold text-muted mb-1">PASSWORD</label>
                         <div class="pass-wrapper">
-                            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+                            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" minlength="8" required>
                             <i class="bi bi-eye-slash toggle-btn" onclick="togglePass('loginPass', this)"></i>
                         </div>
                     </div>
@@ -101,7 +101,7 @@
                         <div class="mb-4">
                             <label class="small fw-bold text-muted mb-1">CREATE PASSWORD</label>
                             <div class="pass-wrapper">
-                                <input type="password" id="sPass" class="form-control" placeholder="••••••••" required>
+                                <input type="password" id="sPass" class="form-control" placeholder="••••••••" minlength="8" required>
                                 <i class="bi bi-eye-slash toggle-btn" onclick="togglePass('sPass', this)"></i>
                             </div>
                         </div>
@@ -113,7 +113,7 @@
                     <i class="bi bi-envelope-check display-4 text-primary mb-3"></i>
                     <h5 class="fw-bold">Verify OTP</h5>
                     <p class="text-muted small">Sent to <b id="showEmail"></b></p>
-                    <input type="number" id="mitraOTP" class="form-control form-control-lg text-center mb-4 fw-bold" placeholder="000000" style="letter-spacing: 8px;">
+                    <input type="text" id="mitraOTP" class="form-control form-control-lg text-center mb-4 fw-bold" placeholder="000000" inputmode="numeric" pattern="\d{6}" maxlength="6" style="letter-spacing: 8px;">
                     <button onclick="finalMitraRegister()" class="btn btn-success w-100 py-3 rounded-pill fw-bold">FINISH & ENTER DASHBOARD</button>
                     <p class="mt-3"><a href="javascript:void(0)" onclick="location.reload()" class="text-muted small">Change Details</a></p>
                 </div>
@@ -129,6 +129,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
 <script>
     const API_URL = "https://gyangarbh-project.onrender.com";
 
@@ -185,9 +186,10 @@
                         body: JSON.stringify({ email, otp })
                     });
                     if (vRes.ok) {
+                        const verifyData = await vRes.json();
                         const rRes = await fetch(`${API_URL}/reset-password`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ email, newPassword, userType: 'user' })
+                            body: JSON.stringify({ email, newPassword, userType: 'user', resetToken: verifyData.resetToken })
                         });
                         if (rRes.ok) Swal.fire('Success!', 'Password updated. Login now.', 'success');
                     } else { Swal.fire('Error', 'Invalid OTP', 'error'); }
@@ -200,6 +202,9 @@
     async function initiateMitraSignup(e) {
         e.preventDefault();
         const email = document.getElementById('sEmail').value;
+        const name = document.getElementById('sName').value.trim();
+        const password = document.getElementById('sPass').value;
+        const experience = document.getElementById('sExp').value;
         const btn = document.getElementById('signupBtn');
         btn.innerText = "Checking..."; btn.disabled = true;
 
@@ -207,7 +212,7 @@
             const res = await fetch(`${API_URL}/send-otp`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email, isReset: false })
+                body: JSON.stringify({ email, name, password, experience, role: 'mitra', isReset: false })
             });
             const data = await res.json();
             if(res.ok) {
@@ -240,18 +245,15 @@
                 body: JSON.stringify({ email, otp })
             });
             if(otpRes.ok) {
-                const regRes = await fetch(`${API_URL}/register`, { 
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ name, email, password, role: 'mitra', experience: exp })
-                });
-                if(regRes.ok) {
+                const registrationData = await otpRes.json();
+                if(registrationData.success) {
                     localStorage.setItem('mitraEmail', email);
                     localStorage.setItem('mitraName', name);
+                    localStorage.setItem('authToken', registrationData.sessionToken);
                     Swal.fire({ icon: 'success', title: 'Welcome!', text: 'Account created!', timer: 2000, showConfirmButton: false })
                     .then(() => { window.location.href = "mitra-dashboard.html"; });
                 }
-            } else { Swal.fire('Invalid OTP', 'Sahi code daalein.', 'error'); }
+            } else { Swal.fire('Invalid OTP', 'Please enter the correct verification code.', 'error'); }
         } catch (err) { Swal.fire('Error', 'Registration Failed!', 'error'); }
     }
 
@@ -270,16 +272,12 @@
             if(res.ok) {
                 localStorage.setItem('mitraEmail', email);
                 localStorage.setItem('mitraName', data.name);
+                localStorage.setItem('authToken', data.sessionToken);
                 window.location.href = "mitra-dashboard.html";
             } else { Swal.fire('Error', 'Invalid credentials!', 'error'); }
         } catch (err) { Swal.fire('Error', 'Server error!', 'error'); }
     }
 </script>
-
-<!-- WhatsApp Button -->
-<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
-    <i class="bi bi-whatsapp"></i>
-</a>
 
 </body>
 </html>

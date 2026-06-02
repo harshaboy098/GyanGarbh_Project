@@ -84,7 +84,10 @@
                 <h4 class="fw-bold mb-0" id="hotelNameTitle">Loading...</h4>
                 <small class="text-muted" id="ownerEmailText"></small>
             </div>
-            <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="loadMyBookings()">Refresh Data</button>
+            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                <button type="button" class="ai-navbar-btn" onclick="openRoleAIAssistant('business')"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
+                <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="loadMyBookings()">Refresh Data</button>
+            </div>
         </div>
 
         <div class="p-4">
@@ -321,18 +324,21 @@
     </div>
 </div>
 
-<!-- WhatsApp Button -->
-<a href="https://wa.me/919102596348?text=Hi%20Gyan%20Garbh%20Team%2C%20I%20need%20support" target="_blank" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 999; text-decoration: none;" title="Chat with us on WhatsApp">
-    <i class="bi bi-whatsapp"></i>
-</a>
-
+<script src="ai-navbar.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
 <script>
     const API_URL = "https://gyangarbh-project.onrender.com";
     const hotelName = localStorage.getItem('hotelName');
     const hotelOwnerEmail = localStorage.getItem('hotelOwnerEmail');
     const userRole = localStorage.getItem('userRole');
+    window.gyanGarbhDashboardData = {
+        hotelName,
+        ownerEmail: hotelOwnerEmail,
+        hotel: {},
+        bookings: []
+    };
 
     window.onload = async function() {
         if (userRole !== 'hotel') {
@@ -371,7 +377,7 @@
     // ⭐ LOAD HOTEL DETAILS
     async function loadHotelDetails() {
         try {
-            const res = await fetch(`${API_URL}/hotel-details/${hotelOwnerEmail}`);
+            const res = await fetch(`${API_URL}/hotel-details/${encodeURIComponent(hotelOwnerEmail)}`);
             if (!res.ok) {
                 throw new Error(`Status ${res.status} ${res.statusText}`);
             }
@@ -379,6 +385,7 @@
             const data = await res.json();
             if (data.success && data.hotel) {
                 const hotel = data.hotel;
+                window.gyanGarbhDashboardData.hotel = hotel;
                 document.getElementById('totalRooms').value = hotel.totalRooms || 10;
                 document.getElementById('acRoomPrice').value = hotel.acRoomPrice || 2000;
                 document.getElementById('nonAcRoomPrice').value = hotel.nonAcRoomPrice || 1200;
@@ -410,7 +417,7 @@
             }
         } catch (err) {
             console.error('Error loading hotel details:', err);
-            Swal.fire('Server Error', 'Hotel details nahi mil pa rahi. Please check backend connection.', 'error');
+            Swal.fire('Server Error', 'Unable to load hotel details. Please check the backend connection.', 'error');
             return false;
         }
         return true;
@@ -420,7 +427,7 @@
         const roomList = document.getElementById('roomList');
         if (!roomList) return;
         if (!rooms || rooms.length === 0) {
-            roomList.innerHTML = `<div class="alert alert-info rounded-4">Aapke hotel mein abhi koi room inventory added nahi hai. Naye room add karein.</div>`;
+            roomList.innerHTML = `<div class="alert alert-info rounded-4">No room inventory has been added to your hotel profile. Please add new room categories and availability.</div>`;
             return;
         }
         roomList.innerHTML = `<div class="row g-3">${rooms.map(room => `
@@ -490,7 +497,7 @@
         }
     }
 
-    // ⭐ MAIN FUNCTION: Bookings load karne ke liye
+    // Load bookings for the signed-in hotel.
     async function loadMyBookings() {
         const tableBody = document.getElementById('bookingTableBody');
         try {
@@ -500,15 +507,16 @@
             }
             const allBookings = await res.json();
             
-            // Filter: Sirf is hotel ki bookings dikhao
+            // The API already scopes results to this hotel.
             const myBookings = allBookings.filter(b => b.hotelName === hotelName);
+            window.gyanGarbhDashboardData.bookings = myBookings;
             
             tableBody.innerHTML = "";
             const totalCountEl = document.getElementById('totalBookingCount');
             if (totalCountEl) totalCountEl.innerText = myBookings.length;
 
             if(myBookings.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">Aapke hotel ke liye koi booking nahi mili.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">No bookings found for your hotel property at this time.</td></tr>';
                 return true;
             }
 
@@ -527,7 +535,7 @@
                 `;
             });
         } catch (err) {
-            tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Server Error! Data nahi mil raha.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Unable to load booking data.</td></tr>';
             return false;
         }
         return true;
@@ -541,10 +549,10 @@
                 body: JSON.stringify({ bookingId: id, status: newStatus })
             });
             if(res.ok) {
-                Swal.fire('Updated!', 'Booking confirm ho gayi hai.', 'success');
+                Swal.fire('Updated!', 'Booking Confirmed!', 'success');
                 loadMyBookings();
             }
-        } catch (e) { Swal.fire('Error', 'Update fail ho gaya.', 'error'); }
+        } catch (e) { Swal.fire('Error', 'Unable to update the booking.', 'error'); }
     }
 
     // ⭐ SAVE NEW ROOM
@@ -602,6 +610,11 @@
             Swal.fire('Error', 'Server connection failed.', 'error');
         }
     }
+
+    window.addEventListener('gyangarbh:realtime', () => {
+        loadMyBookings();
+        loadHotelDetails();
+    });
 
     function logout() { localStorage.clear(); window.location.href = "hotel-auth.html"; }
 </script>
