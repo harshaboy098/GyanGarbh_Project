@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Hotel Room Database Schema
 const roomSchema = {
@@ -12,7 +13,7 @@ const roomSchema = {
 
 const HotelSchema = new mongoose.Schema({
     hotelName: { type: String, required: true },
-    ownerEmail: { type: String, required: true, unique: true },
+    ownerEmail: { type: String, required: true, unique: true, trim: true, lowercase: true },
     password: { type: String, required: true },
     phone: { type: String, required: false },
     address: { type: String, required: false },
@@ -55,7 +56,19 @@ const HotelSchema = new mongoose.Schema({
     // ⭐ NEW FIELDS FOR ACTIVITY TRACKING
     updatedBy: { type: String, default: null }, // Email of who last updated
     updatedAt: { type: Date, default: Date.now },
-    isLocked: { type: Boolean, default: false } // Status toggle for lock
+    isLocked: { type: Boolean, default: false }, // Status toggle for lock
+    isAvailable: { type: Boolean, default: true },
+    averageRating: { type: Number, default: 5.0 }
 });
+
+HotelSchema.pre('save', async function() {
+    if (!this.isModified('password')) return;
+    if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return;
+    this.password = await bcrypt.hash(this.password, 10);
+});
+
+HotelSchema.methods.comparePassword = function(enteredPassword) {
+    return bcrypt.compare(enteredPassword, this.password);
+};
 
 module.exports = mongoose.model('Hotel', HotelSchema);

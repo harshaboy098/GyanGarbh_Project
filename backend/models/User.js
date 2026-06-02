@@ -1,6 +1,18 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-// User ka saancha (Schema) taiyar kar rahe hain
+const STAFF_ROLES = [
+    'SuperAdmin',
+    'MainAssistant',
+    'StandardAssistant',
+    'CustomerService'
+];
+
+// Legacy roles are kept until the existing routes are migrated to the new RBAC names.
+const LEGACY_ROLES = ['admin', 'assistant', 'manager', 'guest', 'hotel', 'mitra'];
+const USER_ROLES = [...STAFF_ROLES, ...LEGACY_ROLES];
+
+// Application user schema
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -9,7 +21,9 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true // Ek hi email se do log nahi jud sakte
+        trim: true,
+        lowercase: true,
+        unique: true
     },
     password: {
         type: String,
@@ -25,7 +39,19 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        default: 'guest' // Default role
+        enum: USER_ROLES,
+        default: 'guest' // Default role for public/customer registrations
+    },
+    assignedHotels: {
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Hotel'
+        }],
+        default: []
+    },
+    lastActive: {
+        type: Date,
+        default: null
     },
     experience: {
         type: String,
@@ -48,5 +74,18 @@ const userSchema = new mongoose.Schema({
     isLocked: { type: Boolean, default: false }
 });
 
-// Is saanche ko 'User' naam se export kar rahe hain
+// Hash only when the password field is actually changed.
+// The bcrypt prefix guard protects current routes that already pass hashed passwords.
+userSchema.pre('save', async function() {
+    if (!this.isModified('password')) return;
+    if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return;
+
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+});
+
+userSchema.methods.comparePassword = async function(enteredPassword) {
+    return bcrypt.compare(enteredPassword, this.password);
+};
+
 module.exports = mongoose.model('User', userSchema);
