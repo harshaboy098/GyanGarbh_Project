@@ -186,19 +186,21 @@
                 document.getElementById('regOTPStep').style.display = 'block';
                 Swal.fire('Sent!', 'Please check your email for the OTP.', 'success');
             } else {
-                // ⭐ ALREADY REGISTERED CHECK WITH EXACT BACKEND KEY MATCH
                 const errorText = (data.message || '').toLowerCase();
-                const alreadyRegistered = errorText.includes('registered') || errorText.includes('already exists');
-                
-                Swal.fire({
-                    icon: alreadyRegistered ? 'info' : 'warning',
-                    title: alreadyRegistered ? 'Already Registered!' : 'Check Details',
-                    text: data.message || 'Please review your registration details.',
-                    confirmButtonText: alreadyRegistered ? 'Login Portal' : 'OK'
-                }).then(() => {
-                    if (alreadyRegistered) window.location.href = "hotel-auth.html";
-                });
-                btn.innerText = "VERIFY EMAIL & CONTINUE"; btn.disabled = false;
+                const alreadyRegistered = /registered|already exists|already a member/i.test(errorText);
+
+                if (alreadyRegistered) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Already Registered!',
+                        text: data.message,
+                        confirmButtonText: 'Login Portal'
+                    }).then(() => window.location.href = "hotel-auth.html");
+                } else {
+                    Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error');
+                    btn.innerText = "VERIFY EMAIL & CONTINUE";
+                    btn.disabled = false;
+                }
             }
         } catch (err) {
             Swal.fire('Error', 'OTP fail!', 'error');

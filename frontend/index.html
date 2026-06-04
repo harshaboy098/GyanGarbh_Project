@@ -392,8 +392,16 @@
                 startOTPTimer();
                 Swal.fire('OTP Sent!', 'Check your inbox.', 'info');
             } else {
-                Swal.fire({ icon: 'info', title: 'Already a Member!', text: data.message, showCancelButton: true, confirmButtonText: 'Login instead' })
-                    .then((r) => { if (r.isConfirmed) showForm('login'); });
+                const errorText = (data.message || '').toLowerCase();
+                const alreadyRegistered = /registered|already exists|already a member/i.test(errorText);
+
+                if (alreadyRegistered) {
+                    Swal.fire({ icon: 'info', title: 'Already a Member!', text: data.message, showCancelButton: true, confirmButtonText: 'Login instead' })
+                        .then((r) => { if (r.isConfirmed) showForm('login'); });
+                } else {
+                    Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error');
+                }
+
                 btn.innerText = "SEND OTP";
                 btn.disabled = false;
             }

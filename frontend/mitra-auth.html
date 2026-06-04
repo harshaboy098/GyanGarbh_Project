@@ -221,9 +221,17 @@
                 document.getElementById('mitraOTPFields').style.display = 'block';
                 Swal.fire('OTP Sent!', 'Check your email.', 'info');
             } else {
-                Swal.fire({ icon: 'info', title: 'Already Registered!', text: data.message, confirmButtonText: 'Login Now' })
-                .then(() => switchMitraTab('login'));
-                btn.innerText = "VERIFY & REGISTER"; btn.disabled = false;
+                const errorText = (data.message || '').toLowerCase();
+                const alreadyRegistered = /registered|already exists|already a member/i.test(errorText);
+
+                if (alreadyRegistered) {
+                    Swal.fire({ icon: 'info', title: 'Already Registered!', text: data.message, confirmButtonText: 'Login Now' })
+                        .then(() => switchMitraTab('login'));
+                } else {
+                    Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error');
+                    btn.innerText = "VERIFY & REGISTER";
+                    btn.disabled = false;
+                }
             }
         } catch (err) {
             Swal.fire('Error', 'Server error!', 'error');
