@@ -6,12 +6,39 @@
 
     // 🌐 Local Testing Ke Liye Base URL
     const LOCAL_API_URL = 'http://localhost:5000';
+    const PRODUCTION_API_URL = 'https://gyangarbh-project.onrender.com';
+    const LOCAL_HOSTS = new Set(['', 'localhost', '127.0.0.1', '::1']);
+    const KNOWN_API_ORIGINS = new Set([LOCAL_API_URL, PRODUCTION_API_URL]);
+
+    function resolveApiBaseUrl() {
+        if (window.GYAN_GARBH_API_URL) return window.GYAN_GARBH_API_URL.replace(/\/$/, '');
+        return LOCAL_HOSTS.has(window.location.hostname) ? LOCAL_API_URL : PRODUCTION_API_URL;
+    }
+
+    function rewriteApiUrl(input) {
+        if (typeof input !== 'string') return input;
+
+        try {
+            const url = new URL(input, window.location.href);
+            if (KNOWN_API_ORIGINS.has(url.origin)) {
+                return `${resolveApiBaseUrl()}${url.pathname}${url.search}${url.hash}`;
+            }
+        } catch {
+            return input;
+        }
+
+        return input;
+    }
+
+    window.GYAN_GARBH_API_URL = resolveApiBaseUrl();
+    window.API_URL = window.GYAN_GARBH_API_URL;
 
     function getToken() {
         return localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
     }
 
     window.fetch = function (input, init) {
+        input = rewriteApiUrl(input);
         const options = { ...(init || {}) };
         const headers = new Headers(options.headers || {});
         const token = getToken();
@@ -39,7 +66,7 @@
         if (eventSource) eventSource.close();
         
         // 🛠️ FIXED: Agar global URL nahi milega, toh ab yeh seedhe local server (localhost:5000) se connect hoga
-        const baseUrl = window.GYAN_GARBH_API_URL || LOCAL_API_URL;
+        const baseUrl = resolveApiBaseUrl();
         
         eventSource = new EventSource(`${baseUrl}/api/events?token=${encodeURIComponent(token)}`);
         eventSource.addEventListener('update', (event) => {
@@ -58,6 +85,6 @@
         };
     }
 
-    window.GyanGarbhApi = { connectRealtime: connect, getToken };
+    window.GyanGarbhApi = { connectRealtime: connect, getToken, getApiBaseUrl: resolveApiBaseUrl };
     window.addEventListener('DOMContentLoaded', connect);
 }());
