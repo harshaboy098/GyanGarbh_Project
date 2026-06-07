@@ -1,16 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const STAFF_ROLES = [
-    'SuperAdmin',
-    'MainAssistant',
-    'StandardAssistant',
-    'CustomerService'
-];
-
-// Legacy roles are kept until the existing routes are migrated to the new RBAC names.
-const LEGACY_ROLES = ['admin', 'assistant', 'manager', 'guest', 'hotel', 'mitra'];
-const USER_ROLES = [...STAFF_ROLES, ...LEGACY_ROLES];
+const USER_ROLES = ['admin', 'assistant', 'customer'];
 
 // Application user schema
 const userSchema = new mongoose.Schema({
@@ -40,7 +31,7 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         enum: USER_ROLES,
-        default: 'guest' // Default role for public/customer registrations
+        default: 'customer'
     },
     assignedHotels: {
         type: [{

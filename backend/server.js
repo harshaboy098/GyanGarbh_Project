@@ -8,12 +8,17 @@ if (dns.setDefaultResultOrder) {
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
+const http = require('http');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const mongoSanitize = require('express-mongo-sanitize');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const { Server } = require('socket.io');
 const { OAuth2Client } = require('google-auth-library');
 
 // Models
@@ -67,12 +72,68 @@ const Enquiry = mongoose.model('Enquiry', enquirySchema);
 
 // ⭐ ACTIVITY LOG MODEL - Track all changes by Admin/Assistant
 const app = express();
+const server = http.createServer(app);
 const PORT = Number(process.env.PORT) || 5000;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '47696856369-b8pck7a7n94fsp303ltmmh5qpk4a55dh.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+const isProduction = process.env.NODE_ENV === 'production';
+const MONGO_URI = process.env.MONGODB_URI || '';
+const EMAIL_PASS = process.env.EMAIL_PASS || '';
 
-app.use(cors());
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    console.warn('Cloudinary config warning: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are required for hotel image uploads.');
+}
+
+const hotelImageStorage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+        folder: 'GyanGarbh/Hotels',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+        transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
+    }
+});
+
+const uploadHotelImages = multer({ storage: hotelImageStorage });
+
+const configuredFrontendOrigins = [
+    process.env.FRONTEND_URL,
+    process.env.VERCEL_FRONTEND_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+].filter(Boolean);
+
+const allowedOrigins = new Set([
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://localhost:5500',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5000',
+    'http://127.0.0.1:5500',
+    'https://gyangarbh-project.vercel.app',
+    ...configuredFrontendOrigins
+]);
+
+const corsOptions = {
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.has(origin) || /^https:\/\/gyangarbh-project(-[a-z0-9-]+)?\.vercel\.app$/i.test(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error(`CORS blocked origin: ${origin}`));
+    },
+    credentials: true
+};
+
+const io = new Server(server, {
+    cors: corsOptions
+});
+
+app.use(cors(corsOptions));
 app.use(express.json());
 // Express 5 exposes req.query as a read-only property, so sanitize objects in place.
 app.use((req, res, next) => {
@@ -85,12 +146,17 @@ app.use((req, res, next) => {
 const encodeTokenPart = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
 const decodeTokenPart = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
 const getSessionSecret = () => process.env.SESSION_SECRET || ADMIN_PASSWORD || ephemeralSessionSecret;
+const normalizeEnterpriseRole = (role) => {
+    if (['guest', 'mitra', 'customer'].includes(role)) return 'customer';
+    if (['assistant', 'manager'].includes(role)) return 'assistant';
+    return role;
+};
 const signTokenPayload = (payload) => crypto
     .createHmac('sha256', getSessionSecret())
     .update(payload)
     .digest('base64url');
 const createSessionToken = (role, email) => {
-    const encodedPayload = encodeTokenPart({ role, email: normalizeEmail(email), exp: Date.now() + SESSION_TTL_MS });
+    const encodedPayload = encodeTokenPart({ role, enterpriseRole: normalizeEnterpriseRole(role), email: normalizeEmail(email), exp: Date.now() + SESSION_TTL_MS });
     return `${encodedPayload}.${signTokenPayload(encodedPayload)}`;
 };
 const verifySessionToken = (token) => {
@@ -101,6 +167,7 @@ const verifySessionToken = (token) => {
         if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
         const payload = decodeTokenPart(encodedPayload);
         if (!payload.email || !payload.role || payload.exp < Date.now()) return null;
+        payload.enterpriseRole = payload.enterpriseRole || normalizeEnterpriseRole(payload.role);
         return payload;
     } catch {
         return null;
@@ -112,14 +179,39 @@ const readSessionToken = (req) => {
 };
 const requireSession = (allowedRoles = []) => (req, res, next) => {
     const session = verifySessionToken(readSessionToken(req));
-    if (!session || (allowedRoles.length && !allowedRoles.includes(session.role))) {
+    const allowedEnterpriseRoles = allowedRoles.map(normalizeEnterpriseRole);
+    if (!session || (allowedRoles.length && !allowedRoles.includes(session.role) && !allowedEnterpriseRoles.includes(session.enterpriseRole))) {
         return res.status(401).json({ success: false, message: 'Authentication required' });
     }
     req.session = session;
     next();
 };
+
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    const session = verifySessionToken(token);
+    if (!session || !['admin', 'assistant'].includes(session.enterpriseRole)) {
+        return next(new Error('Admin or assistant socket authentication required'));
+    }
+    socket.session = session;
+    next();
+});
+
+io.on('connection', (socket) => {
+    socket.join('staff');
+    socket.join(socket.session.enterpriseRole);
+    socket.emit('connected', {
+        success: true,
+        role: socket.session.enterpriseRole,
+        timestamp: new Date().toISOString()
+    });
+});
+
 const emitRealtime = (type, payload = {}) => {
-    const message = `event: update\ndata: ${JSON.stringify({ type, payload, timestamp: new Date().toISOString() })}\n\n`;
+    const event = { type, payload, timestamp: new Date().toISOString() };
+    io.to('staff').emit(type, event);
+    io.to('staff').emit('dashboard-sync', event);
+    const message = `event: update\ndata: ${JSON.stringify(event)}\n\n`;
     realtimeClients.forEach((client) => client.write(message));
 };
 
@@ -153,6 +245,79 @@ const checkRole = (allowedRoles) => {
             return res.status(500).json({ success: false, message: err.message });
         }
     };
+};
+
+const getRequestActor = async (req) => {
+    const email = normalizeEmail(
+        req.session?.email ||
+        req.body?.userEmail ||
+        req.body?.updatedBy ||
+        req.body?.createdBy ||
+        req.body?.deletedBy ||
+        req.query?.userEmail
+    );
+    const requestedRole =
+        req.session?.enterpriseRole ||
+        normalizeEnterpriseRole(req.session?.role || req.body?.userRole || req.body?.updatedByRole || req.body?.createdByRole || req.body?.deletedByRole || req.query?.userRole);
+
+    if (!email) return null;
+    if (requestedRole === 'admin' && email === ADMIN_EMAIL) {
+        return { email, role: 'admin', permissions: {} };
+    }
+    if (requestedRole === 'assistant') {
+        const assistant = await Assistant.findOne({ email, isActive: true }).select('email role permissions');
+        if (assistant) {
+            return { email: assistant.email, role: 'assistant', permissions: assistant.permissions || {} };
+        }
+    }
+    return null;
+};
+
+const verifyAdmin = async (req, res, next) => {
+    try {
+        const actor = await getRequestActor(req);
+        if (!actor || actor.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required' });
+        }
+        req.actor = actor;
+        return next();
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const verifyAssistant = (permission = null) => async (req, res, next) => {
+    try {
+        const actor = await getRequestActor(req);
+        if (!actor || actor.role !== 'assistant') {
+            return res.status(403).json({ success: false, message: 'Assistant access required' });
+        }
+        if (permission && actor.permissions?.[permission] !== true) {
+            return res.status(403).json({ success: false, message: `Assistant permission required: ${permission}` });
+        }
+        req.actor = actor;
+        return next();
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => {
+    try {
+        const actor = await getRequestActor(req);
+        if (!actor) return res.status(403).json({ success: false, message: 'Admin or assistant access required' });
+        if (actor.role === 'admin') {
+            req.actor = actor;
+            return next();
+        }
+        if (actor.role === 'assistant' && (!permission || actor.permissions?.[permission] === true)) {
+            req.actor = actor;
+            return next();
+        }
+        return res.status(403).json({ success: false, message: permission ? `Assistant permission required: ${permission}` : 'Unauthorized access' });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
 };
 
 // Helper function to log activities
@@ -196,13 +361,6 @@ const isValidSortArg = (sortArg) => {
 
 const safeSortQuery = (query, sortArg) => {
     return isValidSortArg(sortArg) ? query.sort(sortArg) : query;
-};
-
-const verifyAdminOrAssistant = async (email, role) => {
-    if (!email) return false;
-    if ((!role || role === 'admin') && email === ADMIN_EMAIL) return true;
-    if (role && role !== 'assistant') return false;
-    return !!(await Assistant.exists({ email, isActive: true }));
 };
 
 const verifyAdminOnly = (email, role) => role === 'admin' && email === ADMIN_EMAIL;
@@ -306,16 +464,30 @@ app.get('/api/events', requireSession(), (req, res) => {
 });
 
 // Email Setup
+if ((!process.env.EMAIL_USER || !EMAIL_PASS) && !isProduction) {
+    console.warn('EMAIL_USER or EMAIL_PASS is not set. Add them to backend/.env for local email delivery.');
+}
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        pass: EMAIL_PASS
     }
 });
 
-const dbURL = process.env.MONGODB_URI;
-if (!dbURL) {
+transporter.verify((error) => {
+    if (error) {
+        console.error('Gmail SMTP connection failed:', error.message);
+        return;
+    }
+    console.log('Gmail SMTP transporter ready.');
+});
+
+if (!MONGO_URI) {
     console.error('Missing MONGODB_URI environment variable. Please set it in .env or Render settings.');
     process.exit(1);
 }
@@ -355,9 +527,7 @@ async function ensureAdminUser() {
     }
 }
 
-const MONGO_URI = process.env.MONGODB_URI || "mongodb+srv://yesmukeshhere_db_user:jpc5JJcURxg5975F@gyangarbh.ylamayo.mongodb.net/GyanGarbh?retryWrites=true&w=majority&appName=GYANGRABH";
-
-mongoose.connect(MONGO_URI)
+mongoose.connect(MONGO_URI, mongooseOptions)
   .then(async () => {
       console.log('🚀 Connected to Gyan Garbh Database!');
       await ensureAdminUser();
@@ -380,7 +550,7 @@ app.get('/health', (req, res) => {
 // --- � ADMIN LOGIN ROUTE ---
 // ---------------------------------------------------------
 
-app.post('/admin-login', async (req, res) => {
+app.post(['/admin-login', '/api/admin-login'], async (req, res) => {
     try {
         const { email, password } = req.body;
         const normalizedEmail = normalizeEmail(email);
@@ -418,11 +588,12 @@ app.post('/admin-login', async (req, res) => {
 // --- �🔐 OTP ROUTES (Signup + Reset) ---
 // ---------------------------------------------------------
 
-app.post('/send-otp', async (req, res) => {
+app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
     const { email, isReset, name, password, role, experience, phone, address, hotelName } = req.body;
     try {
         const normalizedEmail = String(email || '').trim().toLowerCase();
-        const cleanRole = ['guest', 'mitra', 'hotel'].includes(role) ? role : 'guest';
+        const requestedRole = ['guest', 'mitra', 'customer', 'hotel'].includes(role) ? role : 'customer';
+        const cleanRole = requestedRole === 'hotel' ? 'hotel' : 'customer';
 
         if (!isValidEmail(normalizedEmail)) {
             return res.status(400).json({ success: false, message: "A valid email address is required." });
@@ -432,9 +603,9 @@ app.post('/send-otp', async (req, res) => {
         const hotelExists = await Hotel.findOne({ $or: [{ ownerEmail: normalizedEmail }, { email: normalizedEmail }] });
 
         if (!isReset) {
-            const hasRequiredHotelDetails = cleanRole === 'hotel' && hotelName && password;
-            const hasRequiredGuestDetails = cleanRole === 'guest' && name && password && phone && address;
-            const hasRequiredMitraDetails = cleanRole === 'mitra' && name && password;
+            const hasRequiredHotelDetails = requestedRole === 'hotel' && hotelName && password;
+            const hasRequiredGuestDetails = ['guest', 'customer'].includes(requestedRole) && name && password && phone && address;
+            const hasRequiredMitraDetails = requestedRole === 'mitra' && name && password;
             const hasPendingRegistration = Boolean(pendingRegistrationStore[normalizedEmail]);
 
             if (!hasRequiredHotelDetails && !hasRequiredGuestDetails && !hasRequiredMitraDetails && !hasPendingRegistration) {
@@ -455,6 +626,7 @@ app.post('/send-otp', async (req, res) => {
                     email: normalizedEmail,
                     password,
                     role: cleanRole,
+                    requestedRole,
                     experience: experience || "",
                     phone: phone || "",
                     address: address || "",
@@ -493,50 +665,54 @@ app.post('/send-otp', async (req, res) => {
                    </div>`
         };
 
-        await transporter.sendMail(mailOptions);
+        try {
+            await transporter.sendMail(mailOptions);
+        } catch (mailError) {
+            if (otpStore[normalizedEmail]?.timeoutId) clearTimeout(otpStore[normalizedEmail].timeoutId);
+            delete otpStore[normalizedEmail];
+            console.error('OTP email send failed:', mailError);
+            return res.status(502).json({
+                success: false,
+                message: 'OTP email could not be sent. Please check the email configuration and try again.'
+            });
+        }
         res.json({ success: true, message: "OTP Sent" });
     } catch (error) {
         console.error('Send OTP error:', error);
-        // Add explicit Nodemailer error details to aid debugging
-        try {
-            console.error("Nodemailer Error Details:", error);
-        } catch (e) {
-            console.error('Failed to log Nodemailer details:', e);
-        }
-        res.status(500).json({ success: false, message: "Email system error" });
+        res.status(500).json({ success: false, message: "Unable to process OTP request. Please try again." });
     }
 });
 
-app.post('/verify-otp', async (req, res) => {
-    const { email, otp } = req.body;
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-    const record = otpStore[normalizedEmail];
+app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        const record = otpStore[normalizedEmail];
 
-    if (!record || record.code != otp) {
-        return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
+        if (!record || record.code != otp) {
+            return res.status(400).json({ success: false, message: 'Invalid OTP' });
+        }
 
-    if (record.expiresAt < Date.now()) {
+        if (record.expiresAt < Date.now()) {
+            clearTimeout(record.timeoutId);
+            delete otpStore[normalizedEmail];
+            delete pendingRegistrationStore[normalizedEmail];
+            return res.status(400).json({ success: false, message: 'OTP expired. Please request a new code.' });
+        }
+
         clearTimeout(record.timeoutId);
         delete otpStore[normalizedEmail];
+        const pending = pendingRegistrationStore[normalizedEmail];
+        if (!pending) {
+            const resetToken = crypto.randomBytes(32).toString('hex');
+            resetAuthorizationStore[normalizedEmail] = {
+                tokenHash: crypto.createHash('sha256').update(resetToken).digest('hex'),
+                expiresAt: Date.now() + RESET_TTL_MS
+            };
+            return res.json({ success: true, message: 'OTP verified successfully.', resetToken });
+        }
+
         delete pendingRegistrationStore[normalizedEmail];
-        return res.status(400).json({ success: false, message: 'OTP expired. Please request a new code.' });
-    }
-
-    clearTimeout(record.timeoutId);
-    delete otpStore[normalizedEmail];
-    const pending = pendingRegistrationStore[normalizedEmail];
-    if (!pending) {
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        resetAuthorizationStore[normalizedEmail] = {
-            tokenHash: crypto.createHash('sha256').update(resetToken).digest('hex'),
-            expiresAt: Date.now() + RESET_TTL_MS
-        };
-        return res.json({ success: true, message: 'OTP verified successfully.', resetToken });
-    }
-
-    delete pendingRegistrationStore[normalizedEmail];
-    try {
         if (pending.role === 'hotel') {
             const hashedPassword = await bcrypt.hash(pending.password, 10);
             const newHotel = new Hotel({
@@ -559,7 +735,7 @@ app.post('/verify-otp', async (req, res) => {
             name: pending.name,
             email: pending.email,
             password: hashedPassword,
-            role: pending.role || 'guest',
+            role: 'customer',
             experience: pending.experience,
             phone: pending.phone,
             address: pending.address
@@ -567,8 +743,8 @@ app.post('/verify-otp', async (req, res) => {
         await newUser.save();
         return res.json({ success: true, message: 'Registered successfully.', role: newUser.role, name: newUser.name, email: newUser.email, sessionToken: createSessionToken(newUser.role, newUser.email) });
     } catch (err) {
-        console.error('OTP registration error:', err);
-        return res.status(500).json({ success: false, message: 'Registration failed after OTP verification.' });
+        console.error('Verify OTP error:', err);
+        return res.status(500).json({ success: false, message: 'OTP verification failed. Please try again.' });
     }
 });
 
@@ -576,7 +752,7 @@ app.post('/verify-otp', async (req, res) => {
 // --- 👤 USER & MITRA ROUTES ---
 // ---------------------------------------------------------
 
-app.post('/login', async (req, res) => {
+app.post(['/login', '/api/login'], async (req, res) => {
     try {
         const { email, password } = req.body;
         const normalizedEmail = normalizeEmail(email);
@@ -629,7 +805,7 @@ app.post('/google-login', async (req, res) => {
                 name: verifiedName || 'Google User',
                 email: verifiedEmail,
                 password: await bcrypt.hash(Math.random().toString(36), 10),
-                role: 'guest',
+                role: 'customer',
                 googleId: verifiedGoogleId,
                 photoURL: verifiedPhoto,
                 date: new Date()
@@ -650,9 +826,11 @@ app.post('/google-login', async (req, res) => {
     }
 });
 
+const mitraUserFilter = { role: 'customer', experience: { $exists: true, $ne: '' } };
+
 app.get('/all-mitras', async (req, res) => {
     try {
-        const mitras = await publicUserQuery(User.find({ role: 'mitra', isLocked: { $ne: true } }));
+        const mitras = await publicUserQuery(User.find({ ...mitraUserFilter, isLocked: { $ne: true } }));
         res.json(mitras);
     } catch (err) { res.status(500).send(err.message); }
 });
@@ -669,6 +847,9 @@ app.use('/admin', (req, res, next) => {
     const allowedRoles = req.path === '/add-room' ? ['admin', 'assistant', 'hotel'] : ['admin', 'assistant'];
     return requireSession(allowedRoles)(req, res, () => {
         const { email, role } = req.session;
+        if (req.session.enterpriseRole === 'assistant' && req.method === 'DELETE') {
+            return res.status(403).json({ success: false, message: 'Assistants cannot delete data' });
+        }
         if (req.body && typeof req.body === 'object') {
             ['updatedBy', 'createdBy', 'deletedBy'].forEach((key) => {
                 if (key in req.body) req.body[key] = email;
@@ -693,7 +874,7 @@ app.get('/admin/enquiries', async (req, res) => {
 // ---------------------------------------------------------
 
 // Get all users (customers, hotels, mitras) for admin panel
-app.get('/admin/all-users', async (req, res) => {
+app.get('/admin/all-users', verifyAdmin, async (req, res) => {
     try {
         // Get all regular users (customers and mitras)
         const users = await User.find().select('-password'); // Exclude password field
@@ -717,7 +898,7 @@ app.get('/admin/all-users', async (req, res) => {
                 updatedBy: enquiry.updatedBy,
                 isLocked: enquiry.isLocked
             })),
-            mitras: users.filter(user => user.role === 'mitra').map(mitra => ({
+            mitras: users.filter(user => user.role === 'customer' && user.experience).map(mitra => ({
                 _id: mitra._id,
                 name: mitra.name,
                 email: mitra.email,
@@ -743,7 +924,7 @@ app.get('/admin/all-users', async (req, res) => {
                 updatedBy: hotel.updatedBy,
                 isLocked: hotel.isLocked
             })),
-            guests: users.filter(user => user.role === 'guest').map(guest => ({
+            guests: users.filter(user => user.role === 'customer' && !user.experience).map(guest => ({
                 _id: guest._id,
                 name: guest.name,
                 email: guest.email,
@@ -762,7 +943,7 @@ app.get('/admin/all-users', async (req, res) => {
 });
 
 // Update hotel details
-app.put('/admin/update-hotel', async (req, res) => {
+app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
     try {
         const { hotelId, hotelName, ownerEmail, phone, address, location, roomRate, rating, description, totalRooms, acRoomPrice, nonAcRoomPrice, facilities, imageUrl, imageUrl2, imageUrl3, updatedBy, updatedByRole } = req.body;
 
@@ -798,6 +979,7 @@ app.put('/admin/update-hotel', async (req, res) => {
         await logActivity('UPDATE', 'Hotel', hotelId, updatedHotel.hotelName, updatedBy, actorRole, { 
             phone, address, location, rating, description, totalRooms 
         });
+        emitRealtime('hotel-updated', { hotel: updatedHotel, updatedBy, actorRole });
 
         res.json({ success: true, message: 'Hotel updated successfully', hotel: updatedHotel });
     } catch (err) {
@@ -807,7 +989,7 @@ app.put('/admin/update-hotel', async (req, res) => {
 });
 
 // Create hotel (Admin / Assistant)
-app.post('/admin/create-hotel', async (req, res) => {
+app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
     try {
         const { hotelName, ownerEmail, phone, address, location, roomRate, rating, description, totalRooms, acRoomPrice, nonAcRoomPrice, facilities, imageUrl, imageUrl2, imageUrl3, createdBy, createdByRole } = req.body;
         const actorRole = await resolveActorRole(createdBy, createdByRole);
@@ -856,6 +1038,7 @@ app.post('/admin/create-hotel', async (req, res) => {
         });
         await newHotel.save();
         await logActivity('CREATE', 'Hotel', newHotel._id, hotelName, createdBy, actorRole);
+        emitRealtime('hotel-created', { hotel: newHotel, createdBy, actorRole });
         res.status(201).json({
             success: true,
             message: 'Hotel created successfully',
@@ -871,8 +1054,27 @@ app.post('/admin/create-hotel', async (req, res) => {
     }
 });
 
+// Hotel image upload via Cloudinary
+app.post('/admin/upload-hotel-images', verifyAdminOrAssistant('manageHotels'), uploadHotelImages.array('hotelImages', 3), async (req, res) => {
+    try {
+        if (!req.files || !req.files.length) {
+            return res.status(400).json({ success: false, message: 'No hotel images were uploaded.' });
+        }
+
+        const uploadedUrls = req.files.map((file) => file.path || file.secure_url || file.url).filter(Boolean);
+        if (!uploadedUrls.length) {
+            return res.status(500).json({ success: false, message: 'Uploaded files did not return valid Cloudinary URLs.' });
+        }
+
+        res.json({ success: true, images: uploadedUrls });
+    } catch (err) {
+        console.error('Hotel image upload error:', err);
+        res.status(500).json({ success: false, message: 'Hotel image upload failed.' });
+    }
+});
+
 // Create mitra (Admin / Assistant)
-app.post('/admin/create-mitra', async (req, res) => {
+app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {
         const { name, email, phone, address, experience, imageUrl, createdBy, createdByRole } = req.body;
         const actorRole = await resolveActorRole(createdBy, createdByRole);
@@ -901,7 +1103,7 @@ app.post('/admin/create-mitra', async (req, res) => {
             password: hashedPassword,
             phone: phone || '',
             address: address || '',
-            role: 'mitra',
+            role: 'customer',
             experience: experience || '',
             photoURL: imageUrl || placeholderPhoto,
             updatedBy: createdBy,
@@ -911,6 +1113,7 @@ app.post('/admin/create-mitra', async (req, res) => {
 
         await newMitra.save();
         await logActivity('CREATE', 'Mitra', newMitra._id, newMitra.name, createdBy, actorRole);
+        emitRealtime('mitra-created', { mitra: newMitra, createdBy, actorRole });
 
         res.status(201).json({
             success: true,
@@ -989,7 +1192,7 @@ app.put('/update-hotel-status', requireSession(['hotel']), async (req, res) => {
 });
 
 // DELETE HOTEL - existing code follows
-app.delete('/admin/delete-hotel', async (req, res) => {
+app.delete('/admin/delete-hotel', verifyAdmin, async (req, res) => {
     try {
         const { hotelId, deletedBy, deletedByRole } = req.body;
 
@@ -1030,6 +1233,7 @@ app.delete('/admin/delete-hotel', async (req, res) => {
         await ActivityLog.deleteMany({ $or: [ { entityType: 'Hotel', entityId: hotelId }, { performedBy: deletedHotel.ownerEmail }, { performedBy: deletedHotel.email }] });
 
         await logActivity('DELETE', 'Hotel', hotelId, deletedHotel.hotelName, deletedBy, deletedByRole);
+        emitRealtime('hotel-deleted', { hotelId, hotelName: deletedHotel.hotelName, deletedBy });
 
         res.json({ success: true, message: 'Hotel deleted successfully and related records cleaned up' });
     } catch (err) {
@@ -1039,7 +1243,7 @@ app.delete('/admin/delete-hotel', async (req, res) => {
 });
 
 // Update mitra details
-app.put('/admin/update-mitra', async (req, res) => {
+app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {
         const { mitraId, name, email, phone, address, experience, updatedBy, updatedByRole } = req.body;
         const actorRole = await resolveActorRole(updatedBy, updatedByRole);
@@ -1066,6 +1270,7 @@ app.put('/admin/update-mitra', async (req, res) => {
         }
 
         await logActivity('UPDATE', 'Mitra', mitraId, updatedMitra.name, updatedBy, actorRole, { email, phone, address, experience });
+        emitRealtime('mitra-updated', { mitra: updatedMitra, updatedBy, actorRole });
 
         res.json({ success: true, message: 'Mitra updated successfully', mitra: updatedMitra });
     } catch (err) {
@@ -1075,7 +1280,7 @@ app.put('/admin/update-mitra', async (req, res) => {
 });
 
 // Delete mitra
-app.delete('/admin/delete-mitra', async (req, res) => {
+app.delete('/admin/delete-mitra', verifyAdmin, async (req, res) => {
     try {
         const { mitraId, deletedBy, deletedByRole } = req.body;
         if (!verifyAdminOnly(deletedBy, deletedByRole)) {
@@ -1108,6 +1313,7 @@ app.delete('/admin/delete-mitra', async (req, res) => {
         ] });
 
         await logActivity('DELETE', 'Mitra', mitraId, deletedMitra.name, deletedBy, deletedByRole);
+        emitRealtime('mitra-deleted', { mitraId, name: deletedMitra.name, deletedBy });
 
         res.json({ success: true, message: 'Mitra deleted successfully and related records cleaned up' });
     } catch (err) {
@@ -1117,7 +1323,7 @@ app.delete('/admin/delete-mitra', async (req, res) => {
 });
 
 // Update customer enquiry status
-app.put('/admin/update-customer', async (req, res) => {
+app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
     try {
         const { customerId, customerName, customerEmail, customerPhone, status, updatedBy, updatedByRole } = req.body;
         const actorRole = await resolveActorRole(updatedBy, updatedByRole);
@@ -1143,6 +1349,7 @@ app.put('/admin/update-customer', async (req, res) => {
         }
 
         await logActivity('UPDATE', 'Customer', customerId, updatedCustomer.customerName, updatedBy, actorRole, { customerEmail, customerPhone, status });
+        emitRealtime('customer-updated', { customer: updatedCustomer, updatedBy, actorRole });
 
         res.json({ success: true, message: 'Customer updated successfully', customer: updatedCustomer });
     } catch (err) {
@@ -1152,7 +1359,7 @@ app.put('/admin/update-customer', async (req, res) => {
 });
 
 // Delete customer enquiry
-app.delete('/admin/delete-customer', async (req, res) => {
+app.delete('/admin/delete-customer', verifyAdmin, async (req, res) => {
     try {
         const { customerId, deletedBy, deletedByRole } = req.body;
         if (!verifyAdminOnly(deletedBy, deletedByRole)) {
@@ -1166,6 +1373,7 @@ app.delete('/admin/delete-customer', async (req, res) => {
         }
 
         await logActivity('DELETE', 'Customer', customerId, deletedCustomer.customerName, deletedBy, deletedByRole);
+        emitRealtime('customer-deleted', { customerId, customerName: deletedCustomer.customerName, deletedBy });
 
         res.json({ success: true, message: 'Customer deleted successfully' });
     } catch (err) {
@@ -1174,7 +1382,7 @@ app.delete('/admin/delete-customer', async (req, res) => {
     }
 });
 
-app.put('/admin/toggle-lock', async (req, res) => {
+app.put('/admin/toggle-lock', verifyAdmin, async (req, res) => {
     try {
         const { entityType, entityId, isLocked, updatedBy, updatedByRole } = req.body;
         const actorRole = await resolveActorRole(updatedBy, updatedByRole);
@@ -1203,6 +1411,7 @@ app.put('/admin/toggle-lock', async (req, res) => {
         entityName = entity.hotelName || entity.customerName || entity.name || entity.title || entityId;
         const logType = entityType === 'hotel' ? 'Hotel' : entityType === 'customer' ? 'Customer' : entityType === 'mitra' ? 'Mitra' : 'BodhiPath';
         await logActivity('TOGGLE_STATUS', logType, entityId, entityName, updatedBy, actorRole, { isLocked: locked });
+        emitRealtime(`${entityType}-lock-updated`, { entityType, entityId, entityName, isLocked: locked, updatedBy });
 
         res.json({ success: true, message: `${entityName} ${locked ? 'locked' : 'unlocked'} successfully`, item: entity });
     } catch (err) {
@@ -1212,7 +1421,7 @@ app.put('/admin/toggle-lock', async (req, res) => {
 });
 
 // Update guest (regular user)
-app.put('/admin/update-guest', async (req, res) => {
+app.put('/admin/update-guest', verifyAdmin, async (req, res) => {
     try {
         const { guestId, name, email, phone, address } = req.body;
 
@@ -1234,7 +1443,7 @@ app.put('/admin/update-guest', async (req, res) => {
 });
 
 // Delete guest (regular user)
-app.delete('/admin/delete-guest', async (req, res) => {
+app.delete('/admin/delete-guest', verifyAdmin, async (req, res) => {
     try {
         const { guestId } = req.body;
 
@@ -1255,7 +1464,7 @@ app.delete('/admin/delete-guest', async (req, res) => {
 // --- 🏨 HOTEL PARTNER ROUTES ---
 // ---------------------------------------------------------
 
-app.post('/hotel-login', async (req, res) => {
+app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
     try {
         const { email, password } = req.body;
         const normalizedEmail = String(email || '').trim().toLowerCase();
@@ -1298,7 +1507,7 @@ app.get('/hotel-details/:ownerEmail', async (req, res) => {
     }
 });
 
-app.post('/admin/add-room', async (req, res) => {
+app.post('/admin/add-room', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
     try {
         const roomData = req.body;
         if (!roomData) {
@@ -1334,7 +1543,7 @@ app.post('/admin/add-room', async (req, res) => {
 // --- 🛠️ PASSWORD RESET ---
 // ---------------------------------------------------------
 
-app.post('/reset-password', async (req, res) => {
+app.post(['/reset-password', '/api/reset-password'], async (req, res) => {
     try {
         const { email, newPassword, userType, resetToken } = req.body;
         if (!['user', 'hotel'].includes(userType)) {
@@ -1365,11 +1574,11 @@ app.post('/reset-password', async (req, res) => {
 // --- 📅 BOOKING ROUTES ---
 // ---------------------------------------------------------
 
-app.post('/api/bookings', requireSession(['guest', 'mitra']), async (req, res) => {
+app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
     try {
         const validationError = validateBookingPayload(req.body);
         if (validationError) return res.status(400).json({ success: false, message: validationError });
-        const mitras = await User.find({ role: 'mitra' });
+        const mitras = await User.find(mitraUserFilter);
         mitras.sort((a, b) => (b.experience || '').length - (a.experience || '').length);
         const assignedMitra = mitras.length > 0 ? mitras[0].name : 'Auto-Assign';
 
@@ -1377,12 +1586,13 @@ app.post('/api/bookings', requireSession(['guest', 'mitra']), async (req, res) =
         const newBooking = new Booking(bookingData);
         await newBooking.save();
         emitRealtime('booking-created', { bookingId: newBooking._id, hotelName: newBooking.hotelName });
+        emitRealtime('new-booking', { booking: newBooking, assignedMitra });
 
         res.status(200).json({ success: true, message: "Booking confirmed", assignedMitra });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-app.put('/api/bookings/cancel/:id', requireSession(['guest', 'mitra']), async (req, res) => {
+app.put('/api/bookings/cancel/:id', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
     try {
         const bookingId = mongoSanitize.sanitize(String(req.params.id || ''));
         const userEmail = req.session.email;
@@ -1441,10 +1651,77 @@ const autoReleaseInterval = setInterval(() => {
 }, 15 * 60 * 1000);
 autoReleaseInterval.unref();
 
-app.get('/all-bookings', requireSession(['admin', 'assistant', 'hotel', 'mitra', 'guest']), async (req, res) => {
+app.get('/admin/bookings', verifyAdmin, async (req, res) => {
+    try {
+        const bookings = await Booking.find().sort({ createdAt: -1 });
+        res.json({ success: true, bookings });
+    } catch (err) {
+        console.error('Admin bookings fetch error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/admin/bookings', verifyAdmin, async (req, res) => {
+    try {
+        const validationError = validateBookingPayload(req.body);
+        if (validationError) return res.status(400).json({ success: false, message: validationError });
+
+        const booking = new Booking(req.body);
+        await booking.save();
+        await logActivity('CREATE', 'Booking', booking._id, booking.hotelName, req.actor.email, 'admin', {
+            userEmail: booking.userEmail,
+            status: booking.status
+        });
+        emitRealtime('new-booking', { booking, createdBy: req.actor.email, actorRole: 'admin' });
+        res.status(201).json({ success: true, message: 'Booking created successfully', booking });
+    } catch (err) {
+        console.error('Admin booking create error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/admin/bookings/:id', verifyAdmin, async (req, res) => {
+    try {
+        const bookingId = mongoSanitize.sanitize(String(req.params.id || ''));
+        const booking = await Booking.findByIdAndUpdate(
+            bookingId,
+            { ...req.body, updatedAt: new Date() },
+            { new: true, runValidators: true }
+        );
+
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+        await logActivity('UPDATE', 'Booking', booking._id, booking.hotelName, req.actor.email, 'admin', req.body);
+        emitRealtime('booking-updated', { booking, updatedBy: req.actor.email, actorRole: 'admin' });
+        res.json({ success: true, message: 'Booking updated successfully', booking });
+    } catch (err) {
+        console.error('Admin booking update error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete('/admin/bookings/:id', verifyAdmin, async (req, res) => {
+    try {
+        const bookingId = mongoSanitize.sanitize(String(req.params.id || ''));
+        const booking = await Booking.findByIdAndDelete(bookingId);
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+        await logActivity('DELETE', 'Booking', booking._id, booking.hotelName, req.actor.email, 'admin', {
+            userEmail: booking.userEmail,
+            status: booking.status
+        });
+        emitRealtime('booking-deleted', { bookingId, hotelName: booking.hotelName, deletedBy: req.actor.email });
+        res.json({ success: true, message: 'Booking deleted successfully' });
+    } catch (err) {
+        console.error('Admin booking delete error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/all-bookings', requireSession(['admin', 'assistant', 'hotel', 'mitra', 'guest', 'customer']), async (req, res) => {
     try {
         let filter = {};
-        if (req.session.role === 'guest') filter = { userEmail: req.session.email };
+        if (req.session.enterpriseRole === 'customer' && req.session.role !== 'mitra') filter = { userEmail: req.session.email };
         if (req.session.role === 'mitra') filter = { $or: [{ mitraEmail: req.session.email }, { assignedMitra: req.session.email }] };
         if (req.session.role === 'hotel') {
             const hotel = await Hotel.findOne({ ownerEmail: req.session.email }).select('hotelName');
@@ -1510,7 +1787,7 @@ app.put('/update-booking-status', requireSession(['hotel', 'admin', 'assistant']
 // ---------------------------------------------------------
 
 // Create a new Assistant
-app.post('/admin/create-assistant', async (req, res) => {
+app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
     try {
         const { email, password, name, role, permissions, createdBy, createdByRole } = req.body;
         const cleanEmail = String(email || '').trim().toLowerCase();
@@ -1556,6 +1833,7 @@ app.post('/admin/create-assistant', async (req, res) => {
 
         // Log activity
         await logActivity('CREATE', 'Assistant', newAssistant._id, cleanName, createdBy, 'admin');
+        emitRealtime('assistant-created', { assistantId: newAssistant._id, name: newAssistant.name, email: newAssistant.email, createdBy });
 
         return res.status(201).json({ 
             success: true, 
@@ -1614,7 +1892,7 @@ app.post('/assistant-login', async (req, res) => {
 });
 
 // Get all assistants (Admin only)
-app.get('/admin/all-assistants', async (req, res) => {
+app.get('/admin/all-assistants', verifyAdmin, async (req, res) => {
     try {
         const assistants = await Assistant.find().select('-password');
         res.json({ success: true, assistants });
@@ -1623,7 +1901,7 @@ app.get('/admin/all-assistants', async (req, res) => {
     }
 });
 
-app.get('/admin/all-hotels', async (req, res) => {
+app.get('/admin/all-hotels', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
     try {
         const hotels = await Hotel.find().select('-password');
         res.json({ success: true, hotels });
@@ -1632,7 +1910,7 @@ app.get('/admin/all-hotels', async (req, res) => {
     }
 });
 
-app.get('/admin/all-customers', async (req, res) => {
+app.get('/admin/all-customers', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
     try {
         const customers = await Enquiry.find().sort({ createdAt: -1 });
         res.json({ success: true, customers });
@@ -1641,9 +1919,9 @@ app.get('/admin/all-customers', async (req, res) => {
     }
 });
 
-app.get('/admin/all-mitras', async (req, res) => {
+app.get('/admin/all-mitras', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {
-        const mitras = await User.find({ role: 'mitra' }).select('-password');
+        const mitras = await User.find(mitraUserFilter).select('-password');
         res.json({ success: true, mitras });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -1651,7 +1929,7 @@ app.get('/admin/all-mitras', async (req, res) => {
 });
 
 // Update Assistant Details
-app.put('/admin/update-assistant', async (req, res) => {
+app.put('/admin/update-assistant', verifyAdmin, async (req, res) => {
     try {
         if (req.session.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Only Admin can update assistants' });
@@ -1673,6 +1951,8 @@ app.put('/admin/update-assistant', async (req, res) => {
         if (!updatedAssistant) {
             return res.status(404).json({ success: false, message: 'Assistant not found' });
         }
+        await logActivity('UPDATE', 'Assistant', assistantId, updatedAssistant.name, req.actor.email, 'admin', { email, role, permissions, isActive });
+        emitRealtime('assistant-updated', { assistant: updatedAssistant, updatedBy: req.actor.email });
 
         res.json({ 
             success: true, 
@@ -1686,7 +1966,7 @@ app.put('/admin/update-assistant', async (req, res) => {
 });
 
 // Delete Assistant (Admin only)
-app.delete('/admin/delete-assistant', async (req, res) => {
+app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
     try {
         const { assistantId, deletedBy, deletedByRole } = req.body;
 
@@ -1710,6 +1990,7 @@ app.delete('/admin/delete-assistant', async (req, res) => {
         ] });
 
         await logActivity('DELETE', 'Assistant', assistantId, deletedAssistant.name, deletedBy, deletedByRole);
+        emitRealtime('assistant-deleted', { assistantId, name: deletedAssistant.name, deletedBy });
 
         res.json({ success: true, message: 'Assistant deleted successfully and related audit records cleaned up' });
     } catch (err) {
@@ -1734,7 +2015,7 @@ app.get('/bodhi-path/all', async (req, res) => {
 });
 
 // Admin fetch all Bodhi Path entries
-app.get('/admin/all-bodhi-paths', async (req, res) => {
+app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant(), async (req, res) => {
     try {
         const bodhiPaths = await BodhiPath.find();
         res.json({ success: true, bodhiPaths });
@@ -1758,7 +2039,7 @@ app.get('/bodhi-path/:id', async (req, res) => {
     }
 });
 
-app.post('/admin/bodhi-path/create', async (req, res) => {
+app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) => {
     try {
         const { title, category, shortDescription, fullDescription, significance, historicalFacts, location, imageUrl, images, bestTimeToVisit, visitingHours, entryFee, estimatedVisitTime, relatedTemples, spiritualSignificance, createdBy, createdByRole } = req.body;
 
@@ -1788,6 +2069,7 @@ app.post('/admin/bodhi-path/create', async (req, res) => {
 
         await newBodhiPath.save();
         await logActivity('CREATE', 'BodhiPath', newBodhiPath._id, title, createdBy, actorRole);
+        emitRealtime('bodhi-path-created', { bodhiPath: newBodhiPath, createdBy, actorRole });
         res.status(201).json({
             success: true,
             message: 'Bodhi Path entry created successfully',
@@ -1800,7 +2082,7 @@ app.post('/admin/bodhi-path/create', async (req, res) => {
 });
 
 // Update Bodhi Path entry (Admin/Assistant only)
-app.put('/admin/bodhi-path/update', async (req, res) => {
+app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) => {
     try {
         const { bodhiPathId, title, category, shortDescription, fullDescription, significance, historicalFacts, location, imageUrl, images, bestTimeToVisit, visitingHours, entryFee, estimatedVisitTime, relatedTemples, spiritualSignificance, updatedBy, updatedByRole } = req.body;
 
@@ -1841,6 +2123,7 @@ app.put('/admin/bodhi-path/update', async (req, res) => {
         await logActivity('UPDATE', 'BodhiPath', bodhiPathId, title, updatedBy, actorRole, { 
             category, shortDescription 
         });
+        emitRealtime('bodhi-path-updated', { bodhiPath: updatedBodhiPath, updatedBy, actorRole });
 
         res.json({
             success: true,
@@ -1854,7 +2137,7 @@ app.put('/admin/bodhi-path/update', async (req, res) => {
 });
 
 // Delete Bodhi Path entry (Admin only)
-app.delete('/admin/bodhi-path/delete', async (req, res) => {
+app.delete('/admin/bodhi-path/delete', verifyAdmin, async (req, res) => {
     try {
         const { bodhiPathId, deletedBy, deletedByRole } = req.body;
         if (!verifyAdminOnly(deletedBy, deletedByRole)) {
@@ -1868,6 +2151,7 @@ app.delete('/admin/bodhi-path/delete', async (req, res) => {
         }
 
         await logActivity('DELETE', 'BodhiPath', bodhiPathId, deletedBodhiPath.title, deletedBy, deletedByRole);
+        emitRealtime('bodhi-path-deleted', { bodhiPathId, title: deletedBodhiPath.title, deletedBy });
 
         res.json({ success: true, message: 'Bodhi Path entry deleted successfully' });
     } catch (err) {
@@ -1927,7 +2211,7 @@ app.put('/hotel/update-distance-highlights', requireSession(['hotel']), async (r
 // ---------------------------------------------------------
 
 // Admin Dashboard Data (All statistics)
-app.get('/admin/dashboard', async (req, res) => {
+app.get('/admin/dashboard', verifyAdminOrAssistant('viewReports'), async (req, res) => {
     try {
         const totalHotels = await Hotel.countDocuments();
         const totalBookings = await Booking.countDocuments();
@@ -1965,7 +2249,7 @@ app.get('/admin/dashboard', async (req, res) => {
 });
 
 // ⭐ ACTIVITY LOG ENDPOINT - Admin only
-app.get('/admin/activity-log', async (req, res) => {
+app.get('/admin/activity-log', verifyAdmin, async (req, res) => {
     try {
         const { userEmail, userRole } = req.query;
         
@@ -1989,7 +2273,7 @@ app.get('/admin/activity-log', async (req, res) => {
 // --- 🌱 SEED BODHI PATH DATA (Run once to populate heritage data) ---
 // ---------------------------------------------------------
 
-app.post('/admin/seed-heritage-data', async (req, res) => {
+app.post('/admin/seed-heritage-data', verifyAdmin, async (req, res) => {
     try {
         if (req.session.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Only Admin can seed heritage data' });
@@ -2109,4 +2393,4 @@ app.post('/admin/seed-heritage-data', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => { console.log(`Gyan Garbh Server Active on ${PORT} 🚀`); });
+server.listen(PORT, () => { console.log(`Gyan Garbh Server Active on ${PORT} 🚀`); });
