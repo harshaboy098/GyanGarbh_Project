@@ -4,6 +4,9 @@
     let reconnectTimer = null;
     let pollTimer = null;
 
+    // 🌐 Local Testing Ke Liye Base URL
+    const LOCAL_API_URL = 'http://localhost:5000';
+
     function getToken() {
         return localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
     }
@@ -34,7 +37,11 @@
         }
 
         if (eventSource) eventSource.close();
-        eventSource = new EventSource(`${window.GYAN_GARBH_API_URL || 'https://gyangarbh-project.onrender.com'}/api/events?token=${encodeURIComponent(token)}`);
+        
+        // 🛠️ FIXED: Agar global URL nahi milega, toh ab yeh seedhe local server (localhost:5000) se connect hoga
+        const baseUrl = window.GYAN_GARBH_API_URL || LOCAL_API_URL;
+        
+        eventSource = new EventSource(`${baseUrl}/api/events?token=${encodeURIComponent(token)}`);
         eventSource.addEventListener('update', (event) => {
             try {
                 notify(JSON.parse(event.data));

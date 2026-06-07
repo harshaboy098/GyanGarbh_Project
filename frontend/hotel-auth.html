@@ -62,7 +62,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script>
-    const API_URL = "https://gyangarbh-project.onrender.com";
+    // 🌐 Local Terminal Server URL Set up Successfully
+    const API_URL = "http://localhost:5000";
 
     function togglePass(icon) {
         const input = document.getElementById('hotelPass');
@@ -75,7 +76,7 @@
         }
     }
 
-    // ⭐ FORGOT PASSWORD (BUGS FIXED: Added missing server validations)
+    // ⭐ FORGOT PASSWORD (OTP Trigger Local Server)
     async function handleHotelForgot() {
         const { value: email } = await Swal.fire({
             title: 'Partner Reset',
@@ -88,7 +89,7 @@
         if (!email) return;
 
         try {
-            const res = await fetch(`${API_URL}/send-otp`, {
+            const res = await fetch(`${API_URL}/api/send-otp`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ email, isReset: true })
@@ -108,14 +109,14 @@
                 });
 
                 if (fv) {
-                    const vRes = await fetch(`${API_URL}/verify-otp`, {
+                    const vRes = await fetch(`${API_URL}/api/verify-otp`, {
                         method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ email, otp: fv[0] })
                     });
 
                     if (vRes.ok) {
                         const verifyData = await vRes.json();
-                        const rRes = await fetch(`${API_URL}/reset-password`, {
+                        const rRes = await fetch(`${API_URL}/api/reset-password`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ email, newPassword: fv[1], userType: 'hotel', resetToken: verifyData.resetToken })
                         });
@@ -126,7 +127,7 @@
         } catch (e) { Swal.fire('Error', 'The server is currently unavailable.', 'error'); }
     }
 
-    // ⭐ LOGIN LOGIC (BUGS FIXED: Added userRole storage)
+    // ⭐ LOGIN LOGIC (Connected to Local Server)
     async function handleHotelLogin(e) {
         e.preventDefault();
         const email = document.getElementById('hotelEmail').value;
@@ -136,7 +137,7 @@
         btn.innerText = "Authenticating..."; btn.disabled = true;
 
         try {
-            const res = await fetch(`${API_URL}/hotel-login`, {
+            const res = await fetch(`${API_URL}/api/hotel-login`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ email, password })
@@ -144,7 +145,6 @@
             const data = await res.json();
 
             if(res.ok && data.success) {
-                // FIXED: Session storage mapping
                 localStorage.setItem('hotelOwnerEmail', data.ownerEmail);
                 localStorage.setItem('hotelName', data.hotelName);
                 localStorage.setItem('userRole', 'hotel'); 

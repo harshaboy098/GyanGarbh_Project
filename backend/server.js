@@ -1,3 +1,10 @@
+const dns = require('dns');
+// 🚀 Google DNS ko force karein taaki local internet block bypass ho jaye
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
+
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
@@ -308,6 +315,10 @@ const transporter = nodemailer.createTransport({
 });
 
 const dbURL = process.env.MONGODB_URI;
+if (!dbURL) {
+    console.error('Missing MONGODB_URI environment variable. Please set it in .env or Render settings.');
+    process.exit(1);
+}
 const mongooseMajorVersion = Number((mongoose.version || '0').split('.')[0]);
 const mongooseOptions = {
     ...(mongooseMajorVersion < 6 ? { useNewUrlParser: true, useUnifiedTopology: true } : {}),
@@ -344,15 +355,14 @@ async function ensureAdminUser() {
     }
 }
 
-mongoose.connect(dbURL, mongooseOptions)
+const MONGO_URI = process.env.MONGODB_URI || "mongodb+srv://yesmukeshhere_db_user:jpc5JJcURxg5975F@gyangarbh.ylamayo.mongodb.net/GyanGarbh?retryWrites=true&w=majority&appName=GYANGRABH";
+
+mongoose.connect(MONGO_URI)
   .then(async () => {
-      console.log('🚀 Connected to Gyan Garbh Cloud Database!');
+      console.log('🚀 Connected to Gyan Garbh Database!');
       await ensureAdminUser();
   })
   .catch((err) => {
-      console.error('Mongo Error:', err.message);
-      console.error('Mongo Error Code:', err.code || 'NO_CODE');
-      console.error('Mongo Error Stack:', err.stack);
       console.error("DATABASE ERROR: ", err.message);
   });
 
@@ -487,6 +497,12 @@ app.post('/send-otp', async (req, res) => {
         res.json({ success: true, message: "OTP Sent" });
     } catch (error) {
         console.error('Send OTP error:', error);
+        // Add explicit Nodemailer error details to aid debugging
+        try {
+            console.error("Nodemailer Error Details:", error);
+        } catch (e) {
+            console.error('Failed to log Nodemailer details:', e);
+        }
         res.status(500).json({ success: false, message: "Email system error" });
     }
 });
