@@ -101,6 +101,7 @@ const hotelImageStorage = new CloudinaryStorage({
 });
 
 const uploadHotelImages = multer({ storage: hotelImageStorage });
+const uploadProfilePic = multer({ storage: hotelImageStorage });
 
 const configuredFrontendOrigins = [
     process.env.FRONTEND_URL,
@@ -764,6 +765,34 @@ app.post(['/login', '/api/login'], async (req, res) => {
         res.status(200).json({ success: true, name: user.name, email: user.email, role: user.role, sessionToken: createSessionToken(user.role, user.email) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/user/upload-profile-pic', requireSession(), uploadProfilePic.single('profilePic'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No profile picture uploaded.' });
+        }
+
+        const profilePicUrl = req.file.path || req.file.secure_url || req.file.url;
+        if (!profilePicUrl) {
+            return res.status(500).json({ success: false, message: 'Uploaded file did not return a valid URL.' });
+        }
+
+        const updatedUser = await User.findOneAndUpdate(
+            { email: normalizeEmail(req.session.email) },
+            { profilePic: profilePicUrl, updatedAt: new Date() },
+            { new: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        res.json({ success: true, message: 'Profile picture updated successfully.', profilePic: updatedUser.profilePic });
+    } catch (err) {
+        console.error('Profile picture upload error:', err);
+        res.status(500).json({ success: false, message: 'Profile picture upload failed.' });
     }
 });
 

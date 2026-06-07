@@ -56,6 +56,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: false // Google profile picture
     },
+    profilePic: {
+        type: String,
+        default: ''
+    },
     date: {
         type: Date,
         default: Date.now // Jab user banega, aaj ki date apne aap save ho jayegi
