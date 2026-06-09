@@ -103,30 +103,12 @@ const hotelImageStorage = new CloudinaryStorage({
 const uploadHotelImages = multer({ storage: hotelImageStorage });
 const uploadProfilePic = multer({ storage: hotelImageStorage });
 
-const configuredFrontendOrigins = [
-    process.env.FRONTEND_URL,
-    process.env.VERCEL_FRONTEND_URL,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-].filter(Boolean);
-
-const allowedOrigins = new Set([
-    'http://localhost:3000',
-    'http://localhost:5000',
-    'http://localhost:5500',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5000',
-    'http://127.0.0.1:5500',
-    'https://gyangarbh-project.vercel.app',
-    ...configuredFrontendOrigins
-]);
-
 const corsOptions = {
-    origin(origin, callback) {
-        if (!origin || allowedOrigins.has(origin) || /^https:\/\/gyangarbh-project(-[a-z0-9-]+)?\.vercel\.app$/i.test(origin)) {
-            return callback(null, true);
-        }
-        return callback(new Error(`CORS blocked origin: ${origin}`));
-    },
+    origin: [
+        'https://gyan-garbh-project-9dbzmsr4q-gyan-grabh-s-projects.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:5173'
+    ],
     credentials: true
 };
 
