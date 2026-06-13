@@ -353,7 +353,7 @@
         }
     })();
 
-    const API_URL = "https://gyangarbh-project.onrender.com";
+    const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
 
     // Room Prices Object
     const roomPrices = {

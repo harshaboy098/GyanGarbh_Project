@@ -144,6 +144,11 @@
       animation: none;
     }
 
+    .status-chip.connected span {
+      background: #16a34a;
+      animation: pulse 2s infinite;
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
@@ -151,7 +156,7 @@
 
     .grid-cards {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 20px;
       margin-bottom: 28px;
     }
@@ -263,6 +268,79 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+    }
+
+    .entity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+
+    .entity-card {
+      overflow: hidden;
+      border-radius: 22px;
+      background: #ffffff;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .entity-card__media {
+      aspect-ratio: 4 / 3;
+      background: linear-gradient(135deg, #dbeafe, #f8fafc);
+      overflow: hidden;
+    }
+
+    .entity-card__media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .entity-card__body {
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .entity-card__eyebrow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .entity-card__title {
+      font-size: 1.08rem;
+      line-height: 1.35;
+      color: var(--text);
+    }
+
+    .entity-card__meta {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .entity-card__actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .entity-card__actions .btn {
+      padding: 9px 12px;
+      border-radius: 11px;
     }
 
     .btn {
@@ -550,6 +628,13 @@
             <small>Support users</small>
           </div>
         </div>
+        <div class="card">
+          <h3>Bookings</h3>
+          <div class="metric">
+            <strong id="bookings-metric">0</strong>
+            <small>Reservations live</small>
+          </div>
+        </div>
       </div>
 
       <section class="section-card" id="dashboard">
@@ -601,19 +686,7 @@
             <button class="btn btn-primary" onclick="openEntityModal('hotel', 'create')">Add Hotel</button>
           </div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Owner Email</th>
-              <th>City</th>
-              <th>Rate</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="hotels-table"></tbody>
-        </table>
+        <div id="hotels-grid" class="entity-grid"></div>
       </section>
 
       <section class="section-card" id="customers" style="display:none;">
@@ -665,17 +738,7 @@
             <button class="btn btn-primary" onclick="openEntityModal('bodhipath', 'create')">Add Path</button>
           </div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Location</th>
-              <th>Price</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="bodhipaths-table"></tbody>
-        </table>
+        <div id="bodhipaths-grid" class="entity-grid"></div>
       </section>
 
       <section class="section-card" id="activity-log" style="display:none;">
@@ -716,9 +779,10 @@
     </div>
   </div>
 
+  <script src="api-client.js"></script>
   <script src="ai-navbar.js"></script>
   <script>
-    const API_URL = 'https://gyangarbh-project.onrender.com';
+    const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
     const adminEmail = sessionStorage.getItem('adminEmail') || 'sirsonu122@gmail.com';
     const adminRole = 'admin';
     let currentSection = 'dashboard';
@@ -728,6 +792,57 @@
       assistants: [],
       customers: [],
       bodhiPaths: []
+    };
+
+    const fallbackHotelImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80';
+    const fallbackBodhiImage = 'https://images.unsplash.com/photo-1519677100203-a0e668c92439?auto=format&fit=crop&w=1200&q=80';
+
+    const getAuthToken = () => localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const formatCurrency = (value) => {
+      const numericValue = Number(value);
+      return Number.isFinite(numericValue) && numericValue > 0
+        ? `₹${numericValue.toLocaleString('en-IN')}`
+        : 'Price on request';
+    };
+
+    const pickFirstImage = (...sources) => {
+      for (const source of sources.flat()) {
+        if (Array.isArray(source)) {
+          const nested = pickFirstImage(source);
+          if (nested) return nested;
+          continue;
+        }
+        const value = String(source || '').trim();
+        if (value) return value;
+      }
+      return '';
+    };
+
+    const getHotelImage = (hotel = {}) => pickFirstImage(
+      hotel.imageUrl,
+      hotel.imageUrl2,
+      hotel.imageUrl3,
+      hotel.images,
+      hotel.photoURL
+    ) || fallbackHotelImage;
+
+    const getBodhiImage = (path = {}) => pickFirstImage(
+      path.imageUrl,
+      path.images,
+      path.photoURL
+    ) || fallbackBodhiImage;
+
+    const getBodhiLocation = (path = {}) => {
+      if (typeof path.location === 'string') return path.location;
+      return path.location?.address || path.location?.name || path.location?.city || 'Location not set';
     };
 
     const sectionMap = {
@@ -759,16 +874,11 @@
       link?.click();
     }
 
-    function updateLastUpdated() {
-      const now = new Date();
-      document.getElementById('sync-status').textContent = `Last sync: ${now.toLocaleTimeString()}`;
-    }
-
     function setSyncStatus(status) {
       const statusChip = document.getElementById('live-status');
       const statusText = document.getElementById('sync-status');
       
-      statusChip.classList.remove('syncing', 'error');
+      statusChip.classList.remove('syncing', 'error', 'connected');
       
       if (status === 'syncing') {
         statusChip.classList.add('syncing');
@@ -777,18 +887,63 @@
         statusChip.classList.add('error');
         statusText.textContent = 'Sync failed';
       } else {
-        statusText.textContent = 'Live & Syncing';
+        statusChip.classList.add('connected');
+        statusText.textContent = 'Connected to Cloud Engine';
+      }
+    }
+
+    async function checkServerHealth() {
+      try {
+        setSyncStatus('syncing');
+        const response = await fetch(`${API_URL}/health`, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        if (!response.ok) throw new Error('Health check failed');
+        const data = await response.json().catch(() => ({}));
+        setSyncStatus(data.success ? 'success' : 'error');
+        return data.success === true;
+      } catch (error) {
+        console.error(error);
+        setSyncStatus('error');
+        return false;
       }
     }
 
     async function fetchJson(path, options = {}, retries = 2) {
-      const url = `${API_URL}${path}`;
+      const requestUrl = new URL(`${API_URL}${path}`);
+      const method = String(options.method || 'GET').toUpperCase();
+      const needsLegacyAdminIdentity =
+        requestUrl.pathname.startsWith('/admin/') ||
+        requestUrl.pathname.startsWith('/api/admin') ||
+        requestUrl.pathname === '/api/user/upload-profile-pic';
+      if (needsLegacyAdminIdentity) {
+        if (!requestUrl.searchParams.has('userEmail')) requestUrl.searchParams.set('userEmail', adminEmail);
+        if (!requestUrl.searchParams.has('userRole')) requestUrl.searchParams.set('userRole', adminRole);
+      }
+      const url = requestUrl.toString();
       let attempt = 0;
       let lastError = null;
+      const headers = new Headers(options.headers || {});
+      const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
+      if (!isFormData && options.body && !headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
+
+      const token = getAuthToken();
+      if (token && !headers.has('Authorization')) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
 
       while (attempt <= retries) {
         try {
-          const response = await fetch(url, options);
+          const response = await fetch(url, {
+            credentials: 'include',
+            ...options,
+            headers
+          });
           const data = await response.json().catch(() => null);
 
           if (!response.ok) {
@@ -817,32 +972,30 @@
     async function loadDashboard() {
       try {
         setSyncStatus('syncing');
-        let hadError = false;
-
-        const [users, assistants, bodhi, activity] = await Promise.all([
-          fetchJson('/admin/all-users').catch((err) => { console.error('users error', err); hadError = true; return { hotels: [], mitras: [], guests: [] }; }),
-          fetchJson('/admin/all-assistants').catch((err) => { console.error('assistants error', err); hadError = true; return { assistants: [] }; }),
-          fetchJson('/admin/all-bodhi-paths').catch((err) => { console.error('bodhi error', err); hadError = true; return { bodhiPaths: [] }; }),
-          fetchJson(`/admin/activity-log?userEmail=${encodeURIComponent(adminEmail)}&userRole=${encodeURIComponent(adminRole)}`).catch((err) => { console.error('activity log error', err); hadError = true; return { activities: [] }; })
+        const [users, assistants, bookings] = await Promise.all([
+          fetchJson('/admin/all-users'),
+          fetchJson('/admin/all-assistants'),
+          fetchJson('/admin/bookings')
         ]);
 
         const hotelCount = (users.hotels || []).length;
         const mitraCount = (users.mitras || []).length;
         const customerCount = (users.guests || []).length;
         const assistantCount = (assistants.assistants || []).length;
+        const bookingCount = (bookings.bookings || []).length;
 
         document.getElementById('hotels-metric').textContent = hotelCount;
         document.getElementById('mitras-metric').textContent = mitraCount;
         document.getElementById('customers-metric').textContent = customerCount;
         document.getElementById('assistants-metric').textContent = assistantCount;
+        document.getElementById('bookings-metric').textContent = bookingCount;
         document.getElementById('hotels-count').textContent = hotelCount;
         document.getElementById('mitras-count').textContent = mitraCount;
         document.getElementById('customers-count').textContent = customerCount;
         document.getElementById('assistants-count').textContent = assistantCount;
 
         renderHotelComparison(users.hotels || []);
-        updateLastUpdated();
-        setSyncStatus(hadError ? 'error' : 'success');
+        setSyncStatus('success');
       } catch (error) {
         console.error(error);
         setSyncStatus('error');
@@ -881,10 +1034,14 @@
           rating: hotel.rating || 0,
           description: hotel.description || '',
           status: hotel.isLocked ? 'Locked' : 'Active',
-          isLocked: hotel.isLocked
+          isLocked: hotel.isLocked,
+          imageUrl: hotel.imageUrl,
+          imageUrl2: hotel.imageUrl2,
+          imageUrl3: hotel.imageUrl3,
+          images: hotel.images || []
         }));
         adminData.hotels = rows;
-        renderTable('hotels-table', rows, 'hotel');
+        renderEntityGrid('hotels-grid', rows, 'hotel');
       } catch (error) {
         console.error(error);
       }
@@ -916,7 +1073,8 @@
           email: mitra.email,
           phone: mitra.phone || 'N/A',
           address: mitra.address || '',
-          experience: mitra.experience || 'Standard'
+          experience: mitra.experience || 'Standard',
+          imageUrl: mitra.photoURL || mitra.profilePic || mitra.imageUrl || ''
         }));
         adminData.mitras = rows;
         renderTable('mitras-table', rows, 'mitra');
@@ -931,14 +1089,19 @@
         const rows = (data.bodhiPaths || []).map((path) => ({
           _id: path._id,
           title: path.title,
-          location: path.location,
-          price: path.price,
-          duration: path.duration || '',
+          location: getBodhiLocation(path),
+          category: path.category || 'temple',
+          shortDescription: path.shortDescription || '',
+          fullDescription: path.fullDescription || '',
+          price: path.price || path.entryFee || '',
+          duration: path.duration || path.estimatedVisitTime || '',
           description: path.fullDescription || path.shortDescription || '',
-          isLocked: path.isLocked || false
+          isLocked: path.isLocked || false,
+          imageUrl: path.imageUrl,
+          images: path.images || []
         }));
         adminData.bodhiPaths = rows;
-        renderTable('bodhipaths-table', rows, 'bodhipath');
+        renderEntityGrid('bodhipaths-grid', rows, 'bodhipath');
       } catch (error) {
         console.error(error);
       }
@@ -969,8 +1132,71 @@
       const list = document.getElementById('hotel-comparison-list');
       if (!list) return;
       list.innerHTML = comparator.length
-        ? comparator.map((hotel, index) => `<li><span>${index + 1}</span><div><strong>${hotel.hotelName}</strong> � ?${hotel.roomRate || 0}</div></li>`).join('')
-        : '<li><span>�</span><div>No hotels available</div></li>';
+        ? comparator.map((hotel, index) => `<li><span>${index + 1}</span><div><strong>${escapeHtml(hotel.hotelName || '')}</strong><div style="color:var(--muted);">${formatCurrency(hotel.roomRate)}</div></div></li>`).join('')
+        : '<li><span>•</span><div>No hotels available</div></li>';
+    }
+
+    function renderEntityGrid(containerId, rows, type) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      if (!rows.length) {
+        container.innerHTML = '<div class="panel-card">No records available.</div>';
+        return;
+      }
+
+      container.innerHTML = rows.map((row) => {
+        if (type === 'hotel') {
+          return `
+            <article class="entity-card">
+              <div class="entity-card__media">
+                <img src="${escapeHtml(getHotelImage(row))}" alt="${escapeHtml(row.name)}" loading="lazy" />
+              </div>
+              <div class="entity-card__body">
+                <div class="entity-card__eyebrow">
+                  <span>${escapeHtml(row.status || 'Active')}</span>
+                  <span>${row.isLocked ? 'Protected' : 'Available'}</span>
+                </div>
+                <h4 class="entity-card__title">${escapeHtml(row.name)}</h4>
+                <div class="entity-card__meta">
+                  <div>${escapeHtml(row.location || 'Location not set')}</div>
+                  <div>${formatCurrency(row.roomRate)} · ${escapeHtml(String(row.rating || '4.0'))}★</div>
+                  <div>${escapeHtml(row.description || 'No description provided.')}</div>
+                </div>
+                <div class="entity-card__actions">
+                  <button class="btn btn-edit" onclick="openEntityModal('hotel', 'edit', '${row._id}')">Edit</button>
+                  <button class="btn btn-lock" onclick="toggleLock('hotel', '${row._id}', ${row.isLocked})">${row.isLocked ? 'Unlock' : 'Lock'}</button>
+                  <button class="btn btn-delete" onclick="deleteHotel('${row._id}')">Delete</button>
+                </div>
+              </div>
+            </article>
+          `;
+        }
+
+        return `
+          <article class="entity-card">
+            <div class="entity-card__media">
+              <img src="${escapeHtml(getBodhiImage(row))}" alt="${escapeHtml(row.title)}" loading="lazy" />
+            </div>
+            <div class="entity-card__body">
+              <div class="entity-card__eyebrow">
+                <span>Bodhi Path</span>
+                <span>${row.isLocked ? 'Protected' : 'Published'}</span>
+              </div>
+              <h4 class="entity-card__title">${escapeHtml(row.title)}</h4>
+              <div class="entity-card__meta">
+                <div>${escapeHtml(row.location || 'Location not set')}</div>
+                <div>${formatCurrency(row.price)} · ${escapeHtml(row.duration || 'Flexible duration')}</div>
+                <div>${escapeHtml(row.description || 'No description provided.')}</div>
+              </div>
+              <div class="entity-card__actions">
+                <button class="btn btn-edit" onclick="openEntityModal('bodhipath', 'edit', '${row._id}')">Edit</button>
+                <button class="btn btn-delete" onclick="deleteBodhiPath('${row._id}')">Delete</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
     }
 
     function renderTable(containerId, rows, type) {
@@ -1058,7 +1284,10 @@
           { label: 'Location', id: 'location', type: 'text', value: data.location || '' },
           { label: 'Price', id: 'price', type: 'number', value: data.price || '' },
           { label: 'Duration', id: 'duration', type: 'text', value: data.duration || '' },
-          { label: 'Description', id: 'description', type: 'textarea', value: data.description || '' }
+          { label: 'Category', id: 'category', type: 'select', value: data.category || 'temple', options: ['temple', 'history', 'monument', 'festival', 'tradition'] },
+          { label: 'Description', id: 'description', type: 'textarea', value: data.description || '' },
+          { label: 'Image URL', id: 'imageUrl', type: 'text', value: data.imageUrl || '' },
+          { label: 'Upload Image', id: 'imageUpload', type: 'file', value: '' }
         );
       }
       return fields;
@@ -1079,7 +1308,8 @@
 
       let values = {};
       if (mode === 'edit' && id) {
-        const source = adminData[type] || [];
+        const dataKey = type === 'bodhipath' ? 'bodhiPaths' : `${type}s`;
+        const source = adminData[dataKey] || adminData[type] || [];
         const currentItem = source.find((item) => item._id === id);
         if (currentItem) {
           values = currentItem;
@@ -1094,6 +1324,8 @@
             input = `<textarea id="${field.id}" name="${field.id}">${field.value}</textarea>`;
           } else if (field.type === 'file') {
             input = `<input id="${field.id}" name="${field.id}" type="file" accept="image/*" ${mode === 'create' ? 'required' : ''} />`;
+          } else if (field.type === 'select') {
+            input = `<select id="${field.id}" name="${field.id}" required>${field.options.map((option) => `<option value="${option}" ${option === field.value ? 'selected' : ''}>${option.charAt(0).toUpperCase() + option.slice(1)}</option>`).join('')}</select>`;
           } else {
             input = `<input id="${field.id}" name="${field.id}" type="${field.type}" value="${field.value}" ${field.step ? `step="${field.step}"` : ''} required />`;
           }
@@ -1122,14 +1354,56 @@
       const inputs = Array.from(document.querySelectorAll('#entity-fields [name]'));
       const payload = inputs.reduce((acc, input) => ({ ...acc, [input.name]: input.value }), {});
       const fileInput = document.querySelector('#entity-fields input[type="file"]');
-      if (fileInput?.files?.length > 0) {
-        payload.imageUrl = await toBase64(fileInput.files[0]);
+      const selectedFiles = Array.from(fileInput?.files || []);
+
+      if (type === 'hotel' && selectedFiles.length) {
+        const uploadForm = new FormData();
+        selectedFiles.forEach((file) => uploadForm.append('hotelImages', file));
+        const uploadResult = await fetchJson('/admin/upload-hotel-images', {
+          method: 'POST',
+          body: uploadForm
+        });
+        payload.imageUrl = uploadResult.images?.[0] || payload.imageUrl || '';
       }
 
-      const requiresImage = ['hotel', 'mitra', 'bodhipath'].includes(type);
-      if (requiresImage && mode === 'create' && !payload.imageUrl) {
-        alert('Please provide an image URL or upload a photo before saving.');
+      if (type === 'mitra' && selectedFiles.length) {
+        const uploadForm = new FormData();
+        uploadForm.append('profilePic', selectedFiles[0]);
+        const uploadResult = await fetchJson('/api/user/upload-profile-pic', {
+          method: 'POST',
+          body: uploadForm
+        });
+        payload.imageUrl = uploadResult.profilePic || payload.imageUrl || '';
+      }
+
+      if (type === 'bodhipath' && selectedFiles.length) {
+        const uploadForm = new FormData();
+        selectedFiles.forEach((file) => uploadForm.append('hotelImages', file));
+        const uploadResult = await fetchJson('/admin/upload-hotel-images', {
+          method: 'POST',
+          body: uploadForm
+        });
+        payload.imageUrl = uploadResult.images?.[0] || payload.imageUrl || '';
+        payload.images = uploadResult.images || [];
+      }
+
+      if (type === 'hotel' && mode === 'create' && !payload.imageUrl) {
+        alert('Please upload an image before saving the hotel.');
         return;
+      }
+
+      if (type === 'mitra' && mode === 'create' && !payload.imageUrl) {
+        alert('Please upload a profile picture before saving the mitra.');
+        return;
+      }
+
+      if (type === 'bodhipath') {
+        payload.category = payload.category || 'temple';
+        payload.shortDescription = payload.description || payload.shortDescription || 'Bodhi Path destination';
+        payload.fullDescription = payload.description || payload.fullDescription || payload.shortDescription;
+        payload.location = { address: payload.location || 'Bodh Gaya' };
+        payload.entryFee = payload.price || payload.entryFee || '';
+        payload.estimatedVisitTime = payload.duration || payload.estimatedVisitTime || '';
       }
 
       try {
@@ -1262,7 +1536,7 @@
       if (currentSection !== 'dashboard') {
         sectionMap.dashboard?.();
       }
-      updateLastUpdated();
+      checkServerHealth();
     }
 
     document.getElementById('modal-backdrop').addEventListener('click', (event) => {
@@ -1270,6 +1544,7 @@
     });
 
     async function initialize() {
+      await checkServerHealth();
       await loadDashboard();
       openSection('dashboard');
       
@@ -1294,6 +1569,9 @@
       
       // Start timer initially
       startRefreshTimer();
+      setInterval(() => {
+        if (!document.hidden) checkServerHealth();
+      }, 30000);
       
       // Pause when tab is not visible
       document.addEventListener('visibilitychange', () => {
@@ -1309,4 +1587,3 @@
   </script>
 </body>
 </html>
-

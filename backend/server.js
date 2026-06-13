@@ -103,13 +103,38 @@ const hotelImageStorage = new CloudinaryStorage({
 const uploadHotelImages = multer({ storage: hotelImageStorage });
 const uploadProfilePic = multer({ storage: hotelImageStorage });
 
+const allowedCorsOrigins = new Set([
+    'http://localhost:5000',
+    'http://localhost:3000',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://gyangarbh-project.vercel.app',
+    'https://gyan-garbh-project.vercel.app',
+    'https://gyan-garbh-project-9dbzmsr4q-gyan-grabh-s-projects.vercel.app'
+]);
+
+const isAllowedVercelOrigin = (origin) => {
+    try {
+        const { protocol, hostname } = new URL(origin);
+        return protocol === 'https:' && hostname.endsWith('.vercel.app');
+    } catch {
+        return false;
+    }
+};
+
 const corsOptions = {
-    origin: [
-        'https://gyan-garbh-project-9dbzmsr4q-gyan-grabh-s-projects.vercel.app',
-        'http://localhost:3000',
-        'http://localhost:5173'
-    ],
-    credentials: true
+    origin(origin, callback) {
+        if (!origin || allowedCorsOrigins.has(origin) || isAllowedVercelOrigin(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    optionsSuccessStatus: 204
 };
 
 const io = new Server(server, {
@@ -117,6 +142,7 @@ const io = new Server(server, {
 });
 
 app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 // Express 5 exposes req.query as a read-only property, so sanitize objects in place.
 app.use((req, res, next) => {
@@ -301,6 +327,16 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }
+};
+
+const verifyProfileUploadActor = (permission = null) => async (req, res, next) => {
+    const session = verifySessionToken(readSessionToken(req));
+    if (session) {
+        req.session = session;
+        return next();
+    }
+
+    return verifyAdminOrAssistant(permission)(req, res, next);
 };
 
 // Helper function to log activities
@@ -750,7 +786,7 @@ app.post(['/login', '/api/login'], async (req, res) => {
     }
 });
 
-app.post('/api/user/upload-profile-pic', requireSession(), uploadProfilePic.single('profilePic'), async (req, res) => {
+app.post('/api/user/upload-profile-pic', verifyProfileUploadActor('manageMitra'), uploadProfilePic.single('profilePic'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No profile picture uploaded.' });
@@ -761,17 +797,21 @@ app.post('/api/user/upload-profile-pic', requireSession(), uploadProfilePic.sing
             return res.status(500).json({ success: false, message: 'Uploaded file did not return a valid URL.' });
         }
 
-        const updatedUser = await User.findOneAndUpdate(
-            { email: normalizeEmail(req.session.email) },
-            { profilePic: profilePicUrl, updatedAt: new Date() },
-            { new: true }
-        ).select('-password');
+        if (req.session?.email) {
+            const updatedUser = await User.findOneAndUpdate(
+                { email: normalizeEmail(req.session.email) },
+                { profilePic: profilePicUrl, photoURL: profilePicUrl, updatedAt: new Date() },
+                { new: true }
+            ).select('-password');
 
-        if (!updatedUser) {
-            return res.status(404).json({ success: false, message: 'User not found.' });
+            if (!updatedUser) {
+                return res.status(404).json({ success: false, message: 'User not found.' });
+            }
+
+            return res.json({ success: true, message: 'Profile picture updated successfully.', profilePic: updatedUser.profilePic || updatedUser.photoURL });
         }
 
-        res.json({ success: true, message: 'Profile picture updated successfully.', profilePic: updatedUser.profilePic });
+        res.json({ success: true, message: 'Profile picture uploaded successfully.', profilePic: profilePicUrl });
     } catch (err) {
         console.error('Profile picture upload error:', err);
         res.status(500).json({ success: false, message: 'Profile picture upload failed.' });
@@ -917,20 +957,30 @@ app.get('/admin/all-users', verifyAdmin, async (req, res) => {
                 address: mitra.address,
                 type: 'mitra',
                 experience: mitra.experience,
+                photoURL: mitra.photoURL,
+                profilePic: mitra.profilePic,
+                imageUrl: mitra.profilePic || mitra.photoURL || '',
                 createdAt: mitra.date,
                 updatedBy: mitra.updatedBy,
                 isLocked: mitra.isLocked
             })),
             hotels: hotels.map(hotel => ({
                 _id: hotel._id,
+                hotelName: hotel.hotelName,
                 name: hotel.hotelName,
                 email: hotel.ownerEmail,
+                ownerEmail: hotel.ownerEmail,
                 phone: hotel.phone,
                 address: hotel.address,
                 type: 'hotel',
                 location: hotel.location,
                 roomRate: hotel.roomRate,
                 rating: hotel.rating,
+                description: hotel.description,
+                imageUrl: hotel.imageUrl,
+                imageUrl2: hotel.imageUrl2,
+                imageUrl3: hotel.imageUrl3,
+                images: [hotel.imageUrl, hotel.imageUrl2, hotel.imageUrl3].filter(Boolean),
                 createdAt: hotel.createdAt || new Date(),
                 updatedBy: hotel.updatedBy,
                 isLocked: hotel.isLocked
@@ -1117,6 +1167,7 @@ app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (re
             role: 'customer',
             experience: experience || '',
             photoURL: imageUrl || placeholderPhoto,
+            profilePic: imageUrl || placeholderPhoto,
             updatedBy: createdBy,
             updatedAt: new Date(),
             isLocked: false
@@ -1256,23 +1307,29 @@ app.delete('/admin/delete-hotel', verifyAdmin, async (req, res) => {
 // Update mitra details
 app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {
-        const { mitraId, name, email, phone, address, experience, updatedBy, updatedByRole } = req.body;
+        const { mitraId, name, email, phone, address, experience, imageUrl, updatedBy, updatedByRole } = req.body;
         const actorRole = await resolveActorRole(updatedBy, updatedByRole);
         if (!actorRole) {
             return res.status(403).json({ success: false, message: 'Unauthorized access' });
         }
 
+        const updateData = {
+            name,
+            email,
+            phone,
+            address,
+            experience,
+            updatedBy,
+            updatedAt: new Date()
+        };
+        if (imageUrl !== undefined) {
+            updateData.photoURL = imageUrl || '';
+            updateData.profilePic = imageUrl || '';
+        }
+
         const updatedMitra = await User.findByIdAndUpdate(
             mitraId,
-            {
-                name,
-                email,
-                phone,
-                address,
-                experience,
-                updatedBy,
-                updatedAt: new Date()
-            },
+            updateData,
             { new: true }
         );
 
