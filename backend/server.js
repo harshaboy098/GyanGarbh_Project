@@ -28,6 +28,9 @@ const Hotel = require('./models/Hotel');
 const Assistant = require('./models/Assistant');
 const BodhiPath = require('./models/BodhiPath'); 
 const ActivityLog = require('./models/ActivityLog');
+const SupportTicket = require('./models/SupportTicket');
+const Taxi = require('./models/Taxi');
+const RideRequest = require('./models/RideRequest');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[+]?[\d\s()-]{7,20}$/;
@@ -55,6 +58,41 @@ const validateBookingPayload = ({ userName, hotelName, roomType, price, checkIn,
 };
 const publicHotelQuery = (query) => query.select('-password');
 const publicUserQuery = (query) => query.select('-password');
+const publicUserFields = '-password';
+const STAFF_ROLES = ['support', 'driver'];
+const SUPPORT_TIER_BY_ROLE = {
+    support: 'tier1',
+    specialist: 'specialist',
+    assistant: 'assistant',
+    admin: 'admin'
+};
+
+const normalizePhone = (value) => String(value || '').replace(/[^\d+]/g, '').trim();
+const parseDob = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+const dateOnlyRange = (value) => {
+    const dob = parseDob(value);
+    if (!dob) return null;
+    const start = new Date(dob);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { $gte: start, $lt: end };
+};
+const buildSafeUserProfile = (user) => {
+    if (!user) return null;
+    const source = typeof user.toObject === 'function' ? user.toObject() : user;
+    delete source.password;
+    return {
+        ...source,
+        fullName: source.fullName || source.name || '',
+        villageCity: source.villageCity || source.address || '',
+        profilePic: source.profilePic || source.photoURL || ''
+    };
+};
 
 // ⭐ NAYA MODEL: Gyan Garbh Control System
 const enquirySchema = new mongoose.Schema({
@@ -279,6 +317,12 @@ const getRequestActor = async (req) => {
             return { email: assistant.email, role: 'assistant', permissions: assistant.permissions || {} };
         }
     }
+    if (['support', 'driver'].includes(requestedRole)) {
+        const staff = await User.findOne({ email, role: requestedRole, isLocked: { $ne: true } }).select('email role supportTier');
+        if (staff) {
+            return { email: staff.email, role: staff.role, permissions: {}, supportTier: staff.supportTier || 'tier1' };
+        }
+    }
     return null;
 };
 
@@ -324,6 +368,19 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
             return next();
         }
         return res.status(403).json({ success: false, message: permission ? `Assistant permission required: ${permission}` : 'Unauthorized access' });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const verifySupportActor = (allowedRoles = ['support', 'assistant', 'admin']) => async (req, res, next) => {
+    try {
+        const actor = await getRequestActor(req);
+        if (!actor || !allowedRoles.includes(actor.role)) {
+            return res.status(403).json({ success: false, message: 'Support access required' });
+        }
+        req.actor = actor;
+        return next();
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }
@@ -608,7 +665,7 @@ app.post(['/admin-login', '/api/admin-login'], async (req, res) => {
 // ---------------------------------------------------------
 
 app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
-    const { email, isReset, name, password, role, experience, phone, address, hotelName } = req.body;
+    const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, villageCity, city, pinCode, address, hotelName } = req.body;
     try {
         const normalizedEmail = String(email || '').trim().toLowerCase();
         const requestedRole = ['guest', 'mitra', 'customer', 'hotel'].includes(role) ? role : 'customer';
@@ -623,7 +680,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
         if (!isReset) {
             const hasRequiredHotelDetails = requestedRole === 'hotel' && hotelName && password;
-            const hasRequiredGuestDetails = ['guest', 'customer'].includes(requestedRole) && name && password && phone && address;
+            const hasRequiredGuestDetails = ['guest', 'customer'].includes(requestedRole) && (name || fullName) && password && phone && (address || villageCity || city);
             const hasRequiredMitraDetails = requestedRole === 'mitra' && name && password;
             const hasPendingRegistration = Boolean(pendingRegistrationStore[normalizedEmail]);
 
@@ -641,17 +698,21 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
             }
             if (!hasPendingRegistration) {
                 pendingRegistrationStore[normalizedEmail] = {
-                    name: name || hotelName,
+                    name: fullName || name || hotelName,
+                    fullName: fullName || name || hotelName,
                     email: normalizedEmail,
                     password,
                     role: cleanRole,
                     requestedRole,
                     experience: experience || "",
-                    phone: phone || "",
-                    address: address || "",
+                    phone: normalizePhone(phone),
+                    dob: parseDob(dob || dateOfBirth),
+                    villageCity: villageCity || city || address || "",
+                    pinCode: String(pinCode || '').trim(),
+                    address: villageCity || city || address || "",
                     hotelName,
                     ownerEmail: normalizedEmail,
-                    location: address || hotelName || "Bodhgaya"
+                    location: villageCity || city || address || hotelName || "Bodhgaya"
                 };
             }
         } else {
@@ -752,15 +813,19 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
         const hashedPassword = await bcrypt.hash(pending.password, 10);
         const newUser = new User({
             name: pending.name,
+            fullName: pending.fullName || pending.name,
             email: pending.email,
             password: hashedPassword,
             role: 'customer',
             experience: pending.experience,
             phone: pending.phone,
+            dob: pending.dob,
+            villageCity: pending.villageCity,
+            pinCode: pending.pinCode,
             address: pending.address
         });
         await newUser.save();
-        return res.json({ success: true, message: 'Registered successfully.', role: newUser.role, name: newUser.name, email: newUser.email, sessionToken: createSessionToken(newUser.role, newUser.email) });
+        return res.json({ success: true, message: 'Registered successfully.', role: newUser.role, userId: newUser._id, name: newUser.name, email: newUser.email, phone: newUser.phone, sessionToken: createSessionToken(newUser.role, newUser.email) });
     } catch (err) {
         console.error('Verify OTP error:', err);
         return res.status(500).json({ success: false, message: 'OTP verification failed. Please try again.' });
@@ -780,7 +845,17 @@ app.post(['/login', '/api/login'], async (req, res) => {
         if (!user) return res.status(401).json({ success: false, message: "Invalid Credentials" });
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) return res.status(401).json({ success: false, message: "Invalid Credentials" });
-        res.status(200).json({ success: true, name: user.name, email: user.email, role: user.role, sessionToken: createSessionToken(user.role, user.email) });
+        res.status(200).json({
+            success: true,
+            userId: user._id,
+            name: user.name,
+            fullName: user.fullName || user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            profilePic: user.profilePic || user.photoURL || '',
+            sessionToken: createSessionToken(user.role, user.email)
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -818,6 +893,49 @@ app.post('/api/user/upload-profile-pic', verifyProfileUploadActor('manageMitra')
     }
 });
 
+app.get('/api/user/profile', requireSession(['customer', 'mitra', 'support', 'driver', 'admin', 'assistant']), async (req, res) => {
+    try {
+        const user = await User.findOne({ email: normalizeEmail(req.session.email) }).select(publicUserFields);
+        if (!user) return res.status(404).json({ success: false, message: 'Profile not found' });
+        res.json({ success: true, profile: buildSafeUserProfile(user) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/user/profile', requireSession(['customer', 'mitra', 'support', 'driver']), async (req, res) => {
+    try {
+        const { fullName, name, dob, villageCity, city, pinCode, profilePic, phone } = req.body;
+        const updateData = { updatedAt: new Date() };
+        const finalName = String(fullName || name || '').trim();
+        if (finalName) {
+            updateData.name = finalName;
+            updateData.fullName = finalName;
+        }
+        if (dob !== undefined) updateData.dob = parseDob(dob);
+        if (villageCity !== undefined || city !== undefined) {
+            updateData.villageCity = String(villageCity || city || '').trim();
+            updateData.address = updateData.villageCity;
+        }
+        if (pinCode !== undefined) updateData.pinCode = String(pinCode || '').trim();
+        if (profilePic !== undefined) {
+            updateData.profilePic = String(profilePic || '').trim();
+            updateData.photoURL = updateData.profilePic;
+        }
+        if (phone !== undefined && req.session.role !== 'customer') updateData.phone = normalizePhone(phone);
+
+        const updatedUser = await User.findOneAndUpdate(
+            { email: normalizeEmail(req.session.email) },
+            updateData,
+            { new: true, runValidators: true }
+        ).select(publicUserFields);
+        if (!updatedUser) return res.status(404).json({ success: false, message: 'Profile not found' });
+        res.json({ success: true, message: 'Profile updated successfully', profile: buildSafeUserProfile(updatedUser) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // ⭐ GOOGLE LOGIN ENDPOINT
 app.post('/google-login', async (req, res) => {
     try {
@@ -845,28 +963,36 @@ app.post('/google-login', async (req, res) => {
             }
             return res.status(200).json({
                 success: true,
+                userId: user._id,
                 name: user.name,
+                fullName: user.fullName || user.name,
                 email: user.email,
                 role: user.role,
+                profilePic: user.profilePic || user.photoURL || '',
                 message: 'Login successful',
                 sessionToken: createSessionToken(user.role, user.email)
             });
         } else {
             const newUser = new User({
                 name: verifiedName || 'Google User',
+                fullName: verifiedName || 'Google User',
                 email: verifiedEmail,
                 password: await bcrypt.hash(Math.random().toString(36), 10),
                 role: 'customer',
                 googleId: verifiedGoogleId,
                 photoURL: verifiedPhoto,
+                profilePic: verifiedPhoto || '',
                 date: new Date()
             });
             await newUser.save();
             return res.status(201).json({
                 success: true,
+                userId: newUser._id,
                 name: newUser.name,
+                fullName: newUser.fullName || newUser.name,
                 email: newUser.email,
                 role: newUser.role,
+                profilePic: newUser.profilePic || newUser.photoURL || '',
                 message: 'Account created successfully',
                 sessionToken: createSessionToken(newUser.role, newUser.email)
             });
@@ -877,7 +1003,7 @@ app.post('/google-login', async (req, res) => {
     }
 });
 
-const mitraUserFilter = { role: 'customer', experience: { $exists: true, $ne: '' } };
+const mitraUserFilter = { $or: [{ role: 'mitra' }, { role: 'customer', experience: { $exists: true, $ne: '' } }] };
 
 app.get('/all-mitras', async (req, res) => {
     try {
@@ -1644,13 +1770,37 @@ app.post(['/reset-password', '/api/reset-password'], async (req, res) => {
 
 app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
     try {
-        const validationError = validateBookingPayload(req.body);
+        const customer = await User.findOne({ email: normalizeEmail(req.session.email) }).select('_id name fullName email phone');
+        if (!customer) return res.status(404).json({ success: false, message: 'Customer account not found' });
+
+        const requestedHotelId = String(req.body.hotelId || '').trim();
+        const hotel = mongoose.Types.ObjectId.isValid(requestedHotelId)
+            ? await Hotel.findById(requestedHotelId).select('hotelName')
+            : await Hotel.findOne({ hotelName: String(req.body.hotelName || '').trim() }).select('hotelName');
+        if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
+
+        const normalizedBookingPayload = {
+            ...req.body,
+            userId: customer._id,
+            userEmail: customer.email,
+            userName: customer.fullName || customer.name,
+            hotelId: hotel._id,
+            hotelName: hotel.hotelName
+        };
+
+        const validationError = validateBookingPayload(normalizedBookingPayload);
         if (validationError) return res.status(400).json({ success: false, message: validationError });
         const mitras = await User.find(mitraUserFilter);
         mitras.sort((a, b) => (b.experience || '').length - (a.experience || '').length);
-        const assignedMitra = mitras.length > 0 ? mitras[0].name : 'Auto-Assign';
+        const assignedMitraUser = mitras[0] || null;
+        const assignedMitra = assignedMitraUser ? assignedMitraUser.name : 'Auto-Assign';
 
-        const bookingData = { ...req.body, userEmail: req.session.email, assignedMitra };
+        const bookingData = {
+            ...normalizedBookingPayload,
+            assignedMitra,
+            assignedMitraId: assignedMitraUser?._id,
+            mitraEmail: assignedMitraUser?.email || ''
+        };
         const newBooking = new Booking(bookingData);
         await newBooking.save();
         emitRealtime('booking-created', { bookingId: newBooking._id, hotelName: newBooking.hotelName });
@@ -1789,11 +1939,19 @@ app.delete('/admin/bookings/:id', verifyAdmin, async (req, res) => {
 app.get('/all-bookings', requireSession(['admin', 'assistant', 'hotel', 'mitra', 'guest', 'customer']), async (req, res) => {
     try {
         let filter = {};
-        if (req.session.enterpriseRole === 'customer' && req.session.role !== 'mitra') filter = { userEmail: req.session.email };
-        if (req.session.role === 'mitra') filter = { $or: [{ mitraEmail: req.session.email }, { assignedMitra: req.session.email }] };
+        if (req.session.enterpriseRole === 'customer' && req.session.role !== 'mitra') {
+            const user = await User.findOne({ email: req.session.email }).select('_id');
+            filter = user ? { $or: [{ userId: user._id }, { userEmail: req.session.email }] } : { userEmail: req.session.email };
+        }
+        if (req.session.role === 'mitra') {
+            const mitra = await User.findOne({ email: req.session.email }).select('_id name email');
+            filter = mitra
+                ? { $or: [{ mitraEmail: mitra.email }, { assignedMitra: mitra.email }, { assignedMitra: mitra.name }, { assignedMitraId: mitra._id }] }
+                : { mitraEmail: req.session.email };
+        }
         if (req.session.role === 'hotel') {
-            const hotel = await Hotel.findOne({ ownerEmail: req.session.email }).select('hotelName');
-            filter = hotel ? { hotelName: hotel.hotelName } : { _id: null };
+            const hotel = await Hotel.findOne({ ownerEmail: req.session.email }).select('_id hotelName');
+            filter = hotel ? { $or: [{ hotelId: hotel._id }, { hotelName: hotel.hotelName }] } : { _id: null };
         }
         res.json(await safeSortQuery(Booking.find(filter), { createdAt: -1 }));
     } catch (err) { res.status(500).send(err.message); }
@@ -1805,11 +1963,11 @@ app.get('/mitra-bookings/:mitraEmail', requireSession(['mitra', 'admin', 'assist
         if (req.session.role === 'mitra' && normalizeEmail(req.params.mitraEmail) !== req.session.email) {
             return res.status(403).json({ success: false, message: 'Access denied' });
         }
+        const mitra = await User.findOne({ email: normalizeEmail(req.params.mitraEmail) }).select('_id name email');
         const bookings = await safeSortQuery(Booking.find({ 
-            $or: [
-                { assignedMitra: req.params.mitraEmail },
-                { mitraEmail: req.params.mitraEmail }
-            ]
+            $or: mitra
+                ? [{ assignedMitraId: mitra._id }, { assignedMitra: mitra.email }, { assignedMitra: mitra.name }, { mitraEmail: mitra.email }]
+                : [{ assignedMitra: req.params.mitraEmail }, { mitraEmail: req.params.mitraEmail }]
         }), { createdAt: -1 });
         res.json({ success: true, bookings });
     } catch (err) {
@@ -1835,9 +1993,9 @@ app.put('/update-booking-status', requireSession(['hotel', 'admin', 'assistant']
 
         const filter = { _id: bookingId };
         if (req.session.role === 'hotel') {
-            const hotel = await Hotel.findOne({ ownerEmail: req.session.email }).select('hotelName');
+            const hotel = await Hotel.findOne({ ownerEmail: req.session.email }).select('_id hotelName');
             if (!hotel) return res.status(403).json({ success: false, message: 'Hotel account not found' });
-            filter.hotelName = hotel.hotelName;
+            filter.$or = [{ hotelId: hotel._id }, { hotelName: hotel.hotelName }];
         }
 
         const updatedBooking = await Booking.findOneAndUpdate(filter, updateData, { new: true });

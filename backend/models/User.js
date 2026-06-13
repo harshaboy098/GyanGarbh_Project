@@ -1,13 +1,18 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const USER_ROLES = ['admin', 'assistant', 'customer'];
+const USER_ROLES = ['admin', 'assistant', 'support', 'driver', 'customer', 'mitra'];
 
 // Application user schema
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true
+    },
+    fullName: {
+        type: String,
+        required: true,
+        trim: true
     },
     email: {
         type: String,
@@ -22,7 +27,23 @@ const userSchema = new mongoose.Schema({
     },
     phone: {
         type: String,
-        required: false // Optional for Google login users initially
+        required: false,
+        trim: true,
+        sparse: true
+    },
+    dob: {
+        type: Date,
+        default: null
+    },
+    villageCity: {
+        type: String,
+        default: '',
+        trim: true
+    },
+    pinCode: {
+        type: String,
+        default: '',
+        trim: true
     },
     address: {
         type: String,
@@ -32,6 +53,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: USER_ROLES,
         default: 'customer'
+    },
+    supportTier: {
+        type: String,
+        enum: ['tier1', 'specialist', 'assistant', 'admin', 'none'],
+        default: 'none'
     },
     assignedHotels: {
         type: [{
@@ -67,6 +93,16 @@ const userSchema = new mongoose.Schema({
     updatedBy: { type: String, default: null },
     updatedAt: { type: Date, default: Date.now },
     isLocked: { type: Boolean, default: false }
+});
+
+userSchema.index({ phone: 1 }, { unique: true, sparse: true });
+userSchema.index({ name: 1, dob: 1, phone: 1 });
+
+userSchema.pre('validate', function(next) {
+    if (!this.fullName && this.name) this.fullName = this.name;
+    if (!this.name && this.fullName) this.name = this.fullName;
+    if (this.address && !this.villageCity) this.villageCity = this.address;
+    next();
 });
 
 // Hash only when the password field is actually changed.
