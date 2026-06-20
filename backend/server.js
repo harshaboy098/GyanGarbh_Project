@@ -605,10 +605,24 @@ async function ensureAdminUser() {
     }
 }
 
+async function ensureOperationalIndexes() {
+    try {
+        const indexes = await User.collection.indexes();
+        const legacyUniquePhoneIndex = indexes.find((index) => index.unique && index.key && index.key.phone === 1);
+        if (legacyUniquePhoneIndex) {
+            await User.collection.dropIndex(legacyUniquePhoneIndex.name);
+            console.log(`Dropped legacy unique phone index: ${legacyUniquePhoneIndex.name}`);
+        }
+    } catch (err) {
+        console.warn('Operational index maintenance skipped:', err.message);
+    }
+}
+
 mongoose.connect(MONGO_URI, mongooseOptions)
   .then(async () => {
       console.log('🚀 Connected to Gyan Garbh Database!');
       await ensureAdminUser();
+      await ensureOperationalIndexes();
   })
   .catch((err) => {
       console.error("DATABASE ERROR: ", err.message);
@@ -832,7 +846,17 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
         return res.json({ success: true, message: 'Registered successfully.', role: newUser.role, userId: newUser._id, name: newUser.name, email: newUser.email, phone: newUser.phone, sessionToken: createSessionToken(newUser.role, newUser.email) });
     } catch (err) {
         console.error('Verify OTP error:', err);
-        return res.status(500).json({ success: false, message: 'OTP verification failed. Please try again.' });
+        if (err && err.code === 11000) {
+            const duplicatedField = Object.keys(err.keyPattern || err.keyValue || {})[0] || 'account field';
+            return res.status(409).json({
+                success: false,
+                message: `${duplicatedField} is already linked with another account. Please use a different value or login instead.`
+            });
+        }
+        if (err && err.name === 'ValidationError') {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+        return res.status(500).json({ success: false, message: err.message || 'OTP verification failed. Please try again.' });
     }
 });
 

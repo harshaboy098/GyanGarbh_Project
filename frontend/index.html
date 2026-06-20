@@ -451,10 +451,15 @@
     }
 
     async function verifyAndRegister() {
-        const otp = document.getElementById('regOTPInput').value.trim();
+        const otp = document.getElementById('regOTPInput').value.replace(/\D/g, '').trim();
         
         if (!lastEmailForOTP) {
             Swal.fire('Error', 'Session validation failed. Please restart signup.', 'error');
+            return;
+        }
+
+        if (otp.length !== 6) {
+            Swal.fire('Error', 'Please enter the 6-digit OTP exactly as shown in your email.', 'error');
             return;
         }
 
@@ -464,7 +469,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: lastEmailForOTP, otp: otp })
             });
-            const data = await vRes.json();
+            const data = await vRes.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
 
             if (vRes.ok && data.success) {
                 localStorage.setItem('userEmail', lastEmailForOTP);
@@ -483,7 +488,7 @@
                 Swal.fire('Error', data.message || 'Incorrect OTP code.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Registration process failed.', 'error');
+            Swal.fire('Error', e.message || 'Registration process failed.', 'error');
         }
     }
 
