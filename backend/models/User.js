@@ -109,19 +109,13 @@ userSchema.pre('validate', function(next) {
     next();
 });
 
-// Hash only when the password field is actually changed.
-// Bulletproof try-catch block with explicit next function parameters to prevent server crashes
-userSchema.pre('save', async function(next) {
-    try {
-        if (!this.isModified('password')) return next();
-        if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return next();
+// Modern Mongoose Async Pre-Save Hook (Zero parameter conflicts)
+userSchema.pre('save', async function() {
+    if (!this.isModified('password')) return;
+    if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return;
 
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (err) {
-        next(err);
-    }
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
 });
 
 userSchema.methods.comparePassword = async function(enteredPassword) {
