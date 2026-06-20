@@ -639,7 +639,7 @@ app.get('/health', (req, res) => {
 });
 
 // ---------------------------------------------------------
-// --- � ADMIN LOGIN ROUTE ---
+// --- 🔑 ADMIN LOGIN ROUTE ---
 // ---------------------------------------------------------
 
 app.post(['/admin-login', '/api/admin-login'], async (req, res) => {
@@ -677,7 +677,7 @@ app.post(['/admin-login', '/api/admin-login'], async (req, res) => {
 });
 
 // ---------------------------------------------------------
-// --- �🔐 OTP ROUTES (Signup + Reset) ---
+// --- 📩🔐 OTP ROUTES (Signup + Reset) ---
 // ---------------------------------------------------------
 
 app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
@@ -792,16 +792,18 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
         }
 
         if (record.expiresAt < Date.now()) {
-            clearTimeout(record.timeoutId);
+            if (record.timeoutId) clearTimeout(record.timeoutId);
             delete otpStore[normalizedEmail];
             delete pendingRegistrationStore[normalizedEmail];
             return res.status(400).json({ success: false, message: 'OTP expired. Please request a new code.' });
         }
 
-        clearTimeout(record.timeoutId);
-        delete otpStore[normalizedEmail];
         const pending = pendingRegistrationStore[normalizedEmail];
+        
+        // 🔒 FORGOT PASSWORD / PASSWORD RESET FLOW
         if (!pending) {
+            if (record.timeoutId) clearTimeout(record.timeoutId);
+            delete otpStore[normalizedEmail];
             const resetToken = crypto.randomBytes(32).toString('hex');
             resetAuthorizationStore[normalizedEmail] = {
                 tokenHash: crypto.createHash('sha256').update(resetToken).digest('hex'),
@@ -810,7 +812,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
             return res.json({ success: true, message: 'OTP verified successfully.', resetToken });
         }
 
-        delete pendingRegistrationStore[normalizedEmail];
+        // 🔒 NEW HOTEL PARTNER ACCOUNT CREATION
         if (pending.role === 'hotel') {
             const hashedPassword = await bcrypt.hash(pending.password, 10);
             const newHotel = new Hotel({
@@ -826,8 +828,16 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
                 description: `Welcome to ${pending.hotelName}`
             });
             await newHotel.save();
+            
+            // Delete cache only AFTER successful database storage
+            if (record.timeoutId) clearTimeout(record.timeoutId);
+            delete otpStore[normalizedEmail];
+            delete pendingRegistrationStore[normalizedEmail];
+            
             return res.json({ success: true, message: 'Hotel owner registered successfully.', role: 'hotel', name: pending.name, email: pending.email, sessionToken: createSessionToken('hotel', pending.email) });
         }
+        
+        // 🔒 NEW CUSTOMER / MITRA REGISTRATION
         const hashedPassword = await bcrypt.hash(pending.password, 10);
         const newUser = new User({
             name: pending.name,
@@ -843,6 +853,12 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
             address: pending.address
         });
         await newUser.save();
+        
+        // Delete cache only AFTER successful database storage
+        if (record.timeoutId) clearTimeout(record.timeoutId);
+        delete otpStore[normalizedEmail];
+        delete pendingRegistrationStore[normalizedEmail];
+        
         return res.json({ success: true, message: 'Registered successfully.', role: newUser.role, userId: newUser._id, name: newUser.name, email: newUser.email, phone: newUser.phone, sessionToken: createSessionToken(newUser.role, newUser.email) });
     } catch (err) {
         console.error('Verify OTP error:', err);
@@ -1163,12 +1179,12 @@ app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (re
     try {
         const { hotelId, hotelName, ownerEmail, phone, address, location, roomRate, rating, description, totalRooms, acRoomPrice, nonAcRoomPrice, facilities, imageUrl, imageUrl2, imageUrl3, updatedBy, updatedByRole } = req.body;
 
-        const actorRole = await resolveActorRole(updatedBy, updatedByRole);
+        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
         if (!actorRole) {
             return res.status(403).json({ success: false, message: 'Unauthorized access' });
         }
 
-        const updateData = { updatedBy, updatedAt: new Date() };
+        const updateData = { updatedBy: updatedBy || req.actor?.email, updatedAt: new Date() };
         if (hotelName !== undefined) updateData.hotelName = hotelName;
         if (ownerEmail !== undefined) updateData.ownerEmail = ownerEmail;
         if (phone !== undefined) updateData.phone = phone;
@@ -1192,10 +1208,10 @@ app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (re
         }
 
         // Log activity
-        await logActivity('UPDATE', 'Hotel', hotelId, updatedHotel.hotelName, updatedBy, actorRole, { 
+        await logActivity('UPDATE', 'Hotel', hotelId, updatedHotel.hotelName, updatedBy || req.actor?.email, actorRole, { 
             phone, address, location, rating, description, totalRooms 
         });
-        emitRealtime('hotel-updated', { hotel: updatedHotel, updatedBy, actorRole });
+        emitRealtime('hotel-updated', { hotel: updatedHotel, updatedBy: updatedBy || req.actor?.email, actorRole });
 
         res.json({ success: true, message: 'Hotel updated successfully', hotel: updatedHotel });
     } catch (err) {
@@ -1208,9 +1224,9 @@ app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (re
 app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
     try {
         const { hotelName, ownerEmail, phone, address, location, roomRate, rating, description, totalRooms, acRoomPrice, nonAcRoomPrice, facilities, imageUrl, imageUrl2, imageUrl3, createdBy, createdByRole } = req.body;
-        const actorRole = await resolveActorRole(createdBy, createdByRole);
+        const actorRole = await resolveActorRole(createdBy || req.actor?.email, createdByRole || req.actor?.role);
         if (!actorRole) {
-            await logSecurityEvent('Unauthorized Hotel Creation', hotelName || 'Unknown Hotel', createdBy || 'unknown', createdByRole || 'unknown', 'Actor cannot create hotels');
+            await logSecurityEvent('Unauthorized Hotel Creation', hotelName || 'Unknown Hotel', createdBy || req.actor?.email || 'unknown', createdByRole || req.actor?.role || 'unknown', 'Actor cannot create hotels');
             return res.status(403).json({ success: false, message: 'Unauthorized to create hotels' });
         }
 
@@ -1249,12 +1265,12 @@ app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (r
             imageUrl2: imageUrl2 || '',
             imageUrl3: imageUrl3 || '',
             isLocked: false,
-            updatedBy: createdBy,
+            updatedBy: createdBy || req.actor?.email,
             updatedAt: new Date()
         });
         await newHotel.save();
-        await logActivity('CREATE', 'Hotel', newHotel._id, hotelName, createdBy, actorRole);
-        emitRealtime('hotel-created', { hotel: newHotel, createdBy, actorRole });
+        await logActivity('CREATE', 'Hotel', newHotel._id, hotelName, createdBy || req.actor?.email, actorRole);
+        emitRealtime('hotel-created', { hotel: newHotel, createdBy: createdBy || req.actor?.email, actorRole });
         res.status(201).json({
             success: true,
             message: 'Hotel created successfully',
@@ -1293,14 +1309,14 @@ app.post('/admin/upload-hotel-images', verifyAdminOrAssistant('manageHotels'), u
 app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {
         const { name, email, phone, address, experience, imageUrl, createdBy, createdByRole } = req.body;
-        const actorRole = await resolveActorRole(createdBy, createdByRole);
+        const actorRole = await resolveActorRole(createdBy || req.actor?.email, createdByRole || req.actor?.role);
         if (!actorRole) {
-            await logSecurityEvent('Unauthorized Mitra Creation', name || 'Unknown Mitra', createdBy || 'unknown', createdByRole || 'unknown', 'Actor cannot create mitras');
+            await logSecurityEvent('Unauthorized Mitra Creation', name || 'Unknown Mitra', createdBy || req.actor?.email || 'unknown', createdByRole || req.actor?.role || 'unknown', 'Actor cannot create mitras');
             return res.status(403).json({ success: false, message: 'Unauthorized to create mitras' });
         }
 
         if (!name || !isValidEmail(email) || !isValidPhone(phone)) {
-            return res.status(400).json({ success: false, message: 'Name and email are required' });
+            return res.status(400).json({ success: false, message: 'Name, valid email and active mobile number are required.' });
         }
 
         const normalizedEmail = String(email).trim().toLowerCase();
@@ -1323,14 +1339,14 @@ app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (re
             experience: experience || '',
             photoURL: imageUrl || placeholderPhoto,
             profilePic: imageUrl || placeholderPhoto,
-            updatedBy: createdBy,
+            updatedBy: createdBy || req.actor?.email,
             updatedAt: new Date(),
             isLocked: false
         });
 
         await newMitra.save();
-        await logActivity('CREATE', 'Mitra', newMitra._id, newMitra.name, createdBy, actorRole);
-        emitRealtime('mitra-created', { mitra: newMitra, createdBy, actorRole });
+        await logActivity('CREATE', 'Mitra', newMitra._id, newMitra.name, createdBy || req.actor?.email, actorRole);
+        emitRealtime('mitra-created', { mitra: newMitra, createdBy: createdBy || req.actor?.email, actorRole });
 
         res.status(201).json({
             success: true,
@@ -1408,13 +1424,13 @@ app.put('/update-hotel-status', requireSession(['hotel']), async (req, res) => {
     }
 });
 
-// DELETE HOTEL - existing code follows
+// DELETE HOTEL - permanent removal block
 app.delete('/admin/delete-hotel', verifyAdmin, async (req, res) => {
     try {
         const { hotelId, deletedBy, deletedByRole } = req.body;
 
         // ⭐ ADMIN ONLY - Assistants cannot delete
-        if (!verifyAdminOnly(deletedBy, deletedByRole)) {
+        if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Only Admin can delete hotels permanently' 
@@ -1445,12 +1461,12 @@ app.delete('/admin/delete-hotel', verifyAdmin, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Hotel not found' });
         }
 
-        // Remove associated non-active bookings and orphaned logs
+        // Remove associated records cleanly
         await Booking.deleteMany({ hotelName: deletedHotel.hotelName });
         await ActivityLog.deleteMany({ $or: [ { entityType: 'Hotel', entityId: hotelId }, { performedBy: deletedHotel.ownerEmail }, { performedBy: deletedHotel.email }] });
 
-        await logActivity('DELETE', 'Hotel', hotelId, deletedHotel.hotelName, deletedBy, deletedByRole);
-        emitRealtime('hotel-deleted', { hotelId, hotelName: deletedHotel.hotelName, deletedBy });
+        await logActivity('DELETE', 'Hotel', hotelId, deletedHotel.hotelName, deletedBy || req.actor?.email, deletedByRole || req.actor?.role);
+        emitRealtime('hotel-deleted', { hotelId, hotelName: deletedHotel.hotelName, deletedBy: deletedBy || req.actor?.email });
 
         res.json({ success: true, message: 'Hotel deleted successfully and related records cleaned up' });
     } catch (err) {
@@ -1463,7 +1479,7 @@ app.delete('/admin/delete-hotel', verifyAdmin, async (req, res) => {
 app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {
         const { mitraId, name, email, phone, address, experience, imageUrl, updatedBy, updatedByRole } = req.body;
-        const actorRole = await resolveActorRole(updatedBy, updatedByRole);
+        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
         if (!actorRole) {
             return res.status(403).json({ success: false, message: 'Unauthorized access' });
         }
@@ -1474,7 +1490,7 @@ app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req
             phone,
             address,
             experience,
-            updatedBy,
+            updatedBy: updatedBy || req.actor?.email,
             updatedAt: new Date()
         };
         if (imageUrl !== undefined) {
@@ -1492,8 +1508,8 @@ app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req
             return res.status(404).json({ success: false, message: 'Mitra not found' });
         }
 
-        await logActivity('UPDATE', 'Mitra', mitraId, updatedMitra.name, updatedBy, actorRole, { email, phone, address, experience });
-        emitRealtime('mitra-updated', { mitra: updatedMitra, updatedBy, actorRole });
+        await logActivity('UPDATE', 'Mitra', mitraId, updatedMitra.name, updatedBy || req.actor?.email, actorRole, { email, phone, address, experience });
+        emitRealtime('mitra-updated', { mitra: updatedMitra, updatedBy: updatedBy || req.actor?.email, actorRole });
 
         res.json({ success: true, message: 'Mitra updated successfully', mitra: updatedMitra });
     } catch (err) {
@@ -1506,7 +1522,7 @@ app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req
 app.delete('/admin/delete-mitra', verifyAdmin, async (req, res) => {
     try {
         const { mitraId, deletedBy, deletedByRole } = req.body;
-        if (!verifyAdminOnly(deletedBy, deletedByRole)) {
+        if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
             return res.status(403).json({ success: false, message: 'Only Admin can delete mitras permanently' });
         }
 
@@ -1535,8 +1551,8 @@ app.delete('/admin/delete-mitra', verifyAdmin, async (req, res) => {
             { performedBy: deletedMitra.email }
         ] });
 
-        await logActivity('DELETE', 'Mitra', mitraId, deletedMitra.name, deletedBy, deletedByRole);
-        emitRealtime('mitra-deleted', { mitraId, name: deletedMitra.name, deletedBy });
+        await logActivity('DELETE', 'Mitra', mitraId, deletedMitra.name, deletedBy || req.actor?.email, deletedByRole || req.actor?.role);
+        emitRealtime('mitra-deleted', { mitraId, name: deletedMitra.name, deletedBy: deletedBy || req.actor?.email });
 
         res.json({ success: true, message: 'Mitra deleted successfully and related records cleaned up' });
     } catch (err) {
@@ -1549,7 +1565,7 @@ app.delete('/admin/delete-mitra', verifyAdmin, async (req, res) => {
 app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
     try {
         const { customerId, customerName, customerEmail, customerPhone, status, updatedBy, updatedByRole } = req.body;
-        const actorRole = await resolveActorRole(updatedBy, updatedByRole);
+        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
         if (!actorRole) {
             return res.status(403).json({ success: false, message: 'Unauthorized access' });
         }
@@ -1561,7 +1577,7 @@ app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), asy
                 customerEmail,
                 customerPhone,
                 status,
-                updatedBy,
+                updatedBy: updatedBy || req.actor?.email,
                 updatedAt: new Date()
             },
             { new: true }
@@ -1571,8 +1587,8 @@ app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), asy
             return res.status(404).json({ success: false, message: 'Customer not found' });
         }
 
-        await logActivity('UPDATE', 'Customer', customerId, updatedCustomer.customerName, updatedBy, actorRole, { customerEmail, customerPhone, status });
-        emitRealtime('customer-updated', { customer: updatedCustomer, updatedBy, actorRole });
+        await logActivity('UPDATE', 'Customer', customerId, updatedCustomer.customerName, updatedBy || req.actor?.email, actorRole, { customerEmail, customerPhone, status });
+        emitRealtime('customer-updated', { customer: updatedCustomer, updatedBy: updatedBy || req.actor?.email, actorRole });
 
         res.json({ success: true, message: 'Customer updated successfully', customer: updatedCustomer });
     } catch (err) {
@@ -1585,7 +1601,7 @@ app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), asy
 app.delete('/admin/delete-customer', verifyAdmin, async (req, res) => {
     try {
         const { customerId, deletedBy, deletedByRole } = req.body;
-        if (!verifyAdminOnly(deletedBy, deletedByRole)) {
+        if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
             return res.status(403).json({ success: false, message: 'Only Admin can delete customers permanently' });
         }
 
@@ -1595,8 +1611,8 @@ app.delete('/admin/delete-customer', verifyAdmin, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Customer not found' });
         }
 
-        await logActivity('DELETE', 'Customer', customerId, deletedCustomer.customerName, deletedBy, deletedByRole);
-        emitRealtime('customer-deleted', { customerId, customerName: deletedCustomer.customerName, deletedBy });
+        await logActivity('DELETE', 'Customer', customerId, deletedCustomer.customerName, deletedBy || req.actor?.email, deletedByRole || req.actor?.role);
+        emitRealtime('customer-deleted', { customerId, customerName: deletedCustomer.customerName, deletedBy: deletedBy || req.actor?.email });
 
         res.json({ success: true, message: 'Customer deleted successfully' });
     } catch (err) {
@@ -1608,13 +1624,13 @@ app.delete('/admin/delete-customer', verifyAdmin, async (req, res) => {
 app.put('/admin/toggle-lock', verifyAdmin, async (req, res) => {
     try {
         const { entityType, entityId, isLocked, updatedBy, updatedByRole } = req.body;
-        const actorRole = await resolveActorRole(updatedBy, updatedByRole);
+        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
         if (!actorRole) {
             return res.status(403).json({ success: false, message: 'Unauthorized access' });
         }
 
         const locked = Boolean(isLocked);
-        const update = { isLocked: locked, updatedBy, updatedAt: new Date() };
+        const update = { isLocked: locked, updatedBy: updatedBy || req.actor?.email, updatedAt: new Date() };
         let model = null;
         let entityName = '';
 
@@ -1633,8 +1649,8 @@ app.put('/admin/toggle-lock', verifyAdmin, async (req, res) => {
 
         entityName = entity.hotelName || entity.customerName || entity.name || entity.title || entityId;
         const logType = entityType === 'hotel' ? 'Hotel' : entityType === 'customer' ? 'Customer' : entityType === 'mitra' ? 'Mitra' : 'BodhiPath';
-        await logActivity('TOGGLE_STATUS', logType, entityId, entityName, updatedBy, actorRole, { isLocked: locked });
-        emitRealtime(`${entityType}-lock-updated`, { entityType, entityId, entityName, isLocked: locked, updatedBy });
+        await logActivity('TOGGLE_STATUS', logType, entityId, entityName, updatedBy || req.actor?.email, actorRole, { isLocked: locked });
+        emitRealtime(`${entityType}-lock-updated`, { entityType, entityId, entityName, isLocked: locked, updatedBy: updatedBy || req.actor?.email });
 
         res.json({ success: true, message: `${entityName} ${locked ? 'locked' : 'unlocked'} successfully`, item: entity });
     } catch (err) {
@@ -1747,14 +1763,12 @@ app.post('/admin/add-room', verifyAdminOrAssistant('manageHotels'), async (req, 
         }
 
         if (hotel) {
-            // Remove ownerEmail from roomData before pushing
             const { ownerEmail, ...roomToAdd } = roomData;
             hotel.rooms.push(roomToAdd);
             await hotel.save();
             return res.status(200).json({ success: true, message: 'Room added to hotel.' });
         }
 
-        // Demo fallback if no hotel found
         return res.status(200).json({ success: true, message: 'Room data received by backend.' });
     } catch (err) {
         console.error('admin/add-room error:', err);
@@ -2152,6 +2166,7 @@ app.get('/admin/all-assistants', verifyAdmin, async (req, res) => {
         const assistants = await Assistant.find().select('-password');
         res.json({ success: true, assistants });
     } catch (err) {
+        optionsStatus = 500;
         res.status(500).json({ success: false, message: err.message });
     }
 });
@@ -2311,7 +2326,7 @@ app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
         const { assistantId, deletedBy, deletedByRole } = req.body;
 
         // ⭐ ADMIN ONLY - Assistants cannot delete other assistants
-        if (deletedByRole !== 'admin' || deletedBy !== ADMIN_EMAIL) {
+        if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Only Admin can delete assistants permanently' 
@@ -2329,8 +2344,8 @@ app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
             { performedBy: deletedAssistant.email }
         ] });
 
-        await logActivity('DELETE', 'Assistant', assistantId, deletedAssistant.name, deletedBy, deletedByRole);
-        emitRealtime('assistant-deleted', { assistantId, name: deletedAssistant.name, deletedBy });
+        await logActivity('DELETE', 'Assistant', assistantId, deletedAssistant.name, deletedBy || req.actor?.email, deletedByRole || req.actor?.role);
+        emitRealtime('assistant-deleted', { assistantId, name: deletedAssistant.name, deletedBy: deletedBy || req.actor?.email });
 
         res.json({ success: true, message: 'Assistant deleted successfully and related audit records cleaned up' });
     } catch (err) {
@@ -2384,7 +2399,7 @@ app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) 
     try {
         const { title, category, shortDescription, fullDescription, significance, historicalFacts, location, imageUrl, images, bestTimeToVisit, visitingHours, entryFee, estimatedVisitTime, relatedTemples, spiritualSignificance, createdBy, createdByRole } = req.body;
 
-        const actorRole = await resolveActorRole(createdBy, createdByRole);
+        const actorRole = await resolveActorRole(createdBy || req.actor?.email, createdByRole || req.actor?.role);
         if (!actorRole) {
             return res.status(401).json({ success: false, message: 'Unauthorized access' });
         }
@@ -2405,12 +2420,12 @@ app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) 
             estimatedVisitTime,
             relatedTemples: relatedTemples || [],
             spiritualSignificance,
-            updatedBy: createdBy
+            updatedBy: createdBy || req.actor?.email
         });
 
         await newBodhiPath.save();
-        await logActivity('CREATE', 'BodhiPath', newBodhiPath._id, title, createdBy, actorRole);
-        emitRealtime('bodhi-path-created', { bodhiPath: newBodhiPath, createdBy, actorRole });
+        await logActivity('CREATE', 'BodhiPath', newBodhiPath._id, title, createdBy || req.actor?.email, actorRole);
+        emitRealtime('bodhi-path-created', { bodhiPath: newBodhiPath, createdBy: createdBy || req.actor?.email, actorRole });
         res.status(201).json({
             success: true,
             message: 'Bodhi Path entry created successfully',
@@ -2427,7 +2442,7 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) =
     try {
         const { bodhiPathId, title, category, shortDescription, fullDescription, significance, historicalFacts, location, imageUrl, images, bestTimeToVisit, visitingHours, entryFee, estimatedVisitTime, relatedTemples, spiritualSignificance, updatedBy, updatedByRole } = req.body;
 
-        const actorRole = await resolveActorRole(updatedBy, updatedByRole);
+        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
         if (!actorRole) {
             return res.status(401).json({ success: false, message: 'Unauthorized access' });
         }
@@ -2450,7 +2465,7 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) =
                 estimatedVisitTime,
                 relatedTemples: relatedTemples || [],
                 spiritualSignificance,
-                updatedBy,
+                updatedBy: updatedBy || req.actor?.email,
                 updatedAt: new Date()
             },
             { new: true }
@@ -2461,10 +2476,10 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) =
         }
 
         // Log activity
-        await logActivity('UPDATE', 'BodhiPath', bodhiPathId, title, updatedBy, actorRole, { 
+        await logActivity('UPDATE', 'BodhiPath', bodhiPathId, title, updatedBy || req.actor?.email, actorRole, { 
             category, shortDescription 
         });
-        emitRealtime('bodhi-path-updated', { bodhiPath: updatedBodhiPath, updatedBy, actorRole });
+        emitRealtime('bodhi-path-updated', { bodhiPath: updatedBodhiPath, updatedBy: updatedBy || req.actor?.email, actorRole });
 
         res.json({
             success: true,
@@ -2481,7 +2496,7 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) =
 app.delete('/admin/bodhi-path/delete', verifyAdmin, async (req, res) => {
     try {
         const { bodhiPathId, deletedBy, deletedByRole } = req.body;
-        if (!verifyAdminOnly(deletedBy, deletedByRole)) {
+        if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
             return res.status(403).json({ success: false, message: 'Only Admin can delete Bodhi Path entries permanently' });
         }
 
@@ -2491,8 +2506,8 @@ app.delete('/admin/bodhi-path/delete', verifyAdmin, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Bodhi Path entry not found' });
         }
 
-        await logActivity('DELETE', 'BodhiPath', bodhiPathId, deletedBodhiPath.title, deletedBy, deletedByRole);
-        emitRealtime('bodhi-path-deleted', { bodhiPathId, title: deletedBodhiPath.title, deletedBy });
+        await logActivity('DELETE', 'BodhiPath', bodhiPathId, deletedBodhiPath.title, deletedBy || req.actor?.email, deletedByRole || req.actor?.role);
+        emitRealtime('bodhi-path-deleted', { bodhiPathId, title: deletedBodhiPath.title, deletedBy: deletedBy || req.actor?.email });
 
         res.json({ success: true, message: 'Bodhi Path entry deleted successfully' });
     } catch (err) {
