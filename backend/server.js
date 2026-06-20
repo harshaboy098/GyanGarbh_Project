@@ -375,6 +375,8 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
 
 const verifySupportActor = (allowedRoles = ['support', 'assistant', 'admin']) => async (req, res, next) => {
     try {
+        const session = verifySessionToken(readSessionToken(req));
+        if (session) req.session = session;
         const actor = await getRequestActor(req);
         if (!actor || !allowedRoles.includes(actor.role)) {
             return res.status(403).json({ success: false, message: 'Support access required' });
@@ -665,7 +667,7 @@ app.post(['/admin-login', '/api/admin-login'], async (req, res) => {
 // ---------------------------------------------------------
 
 app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
-    const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, villageCity, city, pinCode, address, hotelName } = req.body;
+    const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, village, villageCity, city, pinCode, pincode, pin, address, hotelName } = req.body;
     try {
         const normalizedEmail = String(email || '').trim().toLowerCase();
         const requestedRole = ['guest', 'mitra', 'customer', 'hotel'].includes(role) ? role : 'customer';
@@ -680,7 +682,9 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
         if (!isReset) {
             const hasRequiredHotelDetails = requestedRole === 'hotel' && hotelName && password;
-            const hasRequiredGuestDetails = ['guest', 'customer'].includes(requestedRole) && (name || fullName) && password && phone && (address || villageCity || city);
+            const resolvedVillageCity = villageCity || village || city || address;
+            const resolvedPinCode = pinCode || pincode || pin;
+            const hasRequiredGuestDetails = ['guest', 'customer'].includes(requestedRole) && (name || fullName) && password && phone && resolvedVillageCity;
             const hasRequiredMitraDetails = requestedRole === 'mitra' && name && password;
             const hasPendingRegistration = Boolean(pendingRegistrationStore[normalizedEmail]);
 
@@ -707,12 +711,12 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
                     experience: experience || "",
                     phone: normalizePhone(phone),
                     dob: parseDob(dob || dateOfBirth),
-                    villageCity: villageCity || city || address || "",
-                    pinCode: String(pinCode || '').trim(),
-                    address: villageCity || city || address || "",
+                    villageCity: resolvedVillageCity || "",
+                    pinCode: String(resolvedPinCode || '').trim(),
+                    address: address || resolvedVillageCity || "",
                     hotelName,
                     ownerEmail: normalizedEmail,
-                    location: villageCity || city || address || hotelName || "Bodhgaya"
+                    location: resolvedVillageCity || hotelName || "Bodhgaya"
                 };
             }
         } else {
@@ -905,7 +909,7 @@ app.get('/api/user/profile', requireSession(['customer', 'mitra', 'support', 'dr
 
 app.put('/api/user/profile', requireSession(['customer', 'mitra', 'support', 'driver']), async (req, res) => {
     try {
-        const { fullName, name, dob, villageCity, city, pinCode, profilePic, phone } = req.body;
+        const { fullName, name, dob, villageCity, city, pinCode, profilePic, phone, bio } = req.body;
         const updateData = { updatedAt: new Date() };
         const finalName = String(fullName || name || '').trim();
         if (finalName) {
@@ -918,6 +922,7 @@ app.put('/api/user/profile', requireSession(['customer', 'mitra', 'support', 'dr
             updateData.address = updateData.villageCity;
         }
         if (pinCode !== undefined) updateData.pinCode = String(pinCode || '').trim();
+        if (bio !== undefined) updateData.bio = String(bio || '').trim();
         if (profilePic !== undefined) {
             updateData.profilePic = String(profilePic || '').trim();
             updateData.photoURL = updateData.profilePic;
@@ -2138,7 +2143,29 @@ app.get('/admin/all-hotels', verifyAdminOrAssistant('manageHotels'), async (req,
 
 app.get('/admin/all-customers', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
     try {
-        const customers = await Enquiry.find().sort({ createdAt: -1 });
+        const registeredCustomers = await User.find({ role: 'customer', $or: [{ experience: '' }, { experience: { $exists: false } }] })
+            .select(publicUserFields)
+            .sort({ date: -1 });
+        const enquiryCustomers = await Enquiry.find().sort({ createdAt: -1 });
+        const customers = [
+            ...registeredCustomers.map((customer) => ({
+                ...buildSafeUserProfile(customer),
+                customerName: customer.fullName || customer.name,
+                customerEmail: customer.email,
+                customerPhone: customer.phone,
+                source: 'registered'
+            })),
+            ...enquiryCustomers.map((enquiry) => ({
+                _id: enquiry._id,
+                customerName: enquiry.customerName,
+                customerEmail: enquiry.customerEmail,
+                customerPhone: enquiry.customerPhone,
+                status: enquiry.status,
+                isLocked: enquiry.isLocked,
+                source: 'enquiry',
+                createdAt: enquiry.createdAt
+            }))
+        ];
         res.json({ success: true, customers });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -2149,6 +2176,69 @@ app.get('/admin/all-mitras', verifyAdminOrAssistant('manageMitra'), async (req, 
     try {
         const mitras = await User.find(mitraUserFilter).select('-password');
         res.json({ success: true, mitras });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/admin/staff', verifyAdminOrAssistant('viewReports'), async (req, res) => {
+    try {
+        const staff = await User.find({ role: { $in: STAFF_ROLES } }).select(publicUserFields).sort({ date: -1 });
+        res.json({ success: true, staff: staff.map(buildSafeUserProfile) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/admin/staff', verifyAdmin, async (req, res) => {
+    try {
+        const { fullName, name, email, phone, password, role, dob, villageCity, pinCode, profilePic } = req.body;
+        const cleanRole = STAFF_ROLES.includes(role) ? role : 'support';
+        const cleanEmail = normalizeEmail(email);
+        if (!cleanEmail || !isValidEmail(cleanEmail) || !password || !(fullName || name)) {
+            return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
+        }
+        const existing = await User.findOne({ email: cleanEmail });
+        if (existing) return res.status(400).json({ success: false, message: 'Staff email already exists' });
+
+        const staff = new User({
+            name: fullName || name,
+            fullName: fullName || name,
+            email: cleanEmail,
+            phone: normalizePhone(phone),
+            password,
+            role: cleanRole,
+            supportTier: cleanRole === 'support' ? 'tier1' : 'none',
+            dob: parseDob(dob),
+            villageCity: villageCity || '',
+            address: villageCity || '',
+            pinCode: pinCode || '',
+            profilePic: profilePic || ''
+        });
+        await staff.save();
+        await logActivity('CREATE', 'Staff', staff._id, staff.fullName, req.actor.email, 'admin', { role: cleanRole });
+        res.status(201).json({ success: true, message: 'Staff created successfully', staff: buildSafeUserProfile(staff) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/admin/staff/:id', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
+    try {
+        const updateData = {};
+        ['fullName', 'name', 'phone', 'villageCity', 'pinCode', 'profilePic', 'supportTier', 'isLocked'].forEach((key) => {
+            if (req.body[key] !== undefined) updateData[key] = req.body[key];
+        });
+        if (updateData.fullName && !updateData.name) updateData.name = updateData.fullName;
+        if (updateData.villageCity) updateData.address = updateData.villageCity;
+        updateData.updatedAt = new Date();
+        const staff = await User.findOneAndUpdate(
+            { _id: req.params.id, role: { $in: STAFF_ROLES } },
+            updateData,
+            { new: true, runValidators: true }
+        ).select(publicUserFields);
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
+        res.json({ success: true, message: 'Staff updated successfully', staff: buildSafeUserProfile(staff) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -2252,8 +2342,9 @@ app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant(), async (req, res) => 
 });
 
 // Get specific Bodhi Path entry
-app.get('/bodhi-path/:id', async (req, res) => {
+app.get('/bodhi-path/:id', async (req, res, next) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return next();
         const bodhiPath = await BodhiPath.findById(req.params.id);
         if (!bodhiPath) {
             return res.status(404).json({ success: false, message: 'Bodhi Path entry not found' });
@@ -2393,6 +2484,207 @@ app.get('/bodhi-path/category/:category', async (req, res) => {
         res.json({ success: true, bodhiPaths });
     } catch (err) {
         console.error('Error fetching Bodhi Path by category:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ---------------------------------------------------------
+// --- SUPPORT DESK, ESCALATION, AND TAXI SERVICE ROUTES ---
+// ---------------------------------------------------------
+
+app.post('/support/verify-customer', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+    try {
+        const { name, fullName, dob, dateOfBirth, phone, mobile } = req.body;
+        const cleanName = String(fullName || name || '').trim();
+        const cleanPhone = normalizePhone(phone || mobile);
+        const dobRange = dateOnlyRange(dob || dateOfBirth);
+        if (!cleanName || !cleanPhone || !dobRange) {
+            return res.status(400).json({ success: false, message: 'Name, DOB, and mobile number are required' });
+        }
+        const customer = await User.findOne({
+            role: 'customer',
+            phone: cleanPhone,
+            dob: dobRange,
+            $or: [{ fullName: cleanName }, { name: cleanName }]
+        }).select(publicUserFields);
+        if (!customer) return res.status(404).json({ success: false, message: 'No exact customer match found' });
+        res.json({ success: true, customer: buildSafeUserProfile(customer) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/support/tickets', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+    try {
+        const { customerId, subject, description, category, priority } = req.body;
+        if (!mongoose.Types.ObjectId.isValid(customerId)) return res.status(400).json({ success: false, message: 'Valid customer ID is required' });
+        const customer = await User.findById(customerId).select(publicUserFields);
+        if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+        const ticket = new SupportTicket({
+            customerId: customer._id,
+            customerEmail: customer.email,
+            customerName: customer.fullName || customer.name,
+            customerPhone: customer.phone,
+            subject,
+            description,
+            category: category || 'general',
+            priority: priority || 'medium',
+            createdBy: req.actor.email,
+            createdByRole: req.actor.role,
+            timeline: [{ action: 'created', note: description, performedBy: req.actor.email, performedByRole: req.actor.role }]
+        });
+        await ticket.save();
+        emitRealtime('support-ticket-created', { ticketId: ticket._id, subject: ticket.subject, tier: ticket.tier });
+        res.status(201).json({ success: true, message: 'Ticket created successfully', ticket });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/support/tickets', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    try {
+        const customer = await User.findOne({ email: req.session.email }).select(publicUserFields);
+        if (!customer) return res.status(404).json({ success: false, message: 'Customer account not found' });
+        const { subject, description, category, priority } = req.body;
+        if (!subject || !description) return res.status(400).json({ success: false, message: 'Subject and description are required' });
+        const ticket = new SupportTicket({
+            customerId: customer._id,
+            customerEmail: customer.email,
+            customerName: customer.fullName || customer.name,
+            customerPhone: customer.phone || '',
+            subject,
+            description,
+            category: category || 'customer-help',
+            priority: priority || 'medium',
+            createdBy: customer.email,
+            createdByRole: 'customer',
+            timeline: [{ action: 'created_by_customer', note: description, performedBy: customer.email, performedByRole: 'customer' }]
+        });
+        await ticket.save();
+        emitRealtime('support-ticket-created', { ticketId: ticket._id, subject: ticket.subject, tier: ticket.tier });
+        res.status(201).json({ success: true, message: 'Support ticket created successfully', ticket });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/support/tickets', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+    try {
+        const actorTier = req.actor.role === 'admin' ? 'admin' : req.actor.role === 'assistant' ? 'assistant' : 'tier1';
+        const filter = req.actor.role === 'admin' ? {} : { $or: [{ tier: actorTier }, { assignedTo: req.actor.email }] };
+        const tickets = await SupportTicket.find(filter).sort({ updatedAt: -1 });
+        res.json({ success: true, tickets });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/support/tickets/:id/escalate', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+    try {
+        const tier = ['specialist', 'assistant', 'admin'].includes(req.body.targetTier) ? req.body.targetTier : 'specialist';
+        const status = tier === 'assistant' ? 'escalated_assistant' : 'escalated_hr';
+        const ticket = await SupportTicket.findByIdAndUpdate(
+            req.params.id,
+            { tier, status, $push: { timeline: { action: `escalated_to_${tier}`, note: req.body.note || '', performedBy: req.actor.email, performedByRole: req.actor.role } } },
+            { new: true }
+        );
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+        emitRealtime('support-ticket-escalated', { ticketId: ticket._id, tier: ticket.tier });
+        res.json({ success: true, message: 'Ticket escalated successfully', ticket });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/support/tickets/:id/resolve', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+    try {
+        const ticket = await SupportTicket.findByIdAndUpdate(
+            req.params.id,
+            { status: 'resolved', resolvedAt: new Date(), $push: { timeline: { action: 'resolved', note: req.body.note || '', performedBy: req.actor.email, performedByRole: req.actor.role } } },
+            { new: true }
+        );
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+        emitRealtime('support-ticket-resolved', { ticketId: ticket._id });
+        res.json({ success: true, message: 'Ticket resolved successfully', ticket });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+const TAXI_BASE_FARES = {
+    bike: { base: 40, perKm: 12 },
+    auto: { base: 70, perKm: 18 },
+    sedan: { base: 120, perKm: 28 },
+    suv: { base: 180, perKm: 38 },
+    tempo: { base: 250, perKm: 45 }
+};
+
+const estimateTaxiFare = (vehicleType, pickupLabel, dropoffLabel) => {
+    const tariff = TAXI_BASE_FARES[vehicleType] || TAXI_BASE_FARES.sedan;
+    const routeText = `${pickupLabel} ${dropoffLabel}`.toLowerCase();
+    let estimatedDistanceKm = 8;
+    if (routeText.includes('gaya station')) estimatedDistanceKm = 13;
+    if (routeText.includes('airport')) estimatedDistanceKm = 11;
+    if (routeText.includes('mahabodhi') && routeText.includes('thai')) estimatedDistanceKm = 3;
+    return { estimatedDistanceKm, estimatedFare: Math.round(tariff.base + tariff.perKm * estimatedDistanceKm) };
+};
+
+app.post('/api/taxi/estimate', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    const vehicleType = req.body.vehicleType || 'sedan';
+    const pickupLabel = String(req.body.pickup || req.body.pickupLocation || '').trim();
+    const dropoffLabel = String(req.body.dropoff || req.body.dropoffLocation || '').trim();
+    if (!pickupLabel || !dropoffLabel) return res.status(400).json({ success: false, message: 'Pickup and dropoff are required' });
+    res.json({ success: true, vehicleType, ...estimateTaxiFare(vehicleType, pickupLabel, dropoffLabel) });
+});
+
+app.post('/api/taxi/rides', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    try {
+        const customer = await User.findOne({ email: req.session.email }).select(publicUserFields);
+        if (!customer) return res.status(404).json({ success: false, message: 'Customer account not found' });
+        const vehicleType = req.body.vehicleType || 'sedan';
+        const pickupLabel = String(req.body.pickup || req.body.pickupLocation || '').trim();
+        const dropoffLabel = String(req.body.dropoff || req.body.dropoffLocation || '').trim();
+        if (!pickupLabel || !dropoffLabel) return res.status(400).json({ success: false, message: 'Pickup and dropoff are required' });
+        const estimate = estimateTaxiFare(vehicleType, pickupLabel, dropoffLabel);
+        const availableTaxi = await Taxi.findOne({ vehicleType, liveStatus: 'available', isActive: true }).sort({ updatedAt: -1 });
+        const ride = new RideRequest({
+            customerId: customer._id,
+            customerEmail: customer.email,
+            customerName: customer.fullName || customer.name,
+            customerPhone: customer.phone || '',
+            pickup: { label: pickupLabel },
+            dropoff: { label: dropoffLabel },
+            vehicleType,
+            ...estimate,
+            taxiId: availableTaxi?._id || null,
+            assignedDriverName: availableTaxi?.driverName || '',
+            assignedDriverPhone: availableTaxi?.driverPhone || '',
+            status: availableTaxi ? 'assigned' : 'requested'
+        });
+        await ride.save();
+        emitRealtime('ride-requested', { rideId: ride._id, pickup: pickupLabel, dropoff: dropoffLabel, vehicleType });
+        res.status(201).json({ success: true, message: 'Ride request submitted successfully', ride });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/admin/taxis', verifyAdminOrAssistant('manageBookings'), async (req, res) => {
+    try {
+        const taxis = await Taxi.find().sort({ updatedAt: -1 });
+        const rides = await RideRequest.find().sort({ createdAt: -1 }).limit(50);
+        res.json({ success: true, taxis, rides });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/admin/taxis', verifyAdmin, async (req, res) => {
+    try {
+        const taxi = new Taxi({ ...req.body, createdBy: req.actor.email });
+        await taxi.save();
+        res.status(201).json({ success: true, message: 'Taxi created successfully', taxi });
+    } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
