@@ -110,13 +110,18 @@ userSchema.pre('validate', function(next) {
 });
 
 // Hash only when the password field is actually changed.
-// The bcrypt prefix guard protects current routes that already pass hashed passwords.
-userSchema.pre('save', async function() {
-    if (!this.isModified('password')) return;
-    if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return;
+// Bulletproof try-catch block with explicit next function parameters to prevent server crashes
+userSchema.pre('save', async function(next) {
+    try {
+        if (!this.isModified('password')) return next();
+        if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return next();
 
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (err) {
+        next(err);
+    }
 });
 
 userSchema.methods.comparePassword = async function(enteredPassword) {
