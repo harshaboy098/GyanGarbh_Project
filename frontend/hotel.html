@@ -45,6 +45,27 @@
 
         .amenity-badge { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; margin-right: 5px; color: #475569; }
 
+        .taxi-card {
+            background: #0f172a; color: white; border-radius: 28px; overflow: hidden;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+        }
+        .taxi-card input, .taxi-card select {
+            border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.08);
+            color: white; border-radius: 14px; padding: 12px 14px;
+        }
+        .taxi-card input::placeholder { color: transparent; }
+        .taxi-card select option { color: #0f172a; }
+        .fare-chip {
+            display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.16); padding: 10px 14px; border-radius: 999px;
+            font-weight: 800;
+        }
+        .floating-help {
+            position: fixed; right: 22px; bottom: 22px; z-index: 1100; border: none;
+            border-radius: 999px; padding: 14px 18px; background: #ffc107; color: #0f172a;
+            font-weight: 900; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.22);
+        }
+
         /* 🔐 PRIVACY CONSENT GATE STYLES */
         .consent-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7);
@@ -294,6 +315,46 @@
     <div id="hotelsContainer" class="row g-4"></div>
 </div>
 
+<div class="container mb-5">
+    <div class="taxi-card">
+        <div class="row g-0 align-items-stretch">
+            <div class="col-lg-5 p-5" style="background: linear-gradient(135deg, rgba(37,99,235,0.45), rgba(255,193,7,0.18));">
+                <p class="text-warning fw-bold text-uppercase small mb-2">Gyan Garbh Taxi</p>
+                <h3 class="fw-bold mb-3">Request a ride across Bodhgaya</h3>
+                <p class="text-white-50 mb-0">Ola-style local pickup, transparent estimates, and live dispatch to available drivers or the operations team.</p>
+            </div>
+            <div class="col-lg-7 p-5">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="small text-white-50 fw-bold mb-2">Pickup Location</label>
+                        <input id="taxiPickup" class="w-100" autocomplete="off" placeholder="">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-white-50 fw-bold mb-2">Dropoff Location</label>
+                        <input id="taxiDropoff" class="w-100" autocomplete="off" placeholder="">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-white-50 fw-bold mb-2">Vehicle</label>
+                        <select id="taxiVehicle" class="w-100">
+                            <option value="sedan">Sedan</option>
+                            <option value="auto">Auto</option>
+                            <option value="suv">SUV</option>
+                            <option value="bike">Bike</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button class="btn btn-warning rounded-pill fw-bold w-100 py-3" onclick="estimateTaxiFare()">Estimate Fare</button>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4">
+                    <div id="taxiEstimate" class="fare-chip">Fare estimate will appear here</div>
+                    <button class="btn btn-light rounded-pill fw-bold px-4 py-3" onclick="requestTaxiRide()">Request Ride</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="feedback-section">
     <div class="container">
         <h3 class="fw-bold text-center mb-5">Gyan Garbh <span class="text-primary">Experiences</span></h3>
@@ -404,6 +465,10 @@
     </div>
 </footer>
 
+<button class="floating-help" onclick="openSupportTicketWidget()">
+    <i class="bi bi-headset"></i> Help
+</button>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -412,6 +477,8 @@
     const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
     const userName = localStorage.getItem('userName');
     const userEmail = localStorage.getItem('userEmail');
+    const userId = localStorage.getItem('userId');
+    let selectedHotelId = '';
 
     async function loadMitrasFromDB() {
         console.log('Fetching data...');
@@ -566,7 +633,8 @@
         Swal.fire('Mitra Assigned!', `${name} will guide your trip.`, 'success');
     }
 
-    function openHotelDetails(name, loc, price, img, rating, description) {
+    function openHotelDetails(name, loc, price, img, rating, description, hotelId = '') {
+        selectedHotelId = hotelId;
         const priceText = price && price > 0 ? '₹' + price : 'Price on Request';
         document.getElementById('detName').innerText = name;
         document.getElementById('detLoc').innerText = loc;
@@ -625,7 +693,7 @@
             const res = await fetch(`${API_URL}/api/bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userName, userEmail, hotelName: hName, price, roomType: 'Standard Room', checkIn: cIn, checkOut: cOut, status: 'Pending' })
+                body: JSON.stringify({ userId, hotelId: selectedHotelId, hotelName: hName, price, roomType: 'Standard Room', checkIn: cIn, checkOut: cOut, status: 'Pending' })
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -649,6 +717,62 @@
         const message = encodeURIComponent(`Hi, I am interested in booking at ${hotelName}. Please provide more details.`);
         const whatsappUrl = `https://wa.me/${adminNumber}?text=${message}`;
         window.open(whatsappUrl, '_blank');
+    }
+
+    async function estimateTaxiFare() {
+        const pickup = document.getElementById('taxiPickup').value.trim();
+        const dropoff = document.getElementById('taxiDropoff').value.trim();
+        const vehicleType = document.getElementById('taxiVehicle').value;
+        if (!pickup || !dropoff) return Swal.fire('Route Required', 'Please enter pickup and dropoff locations.', 'warning');
+        const response = await fetch(`${API_URL}/api/taxi/estimate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pickup, dropoff, vehicleType })
+        });
+        const data = await response.json();
+        if (!data.success) return Swal.fire('Estimate Failed', data.message || 'Unable to estimate fare.', 'error');
+        document.getElementById('taxiEstimate').textContent = `${data.estimatedDistanceKm} km • ₹${data.estimatedFare}`;
+        return data;
+    }
+
+    async function requestTaxiRide() {
+        const pickup = document.getElementById('taxiPickup').value.trim();
+        const dropoff = document.getElementById('taxiDropoff').value.trim();
+        const vehicleType = document.getElementById('taxiVehicle').value;
+        if (!userEmail) return Swal.fire('Login Required', 'Please login before requesting a ride.', 'warning').then(() => location.href = 'index.html');
+        if (!pickup || !dropoff) return Swal.fire('Route Required', 'Please enter pickup and dropoff locations.', 'warning');
+        const response = await fetch(`${API_URL}/api/taxi/rides`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pickup, dropoff, vehicleType })
+        });
+        const data = await response.json();
+        if (!data.success) return Swal.fire('Ride Failed', data.message || 'Unable to request ride.', 'error');
+        Swal.fire('Ride Requested', `Estimated fare: ₹${data.ride.estimatedFare}. Operations has been notified.`, 'success');
+    }
+
+    async function openSupportTicketWidget() {
+        if (!userEmail) return Swal.fire('Login Required', 'Please login before contacting support.', 'warning').then(() => location.href = 'index.html');
+        const { value: form } = await Swal.fire({
+            title: 'Report an Issue',
+            html: '<input id="supportSubject" class="swal2-input" autocomplete="off"><textarea id="supportDescription" class="swal2-textarea" autocomplete="off"></textarea>',
+            showCancelButton: true,
+            confirmButtonText: 'Create Ticket',
+            preConfirm: () => ({
+                subject: document.getElementById('supportSubject').value.trim(),
+                description: document.getElementById('supportDescription').value.trim()
+            })
+        });
+        if (!form) return;
+        if (!form.subject || !form.description) return Swal.fire('Details Required', 'Please enter a subject and issue details.', 'warning');
+        const response = await fetch(`${API_URL}/api/support/tickets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...form, category: 'customer-help' })
+        });
+        const data = await response.json();
+        if (!data.success) return Swal.fire('Ticket Failed', data.message || 'Unable to create ticket.', 'error');
+        Swal.fire('Ticket Created', 'Support has received your issue.', 'success');
     }
 
     function logout() {
@@ -1103,7 +1227,7 @@
                         <div class="ai-hotel-detail">${h.description ? h.description.substring(0, 45) + '...' : 'Authentic Bodhgaya accommodation with premium amenities.'}</div>
                         <div class="ai-hotel-detail" style="margin-top: 6px; font-size: 0.8rem;">${facilityIcons}</div>
                     `;
-                    recEl.onclick = () => openHotelDetails(h.hotelName, h.location, price, h.imageUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945', h.rating || 4.5, h.description || 'Premium accommodation in Bodhgaya with full service amenities.');
+                    recEl.onclick = () => openHotelDetails(h.hotelName, h.location, price, h.imageUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945', h.rating || 4.5, h.description || 'Premium accommodation in Bodhgaya with full service amenities.', h._id || '');
                     document.getElementById('aiMessagesContainer').appendChild(recEl);
                 });
 

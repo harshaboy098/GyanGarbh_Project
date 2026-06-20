@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gyan Garbh | Login & Signup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="api-client.js"></script>
@@ -25,7 +26,7 @@
 
         function handleCredentialResponse(response) {
             if (!response || !response.credential) {
-                Swal.fire('Error', 'Google login failed. Please try again.', 'error');
+                Swal.fire('Error', 'Google authentication failed. Please try again.', 'error');
                 return;
             }
             const idToken = response.credential;
@@ -38,6 +39,7 @@
                 .then(({ status, body }) => {
                     if (status >= 200 && status < 300) {
                         localStorage.setItem('userName', body.name);
+                        localStorage.setItem('userId', body.userId || '');
                         localStorage.setItem('userEmail', body.email);
                         localStorage.setItem('userRole', body.role);
                         localStorage.setItem('googleLogin', 'true');
@@ -49,161 +51,167 @@
                                 else window.location.href = 'hotel.html';
                             });
                     } else {
-                        Swal.fire('Error', body.message || 'Google login failed!', 'error');
+                        Swal.fire('Error', body.message || 'Google login failed.', 'error');
                     }
                 })
                 .catch(() => {
-                    Swal.fire('Error', 'Server error during Google login.', 'error');
+                    Swal.fire('Error', 'Server connection error during login.', 'error');
                 });
         }
 
         window.addEventListener('load', initGoogleIdentity);
     </script>
     <style>
-        :root { --brand: #1e3c72; --gold: #ffc107; --bg: #f8fafc; }
-        body { background: linear-gradient(135deg, var(--bg) 0%, #e2e8f0 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; }
-        .auth-container { max-width: 450px; width: 100%; background: white; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); overflow: hidden; }
-        .auth-tabs { display: flex; background: var(--brand); color: white; }
-        .auth-tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; transition: 0.3s; font-weight: 600; }
-        .auth-tab.active { background: var(--gold); color: var(--brand); }
-        .auth-body { padding: 40px; }
-        .form-control { border-radius: 10px; border: 2px solid #edf2f7; padding: 12px; transition: 0.3s; }
-        .form-control:focus { border-color: var(--brand); box-shadow: 0 0 0 0.2rem rgba(30, 60, 114, 0.25); }
-        .btn-auth { background: var(--brand); color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: 600; transition: 0.3s; }
-        .btn-auth:hover { background: #152d56; transform: translateY(-2px); }
-        .role-selector { display: flex; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 2px solid #edf2f7; }
-        .role-option { flex: 1; padding: 10px; text-align: center; cursor: pointer; transition: 0.3s; background: #f8fafc; }
-        .role-option.active { background: var(--brand); color: white; }
-        .hotel-field { display: none; }
-        .password-wrapper { position: relative; display: flex; align-items: center; }
-        .password-wrapper input { flex: 1; }
-        .password-toggle { position: absolute; right: 12px; cursor: pointer; color: #999; background: none; border: none; padding: 5px; font-size: 1.1rem; }
-        .password-toggle:hover { color: var(--brand); }
-        .otp-timer { font-size: 0.85rem; text-align: center; margin-top: 8px; }
-        .timer-active { color: #ff6b6b; font-weight: 600; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
     </style>
 </head>
-<body>
+<body class="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 min-h-screen flex items-center justify-center p-4">
 
-<!-- WhatsApp Support Button -->
-
-
-
-<div class="auth-container">
-    <div class="auth-tabs">
-        <div class="auth-tab active" id="btnLoginTab" onclick="showForm('login')">LOGIN</div>
-        <div class="auth-tab" id="btnSignupTab" onclick="showForm('signup')">SIGN UP</div>
+<div class="max-w-[460px] w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
+    <div class="flex bg-slate-50 p-2 gap-1 border-b border-slate-100">
+        <button class="flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 bg-amber-500 text-slate-900 shadow-sm" id="btnLoginTab" onclick="showForm('login')">Login</button>
+        <button class="flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 text-slate-500 hover:text-slate-800" id="btnSignupTab" onclick="showForm('signup')">Sign Up</button>
     </div>
 
-    <div class="auth-body">
-        <!-- LOGIN SECTION -->
-        <div id="loginSection">
-            <h3 class="text-center mb-4 fw-bold" style="color: var(--brand);">Welcome Back</h3>
-            <form onsubmit="event.preventDefault(); handleLogin();">
-                <div class="mb-3">
-                    <label class="small fw-bold text-muted text-uppercase">Email</label>
-                    <input type="email" id="logEmail" class="form-control" placeholder="your@email.com" required>
+    <div class="p-6 md:p-8 flex-1">
+        <div id="loginSection" class="space-y-6" style="display: block;">
+            <div class="text-center space-y-1">
+                <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight">Welcome Back</h3>
+                <p class="text-xs text-slate-500">Sign in to manage your bookings and services</p>
+            </div>
+            
+            <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-4" autocomplete="off" data-lpignore="true">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Email Address</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3 text-slate-400 text-sm"><i class="fa-solid fa-envelope"></i></span>
+                        <input type="email" id="logEmail" class="w-full border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="off">
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="small fw-bold text-muted text-uppercase">Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="logPass" class="form-control" placeholder="••••••••••••••" required>
-                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility('logPass')">
-                            <i class="bi bi-eye" id="logPassIcon"></i>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Password</label>
+                    <div class="relative flex items-center">
+                        <span class="absolute left-4 text-slate-400 text-sm"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="logPass" class="w-full border border-slate-200 pl-10 pr-12 py-2.5 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="off">
+                        <button type="button" class="absolute right-4 text-slate-400 hover:text-slate-600 transition" onclick="togglePasswordVisibility('logPass')">
+                            <i class="bi bi-eye text-base" id="logPassIcon"></i>
                         </button>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-auth mb-3">LOGIN</button>
-                <p class="text-center mb-0">
-                    <a href="#" onclick="handleForgotPassword()" class="text-muted small text-decoration-none">Forgot Password?</a>
-                </p>
-
-                <!-- Google Login Button for Login Section -->
-                <div class="text-center mt-3">
-                    <div class="position-relative">
-                        <hr class="my-4">
-                        <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small">OR</span>
-                    </div>
-                    <button type="button" onclick="handleGoogleLogin()" class="btn btn-outline-secondary w-100" style="border: 2px solid #ddd;">
-                        <i class="bi bi-google me-2"></i>Continue with Google
-                    </button>
+                
+                <div class="text-right">
+                    <a href="#" onclick="handleForgotPassword()" class="text-xs font-semibold text-amber-600 hover:text-amber-700 transition">Forgot Password?</a>
                 </div>
+
+                <button type="submit" class="w-full bg-slate-900 hover:bg-amber-500 hover:text-slate-900 text-white font-bold py-3 rounded-xl transition shadow-md text-sm tracking-wide">Login</button>
+
+                <div class="relative py-2">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                    <div class="relative flex justify-center text-xs uppercase"><span class="bg-white px-3 text-slate-400 font-medium">or</span></div>
+                </div>
+
+                <button type="button" onclick="handleGoogleLogin()" class="w-full border-2 border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2">
+                    <i class="bi bi-google text-red-500"></i> Continue with Google
+                </button>
             </form>
         </div>
 
-        <!-- SIGNUP SECTION -->
-        <div id="signupSection" style="display: none;">
-            <h3 class="text-center mb-4 fw-bold" style="color: var(--brand);">Join Gyan Garbh</h3>
-
-            <!-- ROLE SELECTOR -->
-            <div class="role-selector">
-                <div class="role-option active" onclick="selectRole('guest')">Guest</div>
-                <div class="role-option" onclick="selectRole('hotel')">Hotel Owner</div>
+        <div id="signupSection" class="space-y-6" style="display: none;">
+            <div class="text-center space-y-1">
+                <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight">Create Account</h3>
+                <p class="text-xs text-slate-500">Join Gyan Garbh to explore or manage premium stays</p>
             </div>
 
-            <!-- SIGNUP FORM PART -->
-            <div id="signupFormPart">
-                <form onsubmit="event.preventDefault(); sendSignupOTP();">
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted text-uppercase">Full Name</label>
-                        <input type="text" id="regName" class="form-control" placeholder="Your Name" required>
+            <div class="flex border border-slate-200 p-1 rounded-xl bg-slate-50">
+                <button type="button" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-slate-900 text-white" id="role-guest" onclick="selectRole('guest')">Customer / Guest</button>
+                <button type="button" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all text-slate-500" id="role-hotel" onclick="selectRole('hotel')">Hotel Owner</button>
+            </div>
+
+            <div id="signupFormPart" style="display: block;">
+                <form onsubmit="event.preventDefault(); sendSignupOTP();" class="space-y-4" autocomplete="off" data-lpignore="true">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Full Name</label>
+                            <input type="text" id="regName" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="new-password">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Date of Birth</label>
+                            <input type="date" id="regDOB" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" required autocomplete="new-password">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted text-uppercase">Email</label>
-                        <input type="email" id="regEmail" class="form-control" placeholder="your@email.com" required>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Email ID</label>
+                            <input type="email" id="regEmail" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="new-password">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Phone Number</label>
+                            <input type="tel" id="regPhone" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="new-password">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted text-uppercase">Phone Number</label>
-                        <input type="tel" id="regPhone" class="form-control" placeholder="+91 9876543210" required>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Village / City</label>
+                            <input type="text" id="regVillage" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="new-password">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 tracking-wider uppercase block mb-1">Pin Code</label>
+                            <input type="text" id="regPinCode" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="new-password">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted text-uppercase">Address</label>
-                        <textarea id="regAddress" class="form-control" placeholder="Your complete address" rows="3" required></textarea>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Complete Address</label>
+                        <input type="text" id="regAddress" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" required autocomplete="new-password">
                     </div>
-                    <div class="mb-3 hotel-field" id="hotelNameField">
-                        <label class="small fw-bold text-muted text-uppercase">Hotel Name</label>
-                        <input type="text" id="regHotelName" class="form-control" placeholder="Your Hotel Name">
+
+                    <div class="hotel-field hidden" id="hotelNameField">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Hotel Name</label>
+                        <input type="text" id="regHotelName" class="w-full border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" autocomplete="new-password">
                     </div>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted text-uppercase">Password</label>
-                        <div class="password-wrapper">
-                        <input type="password" id="regPass" class="form-control" placeholder="••••••••••••••" minlength="8" required>
-                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('regPass')">
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Create Password</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="regPass" class="w-full border border-slate-200 pl-4 pr-12 py-2 rounded-xl text-sm focus:outline-amber-500 bg-slate-50/50 font-medium" placeholder="" minlength="8" required autocomplete="new-password">
+                            <button type="button" class="absolute right-4 text-slate-400 hover:text-slate-600 transition" onclick="togglePasswordVisibility('regPass')">
                                 <i class="bi bi-eye" id="regPassIcon"></i>
                             </button>
                         </div>
                     </div>
-                    <button type="submit" id="regBtn" class="btn btn-auth">SEND OTP</button>
+
+                    <button type="submit" id="regBtn" class="w-full bg-slate-900 hover:bg-amber-500 hover:text-slate-900 text-white font-bold py-3 rounded-xl transition text-sm shadow-md mt-2">Send OTP</button>
                 </form>
 
-                <!-- Google Login Button -->
-                <div class="text-center mt-3">
-                    <div class="position-relative">
-                        <hr class="my-4">
-                        <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small">OR</span>
-                    </div>
-                    <button type="button" onclick="handleGoogleLogin()" class="btn btn-outline-secondary w-100 mb-3" style="border: 2px solid #ddd;">
-                        <i class="bi bi-google me-2"></i>Continue with Google
-                    </button>
+                <div class="relative py-2">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-100"></div></div>
+                    <div class="relative flex justify-center text-[10px] uppercase"><span class="bg-white px-3 text-slate-400">or</span></div>
                 </div>
+
+                <button type="button" onclick="handleGoogleLogin()" class="w-full border-2 border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-2 rounded-xl transition text-xs flex items-center justify-center gap-2">
+                    <i class="bi bi-google text-red-500"></i> Continue with Google
+                </button>
             </div>
 
-            <!-- OTP VERIFICATION PART -->
-            <div id="signupOTPPart" style="display: none;">
-                <div class="text-center mb-4">
-                    <i class="bi bi-shield-lock-fill display-4 text-primary"></i>
-                    <h5 class="fw-bold mt-3">Verify Your Email</h5>
-                    <p class="text-muted small">OTP sent to: <b id="showEmail"></b></p>
+            <div id="signupOTPPart" class="space-y-5" style="display: none;">
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl shadow-xs"><i class="fa-solid fa-envelope-open-text"></i></div>
+                    <h5 class="font-bold text-slate-800 text-base">Verify Your Email</h5>
+                    <p class="text-xs text-slate-400">Verification code successfully sent to:<br><span class="font-bold text-slate-700" id="showEmail"></span></p>
                 </div>
-                <div class="mb-3">
-                    <input type="text" id="regOTPInput" class="form-control form-control-lg text-center" placeholder="000000" inputmode="numeric" pattern="\d{6}" maxlength="6" style="letter-spacing: 10px; font-size: 1.5rem;" required>
+                <div>
+                    <input type="text" id="regOTPInput" class="w-full border border-slate-200 py-3 rounded-2xl text-center font-bold text-xl focus:outline-emerald-500 bg-slate-50 tracking-[12px]" placeholder="" inputmode="numeric" pattern="\d{6}" maxlength="6" required>
                 </div>
-                <button onclick="verifyAndRegister()" class="btn btn-success w-100 py-3">CONFIRM & REGISTER</button>
-                <div class="otp-timer">
-                    <p id="otpTimerDisplay" class="timer-active">Resend OTP in <span id="timerCount">30</span>s</p>
-                    <button type="button" id="resendOtpBtn" class="btn btn-link btn-sm" style="display: none;" onclick="resendOTP()">Resend OTP</button>
+                <button type="button" onclick="verifyAndRegister()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md text-sm tracking-wide transition">Verify & Register</button>
+                
+                <div class="text-center text-xs font-semibold">
+                    <p id="otpTimerDisplay" class="text-slate-500">Resend code in <span id="timerCount" class="font-bold">30</span>s</p>
+                    <button type="button" id="resendOtpBtn" class="text-amber-600 hover:text-amber-700 transition underline hidden" onclick="resendOTP()">Resend OTP</button>
                 </div>
-                <p class="text-center mt-3"><a href="#" onclick="location.reload()" class="text-muted small">Go Back</a></p>
+                <p class="text-center"><a href="#" onclick="location.reload()" class="text-xs font-bold text-slate-400 hover:text-slate-600 transition">Go Back</a></p>
             </div>
         </div>
     </div>
@@ -212,93 +220,113 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
-    let selectedRole = 'guest'; // Default role
+    let selectedRole = 'guest';
     let otpResendTimer = null;
     let lastEmailForOTP = '';
 
-    // ? PASSWORD VISIBILITY TOGGLE
+    window.addEventListener('DOMContentLoaded', () => {
+        ['logEmail', 'logPass', 'regName', 'regDOB', 'regEmail', 'regPhone', 'regVillage', 'regPinCode', 'regAddress', 'regHotelName', 'regPass', 'regOTPInput']
+            .forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) input.value = '';
+            });
+    });
+
     function togglePasswordVisibility(fieldId) {
         const field = document.getElementById(fieldId);
         const icon = document.getElementById(fieldId + 'Icon');
         if (field.type === 'password') {
             field.type = 'text';
-            icon.classList.remove('bi-eye');
-            icon.classList.add('bi-eye-slash');
+            icon.className = 'bi bi-eye-slash';
         } else {
             field.type = 'password';
-            icon.classList.remove('bi-eye-slash');
-            icon.classList.add('bi-eye');
+            icon.className = 'bi bi-eye';
         }
     }
 
-    // ? OTP RESEND TIMER (30 SECONDS)
     function startOTPTimer() {
         let seconds = 30;
-        document.getElementById('otpTimerDisplay').textContent = `Resend OTP in ${seconds}s`;
-        document.getElementById('resendOtpBtn').style.display = 'none';
+        const display = document.getElementById('otpTimerDisplay');
+        const countSpan = document.getElementById('timerCount');
+        const btn = document.getElementById('resendOtpBtn');
         
+        display.style.display = 'block';
+        btn.classList.add('hidden');
+        countSpan.textContent = seconds;
+        
+        clearInterval(otpResendTimer);
         otpResendTimer = setInterval(() => {
             seconds--;
-            document.getElementById('timerCount').textContent = seconds;
+            countSpan.textContent = seconds;
             
             if (seconds <= 0) {
                 clearInterval(otpResendTimer);
-                document.getElementById('otpTimerDisplay').style.display = 'none';
-                document.getElementById('resendOtpBtn').style.display = 'inline-block';
+                display.style.display = 'none';
+                btn.classList.remove('hidden');
             }
         }, 1000);
     }
 
-    // ? RESEND OTP FUNCTIONALITY
     async function resendOTP() {
         try {
             const res = await fetch(`${API_URL}/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: lastEmailForOTP, isReset: false })
+                body: JSON.stringify({ email: lastEmailForOTP.trim().toLowerCase(), isReset: false })
             });
             const data = await res.json();
             if (res.ok) {
-                Swal.fire('Success!', 'OTP resent to your email!', 'success');
-                document.getElementById('otpTimerDisplay').style.display = 'block';
+                Swal.fire('Success', 'Verification code resent successfully.', 'success');
                 startOTPTimer();
             } else {
-                Swal.fire('Error', data.message || 'Failed to resend OTP', 'error');
+                Swal.fire('Error', data.message || 'Failed to resend OTP.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Server error!', 'error');
+            Swal.fire('Error', 'Unable to connect to the server. Please try again.', 'error');
         }
     }
 
     function showForm(type) {
-        document.getElementById('loginSection').style.display = type === 'login' ? 'block' : 'none';
-        document.getElementById('signupSection').style.display = type === 'signup' ? 'block' : 'none';
-        document.getElementById('btnLoginTab').classList.toggle('active', type === 'login');
-        document.getElementById('btnSignupTab').classList.toggle('active', type === 'signup');
+        if (type === 'login') {
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('signupSection').style.display = 'none';
+            document.getElementById('btnLoginTab').className = "flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 bg-amber-500 text-slate-900 shadow-sm";
+            document.getElementById('btnSignupTab').className = "flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 text-slate-500 hover:text-slate-800";
+        } else {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('signupSection').style.display = 'block';
+            document.getElementById('signupFormPart').style.display = 'block';
+            document.getElementById('signupOTPPart').style.display = 'none';
+            document.getElementById('btnSignupTab').className = "flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 bg-amber-500 text-slate-900 shadow-sm";
+            document.getElementById('btnLoginTab').className = "flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 text-slate-500 hover:text-slate-800";
+        }
     }
 
     function selectRole(role) {
         selectedRole = role;
-        document.querySelectorAll('.role-option').forEach(opt => opt.classList.remove('active'));
-        event.target.classList.add('active');
+        const guestBtn = document.getElementById('role-guest');
+        const hotelBtn = document.getElementById('role-hotel');
         const hotelField = document.getElementById('hotelNameField');
+        
         if (role === 'hotel') {
-            hotelField.style.display = 'block';
+            hotelBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-slate-900 text-white";
+            guestBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-slate-500";
+            hotelField.classList.remove('hidden');
         } else {
-            hotelField.style.display = 'none';
+            guestBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-slate-900 text-white";
+            hotelBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-slate-500";
+            hotelField.classList.add('hidden');
         }
     }
 
-    // ⭐ FORGOT PASSWORD LOGIC
     async function handleForgotPassword() {
         const { value: email } = await Swal.fire({
-            title: 'Forgot Password',
-            text: 'Enter your registered email:',
+            title: 'Reset Password',
+            text: 'Enter your registered email address:',
             input: 'email',
-            inputPlaceholder: 'name@example.com',
+            inputPlaceholder: '',
             showCancelButton: true
         });
-
         if (!email) return;
 
         Swal.fire({ title: 'Sending OTP...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
@@ -307,14 +335,14 @@
             const res = await fetch(`${API_URL}/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, isReset: true })
+                body: JSON.stringify({ email: email.trim().toLowerCase(), isReset: true })
             });
             const data = await res.json();
 
             if (res.ok) {
                 const { value: formValues } = await Swal.fire({
                     title: 'Verify & Reset',
-                    html: '<input id="otp-v" class="swal2-input" placeholder="Enter OTP"><input id="pass-v" type="password" class="swal2-input" placeholder="New Password">',
+                    html: '<input id="otp-v" class="swal2-input" placeholder=""><input id="pass-v" type="password" class="swal2-input" placeholder="">',
                     preConfirm: () => {
                         return [document.getElementById('otp-v').value, document.getElementById('pass-v').value]
                     }
@@ -325,7 +353,7 @@
                     const vRes = await fetch(`${API_URL}/verify-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, otp })
+                        body: JSON.stringify({ email: email.trim().toLowerCase(), otp: otp.trim() })
                     });
 
                     if (vRes.ok) {
@@ -333,132 +361,134 @@
                         const rRes = await fetch(`${API_URL}/reset-password`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email, newPassword, userType: 'user', resetToken: verifyData.resetToken })
+                            body: JSON.stringify({ email: email.trim().toLowerCase(), newPassword, userType: 'user', resetToken: verifyData.resetToken })
                         });
-                        if (rRes.ok) Swal.fire('Success!', 'Password updated! Please login.', 'success');
+                        if (rRes.ok) Swal.fire('Success', 'Password updated successfully. You can now login.', 'success');
                     } else {
-                        Swal.fire('Error', 'Invalid OTP!', 'error');
+                        Swal.fire('Error', 'Invalid verification code.', 'error');
                     }
                 }
             } else {
                 Swal.fire('Error', data.message, 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Server Error!', 'error');
+            Swal.fire('Error', 'Server error. Please try again later.', 'error');
         }
     }
 
-    // ⭐ SIGNUP LOGIC
     async function sendSignupOTP() {
-        const email = document.getElementById('regEmail').value;
-        const name = document.getElementById('regName').value;
-        const phone = document.getElementById('regPhone').value;
-        const address = document.getElementById('regAddress').value;
+        const email = document.getElementById('regEmail').value.trim();
+        const name = document.getElementById('regName').value.trim();
+        const phone = document.getElementById('regPhone').value.trim();
+        const address = document.getElementById('regAddress').value.trim();
         const pass = document.getElementById('regPass').value;
-        const hotelName = selectedRole === 'hotel' ? document.getElementById('regHotelName').value : '';
+        const dob = document.getElementById('regDOB').value;
+        const village = document.getElementById('regVillage').value.trim();
+        const pinCode = document.getElementById('regPinCode').value.trim();
+        const hotelName = selectedRole === 'hotel' ? document.getElementById('regHotelName').value.trim() : '';
 
-        if (!name || !email || !phone || !address || !pass || (selectedRole === 'hotel' && !hotelName)) {
-            return Swal.fire('Oops!', 'Please fill all required details!', 'warning');
+        if (!name || !email || !phone || !address || !pass || !dob || !village || !pinCode || (selectedRole === 'hotel' && !hotelName)) {
+            return Swal.fire('Notice', 'Please fill in all required fields.', 'warning');
         }
 
         const btn = document.getElementById('regBtn');
         btn.innerText = "Sending OTP...";
         btn.disabled = true;
 
+        // MULTI-MAPPING SAFE PAYLOAD
+        const payload = {
+            email: email.toLowerCase(),
+            name: name,
+            fullName: name, // Maps to either version the backend destructures
+            password: pass,
+            role: selectedRole,
+            phone: phone,
+            address: address,
+            dob: dob,
+            dateOfBirth: dob,
+            village: village,
+            city: village,
+            pinCode: pinCode,
+            pincode: pinCode,
+            pin: pinCode,
+            hotelName: hotelName,
+            experience: ''
+        };
+
         try {
             const res = await fetch(`${API_URL}/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    name,
-                    password: pass,
-                    role: selectedRole,
-                    phone,
-                    address,
-                    hotelName,
-                    experience: ''
-                })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
 
             if (res.ok) {
-                lastEmailForOTP = email;
-                document.getElementById('showEmail').innerText = email;
+                lastEmailForOTP = email.toLowerCase();
+                document.getElementById('showEmail').innerText = lastEmailForOTP;
+                
                 document.getElementById('signupFormPart').style.display = 'none';
                 document.getElementById('signupOTPPart').style.display = 'block';
-                document.getElementById('otpTimerDisplay').style.display = 'block';
-                document.getElementById('resendOtpBtn').style.display = 'none';
+                
                 startOTPTimer();
-                Swal.fire('OTP Sent!', 'Check your inbox.', 'info');
+                Swal.fire('OTP Sent', 'Please check your email inbox.', 'info');
             } else {
                 const errorText = (data.message || '').toLowerCase();
-                const alreadyRegistered = /registered|already exists|already a member/i.test(errorText);
-
-                if (alreadyRegistered) {
-                    Swal.fire({ icon: 'info', title: 'Already a Member!', text: data.message, showCancelButton: true, confirmButtonText: 'Login instead' })
+                if (/registered|already exists|already a member/i.test(errorText)) {
+                    Swal.fire({ icon: 'info', title: 'Account Exists', text: data.message, showCancelButton: true, confirmButtonText: 'Login instead' })
                         .then((r) => { if (r.isConfirmed) showForm('login'); });
                 } else {
-                    Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error');
+                    Swal.fire('Error', data.message || 'Failed to process request. Please try again.', 'error');
                 }
-
-                btn.innerText = "SEND OTP";
+                btn.innerText = "Send OTP";
                 btn.disabled = false;
             }
         } catch (e) {
-            Swal.fire('Error', 'Server down!', 'error');
-            btn.innerText = "SEND OTP";
+            Swal.fire('Error', 'Server down. Please check your internet connection.', 'error');
+            btn.innerText = "Send OTP";
             btn.disabled = false;
         }
     }
 
     async function verifyAndRegister() {
-        const email = document.getElementById('regEmail').value;
-        const name = document.getElementById('regName').value;
-        const otp = document.getElementById('regOTPInput').value;
+        const otp = document.getElementById('regOTPInput').value.trim();
+        
+        if (!lastEmailForOTP) {
+            Swal.fire('Error', 'Session validation failed. Please restart signup.', 'error');
+            return;
+        }
 
         try {
             const vRes = await fetch(`${API_URL}/verify-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, otp })
+                body: JSON.stringify({ email: lastEmailForOTP, otp: otp })
             });
             const data = await vRes.json();
 
             if (vRes.ok && data.success) {
-                localStorage.setItem('userEmail', email);
-                localStorage.setItem('userName', data.name || name);
+                localStorage.setItem('userEmail', lastEmailForOTP);
+                localStorage.setItem('userId', data.userId || '');
+                localStorage.setItem('userName', data.name);
                 localStorage.setItem('userRole', data.role || 'guest');
                 localStorage.setItem('authToken', data.sessionToken);
 
-                Swal.fire({ icon: 'success', title: 'Verified!', text: data.message || 'Registration complete.', timer: 1800, showConfirmButton: false })
+                Swal.fire({ icon: 'success', title: 'Verified', text: 'Registration completed successfully.', timer: 1800, showConfirmButton: false })
                     .then(() => {
-                        if (data.role === 'mitra') {
-                            window.location.href = "mitra-dashboard.html";
-                        } else if (data.role === 'hotel') {
-                            window.location.href = "hotel-dashboard.html";
-                        } else {
-                            window.location.href = "hotel.html";
-                        }
+                        if (data.role === 'mitra') window.location.href = "mitra-dashboard.html";
+                        else if (data.role === 'hotel') window.location.href = "hotel-dashboard.html";
+                        else window.location.href = "hotel.html";
                     });
             } else {
-                Swal.fire('Error', data.message || 'Wrong OTP', 'error');
+                Swal.fire('Error', data.message || 'Incorrect OTP code.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Registration failed!', 'error');
+            Swal.fire('Error', 'Registration process failed.', 'error');
         }
     }
 
-    // ⭐ GOOGLE LOGIN LOGIC
-    async function handleGoogleLogin() {
-        initGoogleIdentity();
-        if (!googleClientInitialized) {
-            return Swal.fire('Error', 'Google login not ready yet. Please refresh and try again.', 'error');
-        }
-        google.accounts.id.prompt();
-    }
     async function handleLogin() {
-        const email = document.getElementById('logEmail').value;
+        const email = document.getElementById('logEmail').value.trim().toLowerCase();
         const password = document.getElementById('logPass').value;
         try {
             const res = await fetch(`${API_URL}/login`, {
@@ -469,25 +499,22 @@
             const data = await res.json();
             if (res.ok) {
                 localStorage.setItem('userName', data.name);
+                localStorage.setItem('userId', data.userId || '');
                 localStorage.setItem('userEmail', data.email);
                 localStorage.setItem('userRole', data.role);
                 localStorage.setItem('authToken', data.sessionToken);
 
-                Swal.fire({ icon: 'success', title: 'Welcome!', timer: 1000, showConfirmButton: false })
+                Swal.fire({ icon: 'success', title: 'Access Granted!', timer: 1000, showConfirmButton: false })
                     .then(() => {
-                        if (data.role === 'mitra') {
-                            window.location.href = "mitra-dashboard.html";
-                        } else if (data.role === 'hotel') {
-                            window.location.href = "hotel-dashboard.html";
-                        } else {
-                            window.location.href = "hotel.html";
-                        }
+                        if (data.role === 'mitra') window.location.href = "mitra-dashboard.html";
+                        else if (data.role === 'hotel') window.location.href = "hotel-dashboard.html";
+                        else window.location.href = "hotel.html";
                     });
             } else {
-                Swal.fire('Error', 'Invalid credentials!', 'error');
+                Swal.fire('Error', 'Invalid security credentials!', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Server down!', 'error');
+            Swal.fire('Error', 'Server down! Connection error.', 'error');
         }
     }
 </script>

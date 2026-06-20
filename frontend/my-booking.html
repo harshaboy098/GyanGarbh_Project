@@ -46,6 +46,9 @@
         .progress-fill { height: 100%; background: linear-gradient(90deg, var(--brand) 0%, var(--gold) 100%); transition: 1.5s ease-in-out; border-radius: 10px; }
         .track-point { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; background: #ddd; border: 3px solid white; transition: 0.5s; }
         .point-active { background: var(--gold); box-shadow: 0 0 15px var(--gold); }
+        .profile-editor { background: white; border-radius: 28px; padding: 24px; box-shadow: 0 18px 45px rgba(15,23,42,0.08); margin-bottom: 28px; }
+        .profile-photo { width: 112px; height: 112px; border-radius: 999px; object-fit: cover; border: 5px solid white; box-shadow: 0 12px 30px rgba(15,23,42,0.15); background: #e2e8f0; }
+        .profile-editor input, .profile-editor textarea { border-radius: 14px; border: 1px solid #dbe3ef; padding: 11px 13px; width: 100%; }
     </style>
 </head>
 <body>
@@ -82,6 +85,25 @@
 </div>
 
 <div class="container pb-5">
+    <section class="profile-editor">
+        <div class="row g-4 align-items-center">
+            <div class="col-md-3 text-center">
+                <img id="profilePreview" class="profile-photo" alt="Profile photo">
+                <input id="profilePhotoInput" type="file" accept="image/*" class="d-none" autocomplete="off">
+                <button class="btn btn-outline-primary rounded-pill mt-3 fw-bold" onclick="document.getElementById('profilePhotoInput').click()">Upload/Change Photo</button>
+            </div>
+            <div class="col-md-9">
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="small text-muted fw-bold">Full Name</label><input id="profileFullName" autocomplete="off"></div>
+                    <div class="col-md-6"><label class="small text-muted fw-bold">Date of Birth</label><input id="profileDob" type="date" autocomplete="off"></div>
+                    <div class="col-md-6"><label class="small text-muted fw-bold">Village / City</label><input id="profileVillageCity" autocomplete="off"></div>
+                    <div class="col-md-6"><label class="small text-muted fw-bold">Pin Code</label><input id="profilePinCode" autocomplete="off"></div>
+                    <div class="col-12"><label class="small text-muted fw-bold">Bio / Travel Details</label><textarea id="profileBio" rows="3" autocomplete="off"></textarea></div>
+                </div>
+                <button class="btn btn-primary rounded-pill px-4 fw-bold mt-3" onclick="saveProfile()">Save Profile</button>
+            </div>
+        </div>
+    </section>
     <h5 class="fw-bold mb-4"><i class="bi bi-bag-check-fill text-primary"></i> Your Order History</h5>
     <div id="bookingsContainer">
         <div class="text-center py-5">
@@ -95,6 +117,32 @@
 <script>
     const uName = localStorage.getItem('userName');
     const uEmail = localStorage.getItem('userEmail');
+    const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+
+    function getDefaultAvatar(name = 'GG') {
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'GG')}&background=1e3c72&color=fff&size=220`;
+    }
+
+    function resetProfileForm() {
+        document.getElementById('profileFullName').value = uName || '';
+        document.getElementById('profileDob').value = '';
+        document.getElementById('profileVillageCity').value = '';
+        document.getElementById('profilePinCode').value = '';
+        document.getElementById('profileBio').value = '';
+        document.getElementById('profilePreview').src = getDefaultAvatar(uName || 'GG');
+    }
+
+    function showAuthExpiredState() {
+        localStorage.removeItem('authToken');
+        sessionStorage.removeItem('authToken');
+        document.getElementById('bookingsContainer').innerHTML = `
+            <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+                <i class="bi bi-shield-lock display-1 text-warning"></i>
+                <h5 class="mt-3 mb-2">Please login again</h5>
+                <p class="text-muted mb-3">Your secure session expired. Your account is safe; login again to view profile and orders.</p>
+                <a href="index.html" class="btn btn-primary rounded-pill px-4 fw-bold">Login</a>
+            </div>`;
+    }
 
     // ⭐ Unique logic for Greeting based on time
     function setGreeting() {
@@ -108,20 +156,97 @@
     }
 
     window.onload = function() {
-        if(!uName || !uEmail) { window.location.href = "index.html"; return; }
+        if(!uName || !uEmail || !authToken) {
+            resetProfileForm();
+            showAuthExpiredState();
+            return;
+        }
         
+        resetProfileForm();
         setGreeting();
         document.getElementById('profileEmail').innerText = uEmail;
         document.getElementById('userInitial').innerText = uName.charAt(0).toUpperCase();
         
+        loadProfile();
         fetchMyOrders();
     };
+
+    document.getElementById('profilePhotoInput').addEventListener('change', async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        document.getElementById('profilePreview').src = URL.createObjectURL(file);
+        const formData = new FormData();
+        formData.append('profilePic', file);
+        const uploadResponse = await fetch(`${API_URL}/api/user/upload-profile-pic`, { method: 'POST', body: formData });
+        const uploadData = await uploadResponse.json();
+        if (uploadData.success && uploadData.profilePic) {
+            await saveProfile({ profilePic: uploadData.profilePic }, false);
+        } else {
+            if (uploadResponse.status === 401 || uploadResponse.status === 403) showAuthExpiredState();
+            else alert(uploadData.message || 'Photo upload failed.');
+        }
+    });
+
+    async function loadProfile() {
+        try {
+            const response = await fetch(`${API_URL}/api/user/profile`);
+            const data = await response.json();
+            if (response.status === 401 || response.status === 403) {
+                showAuthExpiredState();
+                return;
+            }
+            if (!data.success) return;
+            const profile = data.profile;
+            document.getElementById('profileFullName').value = profile.fullName || profile.name || '';
+            document.getElementById('profileDob').value = profile.dob ? String(profile.dob).slice(0, 10) : '';
+            document.getElementById('profileVillageCity').value = profile.villageCity || profile.address || '';
+            document.getElementById('profilePinCode').value = profile.pinCode || '';
+            document.getElementById('profileBio').value = profile.bio || profile.experience || '';
+            document.getElementById('profilePreview').src = profile.profilePic || profile.photoURL || getDefaultAvatar(profile.fullName || profile.name || 'GG');
+        } catch (error) {
+            console.error('Profile load failed', error);
+        }
+    }
+
+    async function saveProfile(extra = {}, showToast = true) {
+        const payload = {
+            fullName: document.getElementById('profileFullName').value.trim(),
+            dob: document.getElementById('profileDob').value,
+            villageCity: document.getElementById('profileVillageCity').value.trim(),
+            pinCode: document.getElementById('profilePinCode').value.trim(),
+            bio: document.getElementById('profileBio').value.trim(),
+            ...extra
+        };
+        const response = await fetch(`${API_URL}/api/user/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.status === 401 || response.status === 403) {
+            showAuthExpiredState();
+            return;
+        }
+        if (data.success) {
+            localStorage.setItem('userName', data.profile.fullName || data.profile.name || uName);
+            if (showToast) alert('Profile saved successfully.');
+            return;
+        }
+        if (showToast) alert(data.message || 'Profile save failed.');
+    }
 
     async function fetchMyOrders() {
         const container = document.getElementById('bookingsContainer');
         try {
             const res = await fetch(`${API_URL}/all-bookings`);
             const allBookings = await res.json();
+            if (res.status === 401 || res.status === 403) {
+                showAuthExpiredState();
+                return;
+            }
+            if (!Array.isArray(allBookings)) {
+                throw new Error(allBookings.message || 'Invalid booking response');
+            }
             
             // Smart Filter: raja vs Raja check (Case-insensitive)
             const myBookings = allBookings.filter(b => b.userEmail.toLowerCase() === uEmail.toLowerCase());
@@ -132,7 +257,7 @@
             container.innerHTML = "";
 
             if(myBookings.length === 0) {
-                container.innerHTML = `<div class="text-center py-5 bg-white rounded-4 shadow-sm"><i class="bi bi-calendar-x display-1 text-light"></i><h5 class="text-muted mt-3 mb-0">No bookings yet! Explore Bodhgaya Hotels.</h5><a href="hotel.html" class="btn btn-primary rounded-pill mt-3 px-4">Book Your First Stay</a></div>`;
+                container.innerHTML = `<div class="text-center py-5 bg-white rounded-4 shadow-sm"><i class="bi bi-bag-plus display-1 text-light"></i><h5 class="text-muted mt-3 mb-1">No orders yet</h5><p class="text-muted small mb-0">Amazon-style new accounts start with a clean profile and empty order history.</p><a href="hotel.html" class="btn btn-primary rounded-pill mt-3 px-4">Book Your First Stay</a></div>`;
                 return;
             }
 
