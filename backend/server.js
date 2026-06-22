@@ -708,7 +708,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
             if (!hasPendingRegistration && !isStrongEnoughPassword(password)) {
                 return res.status(400).json({ success: false, message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.` });
             }
-            if (!isValidPhone(phone)) {
+            if (phone && !isValidPhone(phone)) {
                 return res.status(400).json({ success: false, message: 'Please enter a valid phone number.' });
             }
             if (userExists || hotelExists) {
@@ -723,7 +723,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
                     role: cleanRole,
                     requestedRole,
                     experience: experience || "",
-                    phone: normalizePhone(phone),
+                    phone: normalizePhone(phone || ''),
                     dob: parseDob(dob || dateOfBirth),
                     villageCity: resolvedVillageCity || "",
                     pinCode: String(resolvedPinCode || '').trim(),
@@ -838,19 +838,27 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
         }
         
         // 🔒 NEW CUSTOMER / MITRA REGISTRATION
+        // ⭐ VALIDATE PENDING DATA BEFORE CREATING USER
+        const cleanName = String(pending.name || pending.fullName || '').trim();
+        const cleanFullName = String(pending.fullName || pending.name || '').trim();
+        
+        if (!cleanName) {
+            throw new Error('User name/fullName is required but not found in pending data. Please retry signup.');
+        }
+        
         const hashedPassword = await bcrypt.hash(pending.password, 10);
         const newUser = new User({
-            name: pending.name,
-            fullName: pending.fullName || pending.name,
+            name: cleanName,
+            fullName: cleanFullName || cleanName,
             email: pending.email,
             password: hashedPassword,
             role: 'customer',
-            experience: pending.experience,
-            phone: pending.phone,
-            dob: pending.dob,
-            villageCity: pending.villageCity,
-            pinCode: pending.pinCode,
-            address: pending.address
+            experience: pending.experience || '',
+            phone: pending.phone || '',
+            dob: pending.dob || null,
+            villageCity: pending.villageCity || '',
+            pinCode: pending.pinCode || '',
+            address: pending.address || ''
         });
         await newUser.save();
         
@@ -861,18 +869,20 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
         
         return res.json({ success: true, message: 'Registered successfully.', role: newUser.role, userId: newUser._id, name: newUser.name, email: newUser.email, phone: newUser.phone, sessionToken: createSessionToken(newUser.role, newUser.email) });
     } catch (err) {
-        console.error('Verify OTP error:', err);
+        console.error('Verify OTP error:', err.message, err.stack);
         if (err && err.code === 11000) {
             const duplicatedField = Object.keys(err.keyPattern || err.keyValue || {})[0] || 'account field';
             return res.status(409).json({
                 success: false,
-                message: `${duplicatedField} is already linked with another account. Please use a different value or login instead.`
+                message: `${duplicatedField} is already linked with another account. Please use a different value or login instead.`,
+                errorType: 'DUPLICATE_ACCOUNT'
             });
         }
         if (err && err.name === 'ValidationError') {
-            return res.status(400).json({ success: false, message: err.message });
+            const errorDetails = Object.keys(err.errors || {}).map(field => `${field}: ${err.errors[field].message}`).join('; ');
+            return res.status(400).json({ success: false, message: `Account validation failed: ${errorDetails}`, errorType: 'VALIDATION_ERROR' });
         }
-        return res.status(500).json({ success: false, message: err.message || 'OTP verification failed. Please try again.' });
+        return res.status(500).json({ success: false, message: err.message || 'OTP verification failed. Please try again.', errorType: 'SERVER_ERROR' });
     }
 });
 
@@ -886,9 +896,12 @@ app.post(['/login', '/api/login'], async (req, res) => {
         const normalizedEmail = normalizeEmail(email);
         if (!isValidEmail(normalizedEmail) || !password) return res.status(400).json({ success: false, message: 'Valid email and password are required' });
         const user = await User.findOne({ email: normalizedEmail });
-        if (!user) return res.status(401).json({ success: false, message: "Invalid Credentials" });
+        if (!user) {
+            // User not found - provide helpful message
+            return res.status(401).json({ success: false, message: "Invalid email or password. If you haven't signed up yet, please create an account first.", errorType: 'NO_ACCOUNT' });
+        }
         const passwordMatch = await bcrypt.compare(password, user.password);
-        if (!passwordMatch) return res.status(401).json({ success: false, message: "Invalid Credentials" });
+        if (!passwordMatch) return res.status(401).json({ success: false, message: "Invalid email or password. Please check and try again.", errorType: 'INVALID_PASSWORD' });
         res.status(200).json({
             success: true,
             userId: user._id,
@@ -901,7 +914,8 @@ app.post(['/login', '/api/login'], async (req, res) => {
             sessionToken: createSessionToken(user.role, user.email)
         });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error('Login error:', err.message);
+        res.status(500).json({ success: false, message: 'Login failed. Please try again.', errorType: 'SERVER_ERROR' });
     }
 });
 
@@ -1084,7 +1098,7 @@ app.use('/admin', (req, res, next) => {
     });
 });
 
-app.get('/admin/enquiries', async (req, res) => {
+app.get('/admin/enquiries', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
     try {
         const data = await safeSortQuery(Enquiry.find(), { createdAt: -1 });
         res.json(data);
@@ -2166,7 +2180,6 @@ app.get('/admin/all-assistants', verifyAdmin, async (req, res) => {
         const assistants = await Assistant.find().select('-password');
         res.json({ success: true, assistants });
     } catch (err) {
-        optionsStatus = 500;
         res.status(500).json({ success: false, message: err.message });
     }
 });
@@ -2286,9 +2299,6 @@ app.put('/admin/staff/:id', verifyAdminOrAssistant('manageCustomers'), async (re
 // Update Assistant Details
 app.put('/admin/update-assistant', verifyAdmin, async (req, res) => {
     try {
-        if (req.session.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Only Admin can update assistants' });
-        }
         const { assistantId, name, email, role, permissions, isActive } = req.body;
 
         const updatedAssistant = await Assistant.findByIdAndUpdate(

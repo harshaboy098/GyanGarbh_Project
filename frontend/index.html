@@ -44,12 +44,20 @@
                         localStorage.setItem('userRole', body.role);
                         localStorage.setItem('googleLogin', 'true');
                         localStorage.setItem('authToken', body.sessionToken);
-                        Swal.fire({ icon: 'success', title: 'Welcome!', text: `Hello ${body.name}!`, timer: 1500, showConfirmButton: false })
-                            .then(() => {
+                        
+                        // ⭐ CRITICAL ROUTING REFIX: willClose guarantees instantaneous redirection
+                        Swal.fire({ 
+                            icon: 'success', 
+                            title: 'Welcome!', 
+                            text: `Hello ${body.name}!`, 
+                            timer: 1500, 
+                            showConfirmButton: false,
+                            willClose: () => {
                                 if (body.role === 'mitra') window.location.href = 'mitra-dashboard.html';
                                 else if (body.role === 'hotel') window.location.href = 'hotel-dashboard.html';
                                 else window.location.href = 'hotel.html';
-                            });
+                            }
+                        });
                     } else {
                         Swal.fire('Error', body.message || 'Google login failed.', 'error');
                     }
@@ -395,11 +403,10 @@
         btn.innerText = "Sending OTP...";
         btn.disabled = true;
 
-        // MULTI-MAPPING SAFE PAYLOAD
         const payload = {
             email: email.toLowerCase(),
             name: name,
-            fullName: name, // Maps to either version the backend destructures
+            fullName: name,
             password: pass,
             role: selectedRole,
             phone: phone,
@@ -478,12 +485,19 @@
                 localStorage.setItem('userRole', data.role || 'guest');
                 localStorage.setItem('authToken', data.sessionToken);
 
-                Swal.fire({ icon: 'success', title: 'Verified', text: 'Registration completed successfully.', timer: 1800, showConfirmButton: false })
-                    .then(() => {
+                // ⭐ REDIRECTION FIXED: willClose immediately forces redirect on alert timeout/dismissal
+                Swal.fire({ 
+                    icon: 'success', 
+                    title: 'Verified', 
+                    text: 'Registration completed successfully.', 
+                    timer: 1800, 
+                    showConfirmButton: false,
+                    willClose: () => {
                         if (data.role === 'mitra') window.location.href = "mitra-dashboard.html";
                         else if (data.role === 'hotel') window.location.href = "hotel-dashboard.html";
                         else window.location.href = "hotel.html";
-                    });
+                    }
+                });
             } else {
                 Swal.fire('Error', data.message || 'Incorrect OTP code.', 'error');
             }
@@ -509,12 +523,18 @@
                 localStorage.setItem('userRole', data.role);
                 localStorage.setItem('authToken', data.sessionToken);
 
-                Swal.fire({ icon: 'success', title: 'Access Granted!', timer: 1000, showConfirmButton: false })
-                    .then(() => {
+                // ⭐ REDIRECTION FIXED: willClose immediately triggers dashboard load
+                Swal.fire({ 
+                    icon: 'success', 
+                    title: 'Access Granted!', 
+                    timer: 1000, 
+                    showConfirmButton: false,
+                    willClose: () => {
                         if (data.role === 'mitra') window.location.href = "mitra-dashboard.html";
                         else if (data.role === 'hotel') window.location.href = "hotel-dashboard.html";
                         else window.location.href = "hotel.html";
-                    });
+                    }
+                });
             } else {
                 Swal.fire('Error', 'Invalid security credentials!', 'error');
             }
