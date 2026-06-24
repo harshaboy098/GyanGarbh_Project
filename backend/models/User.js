@@ -108,7 +108,7 @@ userSchema.pre('validate', function(next) {
     next();
 });
 
-// ⭐ FIX: Pure async pre-save middleware (removed next parameter to avoid conflict)
+// ⭐ ASYNC FIX: Removed 'next' completely from parameter and call stack
 userSchema.pre('save', async function() {
     if (!this.isModified('password')) return;
     if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return;
