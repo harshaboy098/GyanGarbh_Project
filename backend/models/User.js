@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 
 const USER_ROLES = ['admin', 'assistant', 'support', 'driver', 'customer', 'mitra'];
 
-// Application user schema
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -47,7 +46,7 @@ const userSchema = new mongoose.Schema({
     },
     address: {
         type: String,
-        required: false // Optional for Google login users initially
+        required: false
     },
     role: {
         type: String,
@@ -80,11 +79,11 @@ const userSchema = new mongoose.Schema({
     },
     googleId: {
         type: String,
-        required: false // For Google login users
+        required: false
     },
     photoURL: {
         type: String,
-        required: false // Google profile picture
+        required: false
     },
     profilePic: {
         type: String,
@@ -92,7 +91,7 @@ const userSchema = new mongoose.Schema({
     },
     date: {
         type: Date,
-        default: Date.now // Jab user banega, aaj ki date apne aap save ho jayegi
+        default: Date.now
     },
     updatedBy: { type: String, default: null },
     updatedAt: { type: Date, default: Date.now },
@@ -109,7 +108,7 @@ userSchema.pre('validate', function(next) {
     next();
 });
 
-// Modern Mongoose Async Pre-Save Hook (Zero parameter conflicts)
+// ⭐ FIX: Pure async pre-save middleware (removed next parameter to avoid conflict)
 userSchema.pre('save', async function() {
     if (!this.isModified('password')) return;
     if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return;
