@@ -3630,7 +3630,7 @@ app.post(['/reset-password', '/api/reset-password'], async (req, res) => {
 
 
 
-        if (!account) return res.status(404).json({ success: false });
+        if (!account) return res.status(404).json({ success: false, message: 'Account not found for this email address' });
 
         account.password = await bcrypt.hash(newPassword, 10);
 
@@ -3638,9 +3638,12 @@ app.post(['/reset-password', '/api/reset-password'], async (req, res) => {
 
         delete resetAuthorizationStore[normalizedEmail];
 
-        res.json({ success: true });
+        res.json({ success: true, message: 'Password reset successfully' });
 
-    } catch (err) { res.status(500).json({ success: false }); }
+    } catch (err) {
+        console.error('Reset password error:', err);
+        res.status(500).json({ success: false, message: 'Unable to reset password. Please try again.' });
+    }
 
 });
 

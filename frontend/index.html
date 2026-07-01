@@ -340,19 +340,30 @@
         Swal.fire({ title: 'Sending OTP...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
         try {
+            const normalizedEmail = email.trim().toLowerCase();
             const res = await fetch(`${API_URL}/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email.trim().toLowerCase(), isReset: true })
+                body: JSON.stringify({ email: normalizedEmail, isReset: true })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
 
             if (res.ok) {
                 const { value: formValues } = await Swal.fire({
                     title: 'Verify & Reset',
                     html: '<input id="otp-v" class="swal2-input" placeholder=""><input id="pass-v" type="password" class="swal2-input" placeholder="">',
                     preConfirm: () => {
-                        return [document.getElementById('otp-v').value, document.getElementById('pass-v').value]
+                        const otp = document.getElementById('otp-v').value.replace(/\D/g, '');
+                        const newPassword = document.getElementById('pass-v').value;
+                        if (otp.length !== 6) {
+                            Swal.showValidationMessage('Please enter the 6 digit OTP.');
+                            return false;
+                        }
+                        if (!newPassword || newPassword.length < 8) {
+                            Swal.showValidationMessage('Password must be at least 8 characters.');
+                            return false;
+                        }
+                        return [otp, newPassword];
                     }
                 });
 
@@ -361,26 +372,31 @@
                     const vRes = await fetch(`${API_URL}/verify-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email.trim().toLowerCase(), otp: otp.trim() })
+                        body: JSON.stringify({ email: normalizedEmail, otp })
                     });
+                    const verifyData = await vRes.json().catch(() => ({ success: false, message: 'Server returned an invalid OTP response.' }));
 
-                    if (vRes.ok) {
-                        const verifyData = await vRes.json();
+                    if (vRes.ok && verifyData.success) {
                         const rRes = await fetch(`${API_URL}/reset-password`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: email.trim().toLowerCase(), newPassword, userType: 'user', resetToken: verifyData.resetToken })
+                            body: JSON.stringify({ email: normalizedEmail, newPassword, userType: 'user', resetToken: verifyData.resetToken })
                         });
-                        if (rRes.ok) Swal.fire('Success', 'Password updated successfully. You can now login.', 'success');
+                        const resetData = await rRes.json().catch(() => ({ success: false, message: 'Server returned an invalid reset response.' }));
+                        if (rRes.ok && resetData.success) {
+                            Swal.fire('Success', 'Password updated successfully. You can now login.', 'success');
+                        } else {
+                            Swal.fire('Error', resetData.message || 'Password reset failed.', 'error');
+                        }
                     } else {
-                        Swal.fire('Error', 'Invalid verification code.', 'error');
+                        Swal.fire('Error', verifyData.message || 'Invalid verification code.', 'error');
                     }
                 }
             } else {
-                Swal.fire('Error', data.message, 'error');
+                Swal.fire('Error', data.message || 'Unable to send reset OTP.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Server error. Please try again later.', 'error');
+            Swal.fire('Connection Error', `Unable to reach the server at ${API_URL}. Please check backend status and try again.`, 'error');
         }
     }
 
