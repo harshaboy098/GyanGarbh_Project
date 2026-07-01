@@ -45,6 +45,17 @@
         const token = getToken();
         if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
         options.headers = headers;
+
+        const timeoutMs = Number(options.timeoutMs || 30000);
+        delete options.timeoutMs;
+
+        if (!options.signal && typeof AbortController !== 'undefined' && timeoutMs > 0) {
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+            options.signal = controller.signal;
+            return originalFetch(input, options).finally(() => window.clearTimeout(timeoutId));
+        }
+
         return originalFetch(input, options);
     };
 

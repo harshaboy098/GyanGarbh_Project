@@ -282,7 +282,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: lastEmailForOTP.trim().toLowerCase(), isReset: false })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
             if (res.ok) {
                 Swal.fire('Success', 'Verification code resent successfully.', 'success');
                 startOTPTimer();
@@ -290,7 +290,7 @@
                 Swal.fire('Error', data.message || 'Failed to resend OTP.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Unable to connect to the server. Please try again.', 'error');
+            Swal.fire('Connection Error', `Unable to connect to ${API_URL}. Please check backend status and try again.`, 'error');
         }
     }
 
@@ -444,7 +444,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
 
             if (res.ok) {
                 lastEmailForOTP = email.toLowerCase();
@@ -467,7 +467,10 @@
                 btn.disabled = false;
             }
         } catch (e) {
-            Swal.fire('Error', 'Server down. Please check your internet connection.', 'error');
+            const message = e.name === 'AbortError'
+                ? `Request timed out while connecting to ${API_URL}. Render may be waking up; please try again.`
+                : `Unable to connect to ${API_URL}. Please check backend status and try again.`;
+            Swal.fire('Connection Error', message, 'error');
             btn.innerText = "Send OTP";
             btn.disabled = false;
         }
@@ -531,7 +534,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
             if (res.ok) {
                 localStorage.setItem('userName', data.name);
                 localStorage.setItem('userId', data.userId || '');
@@ -552,10 +555,13 @@
                     }
                 });
             } else {
-                Swal.fire('Error', 'Invalid security credentials!', 'error');
+                Swal.fire('Error', data.message || 'Invalid security credentials!', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Server down! Connection error.', 'error');
+            const message = e.name === 'AbortError'
+                ? `Login request timed out while connecting to ${API_URL}. Render may be waking up; please try again.`
+                : `Unable to connect to ${API_URL}. Please check backend status and try again.`;
+            Swal.fire('Connection Error', message, 'error');
         }
     }
 </script>
