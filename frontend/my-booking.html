@@ -174,16 +174,21 @@
     document.getElementById('profilePhotoInput').addEventListener('change', async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        document.getElementById('profilePreview').src = URL.createObjectURL(file);
-        const formData = new FormData();
-        formData.append('profilePic', file);
-        const uploadResponse = await fetch(`${API_URL}/api/user/upload-profile-pic`, { method: 'POST', body: formData });
-        const uploadData = await uploadResponse.json();
-        if (uploadData.success && uploadData.profilePic) {
-            await saveProfile({ profilePic: uploadData.profilePic }, false);
-        } else {
-            if (uploadResponse.status === 401 || uploadResponse.status === 403) showAuthExpiredState();
-            else alert(uploadData.message || 'Photo upload failed.');
+        try {
+            document.getElementById('profilePreview').src = URL.createObjectURL(file);
+            const formData = new FormData();
+            formData.append('profilePic', file);
+            const uploadResponse = await fetch(`${API_URL}/api/user/upload-profile-pic`, { method: 'POST', body: formData });
+            const uploadData = await uploadResponse.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
+            if (uploadData.success && uploadData.profilePic) {
+                await saveProfile({ profilePic: uploadData.profilePic }, false);
+            } else {
+                if (uploadResponse.status === 401 || uploadResponse.status === 403) showAuthExpiredState();
+                else alert(uploadData.message || 'Photo upload failed.');
+            }
+        } catch (error) {
+            console.error('Photo upload failed', error);
+            alert('Photo upload failed. Please check the connection and try again.');
         }
     });
 
@@ -249,7 +254,7 @@
             }
             
             // Smart Filter: raja vs Raja check (Case-insensitive)
-            const myBookings = allBookings.filter(b => b.userEmail.toLowerCase() === uEmail.toLowerCase());
+            const myBookings = allBookings.filter(b => String(b.userEmail || '').toLowerCase() === String(uEmail || '').toLowerCase());
             
             // ⭐ Unique Update: Stats Counter
             document.getElementById('totalBookings').innerText = myBookings.length;

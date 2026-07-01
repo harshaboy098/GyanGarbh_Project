@@ -201,7 +201,7 @@
     // ⭐ SIGNUP LOGIC
     async function initiateMitraSignup(e) {
         e.preventDefault();
-        const email = document.getElementById('sEmail').value;
+        const email = document.getElementById('sEmail').value.trim().toLowerCase();
         const name = document.getElementById('sName').value.trim();
         const password = document.getElementById('sPass').value;
         const experience = document.getElementById('sExp').value;
@@ -241,10 +241,15 @@
 
     async function finalMitraRegister() {
         const name = document.getElementById('sName').value;
-        const email = document.getElementById('sEmail').value;
+        const email = document.getElementById('sEmail').value.trim().toLowerCase();
         const password = document.getElementById('sPass').value;
         const exp = document.getElementById('sExp').value;
-        const otp = document.getElementById('mitraOTP').value;
+        const otp = document.getElementById('mitraOTP').value.replace(/\D/g, '');
+
+        if (otp.length !== 6) {
+            Swal.fire('Invalid OTP', 'Please enter the 6 digit verification code.', 'warning');
+            return;
+        }
 
         try {
             const otpRes = await fetch(`${API_URL}/verify-otp`, {
@@ -252,23 +257,25 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ email, otp })
             });
-            if(otpRes.ok) {
-                const registrationData = await otpRes.json();
-                if(registrationData.success) {
-                    localStorage.setItem('mitraEmail', email);
-                    localStorage.setItem('mitraName', name);
+            const registrationData = await otpRes.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
+            if(otpRes.ok && registrationData.success) {
+                    localStorage.setItem('mitraEmail', registrationData.email || email);
+                    localStorage.setItem('mitraName', registrationData.name || name);
+                    localStorage.setItem('userEmail', registrationData.email || email);
+                    localStorage.setItem('userName', registrationData.name || name);
+                    localStorage.setItem('userId', registrationData.userId || '');
+                    localStorage.setItem('userRole', registrationData.role || 'mitra');
                     localStorage.setItem('authToken', registrationData.sessionToken);
                     Swal.fire({ icon: 'success', title: 'Welcome!', text: 'Account created!', timer: 2000, showConfirmButton: false })
                     .then(() => { window.location.href = "mitra-dashboard.html"; });
-                }
-            } else { Swal.fire('Invalid OTP', 'Please enter the correct verification code.', 'error'); }
+            } else { Swal.fire('Invalid OTP', registrationData.message || 'Please enter the correct verification code.', 'error'); }
         } catch (err) { Swal.fire('Error', 'Registration Failed!', 'error'); }
     }
 
     // ⭐ LOGIN LOGIC
     async function handleMitraLogin(e) {
         e.preventDefault();
-        const email = document.getElementById('loginEmail').value;
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
         const password = document.getElementById('loginPass').value;
         try {
             const res = await fetch(`${API_URL}/login`, {
@@ -278,8 +285,12 @@
             });
             const data = await res.json();
             if(res.ok) {
-                localStorage.setItem('mitraEmail', email);
+                localStorage.setItem('mitraEmail', data.email || email);
                 localStorage.setItem('mitraName', data.name);
+                localStorage.setItem('userEmail', data.email || email);
+                localStorage.setItem('userName', data.name);
+                localStorage.setItem('userId', data.userId || '');
+                localStorage.setItem('userRole', data.role || 'mitra');
                 localStorage.setItem('authToken', data.sessionToken);
                 window.location.href = "mitra-dashboard.html";
             } else { Swal.fire('Error', 'Invalid credentials!', 'error'); }

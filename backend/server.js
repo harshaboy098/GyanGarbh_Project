@@ -120,7 +120,7 @@ const publicUserQuery = (query) => query.select('-password');
 
 const publicUserFields = '-password';
 
-const STAFF_ROLES = ['support', 'driver'];
+const STAFF_ROLES = ['support', 'specialist', 'driver'];
 
 const SUPPORT_TIER_BY_ROLE = {
 
@@ -636,7 +636,7 @@ const getRequestActor = async (req) => {
 
     }
 
-    if (['support', 'driver'].includes(requestedRole)) {
+    if (STAFF_ROLES.includes(requestedRole)) {
 
         const staff = await User.findOne({ email, role: requestedRole, isLocked: { $ne: true } }).select('email role supportTier');
 
@@ -748,7 +748,7 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
 
 
 
-const verifySupportActor = (allowedRoles = ['support', 'assistant', 'admin']) => async (req, res, next) => {
+const verifySupportActor = (allowedRoles = ['support', 'specialist', 'assistant', 'admin']) => async (req, res, next) => {
 
     try {
 
@@ -1182,6 +1182,8 @@ async function ensureAdminUser() {
 
                 name: 'Admin',
 
+                fullName: 'Admin',
+
                 email: ADMIN_EMAIL,
 
                 password: hashedPassword,
@@ -1372,7 +1374,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
         const requestedRole = ['guest', 'mitra', 'customer', 'hotel'].includes(role) ? role : 'customer';
 
-        const cleanRole = requestedRole === 'hotel' ? 'hotel' : 'customer';
+        const cleanRole = requestedRole === 'hotel' ? 'hotel' : requestedRole === 'mitra' ? 'mitra' : 'customer';
 
 
 
@@ -1706,7 +1708,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
             password: hashedPassword,
 
-            role: 'customer',
+            role: pending.requestedRole === 'mitra' || pending.role === 'mitra' ? 'mitra' : 'customer',
 
             experience: pending.experience || '',
 
@@ -4522,7 +4524,7 @@ app.post('/admin/staff', verifyAdmin, async (req, res) => {
 
             role: cleanRole,
 
-            supportTier: cleanRole === 'support' ? 'tier1' : 'none',
+            supportTier: cleanRole === 'support' ? 'tier1' : cleanRole === 'specialist' ? 'specialist' : 'none',
 
             dob: parseDob(dob),
 
@@ -5084,7 +5086,7 @@ app.get('/bodhi-path/category/:category', async (req, res) => {
 
 
 
-app.post('/support/verify-customer', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+app.post('/support/verify-customer', verifySupportActor(['support', 'specialist', 'assistant', 'admin']), async (req, res) => {
 
     try {
 
@@ -5128,7 +5130,7 @@ app.post('/support/verify-customer', verifySupportActor(['support', 'assistant',
 
 
 
-app.post('/support/tickets', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+app.post('/support/tickets', verifySupportActor(['support', 'specialist', 'assistant', 'admin']), async (req, res) => {
 
     try {
 
@@ -5236,11 +5238,11 @@ app.post('/api/support/tickets', requireSession(['customer', 'guest', 'mitra']),
 
 
 
-app.get('/support/tickets', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+app.get('/support/tickets', verifySupportActor(['support', 'specialist', 'assistant', 'admin']), async (req, res) => {
 
     try {
 
-        const actorTier = req.actor.role === 'admin' ? 'admin' : req.actor.role === 'assistant' ? 'assistant' : 'tier1';
+        const actorTier = req.actor.role === 'admin' ? 'admin' : req.actor.role === 'assistant' ? 'assistant' : req.actor.role === 'specialist' ? 'specialist' : 'tier1';
 
         const filter = req.actor.role === 'admin' ? {} : { $or: [{ tier: actorTier }, { assignedTo: req.actor.email }] };
 
@@ -5258,7 +5260,7 @@ app.get('/support/tickets', verifySupportActor(['support', 'assistant', 'admin']
 
 
 
-app.put('/support/tickets/:id/escalate', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+app.put('/support/tickets/:id/escalate', verifySupportActor(['support', 'specialist', 'assistant', 'admin']), async (req, res) => {
 
     try {
 
@@ -5292,7 +5294,7 @@ app.put('/support/tickets/:id/escalate', verifySupportActor(['support', 'assista
 
 
 
-app.put('/support/tickets/:id/resolve', verifySupportActor(['support', 'assistant', 'admin']), async (req, res) => {
+app.put('/support/tickets/:id/resolve', verifySupportActor(['support', 'specialist', 'assistant', 'admin']), async (req, res) => {
 
     try {
 

@@ -9,7 +9,7 @@ const activityLogSchema = new mongoose.Schema({
     },
     entityType: {
         type: String,
-        enum: ['Hotel', 'BodhiPath', 'Assistant', 'Customer', 'Mitra', 'Security'],
+        enum: ['Hotel', 'BodhiPath', 'Assistant', 'Customer', 'Mitra', 'Staff', 'Security'],
         required: true,
         index: true
     },
@@ -18,7 +18,7 @@ const activityLogSchema = new mongoose.Schema({
     performedBy: { type: String, trim: true, default: 'system' },
     performedByRole: {
         type: String,
-        enum: ['admin', 'assistant', 'system'],
+        enum: ['admin', 'assistant', 'support', 'specialist', 'driver', 'system'],
         required: true
     },
     changes: { type: mongoose.Schema.Types.Mixed, default: null },

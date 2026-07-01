@@ -12,7 +12,7 @@ const supportTicketSchema = new mongoose.Schema({
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     customerEmail: { type: String, required: true, trim: true, lowercase: true },
     customerName: { type: String, required: true, trim: true },
-    customerPhone: { type: String, required: true, trim: true },
+    customerPhone: { type: String, default: '', trim: true },
     subject: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
     category: { type: String, default: 'general', trim: true },
