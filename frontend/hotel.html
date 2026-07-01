@@ -206,8 +206,6 @@
         .ai-send-btn:hover {
             background: #764ba2; transform: scale(1.05);
         }
-
-        /* Bug Fixes */
     </style>
 </head>
 <body>
@@ -277,26 +275,17 @@
     </div>
 </div>
 
-<!-- 🆕 BODHI PATH SECTION -->
 <div class="container mb-5">
     <div class="card rounded-5 border-0 overflow-hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); position: relative;">
         <div style="position: absolute; top: 0; right: 0; opacity: 0.1; font-size: 200px;">🏛️</div>
         <div class="card-body p-5" style="position: relative; z-index: 2;">
             <div class="row align-items-center">
                 <div class="col-lg-8">
-                    <h2 class="fw-bold text-white mb-3">
-                        <i class="bi bi-temple2"></i> Bodhi Path: Discover Sacred Heritage
-                    </h2>
-                    <p class="text-white fs-6 mb-4">
-                        Explore the rich spiritual and cultural heritage of Bodh Gaya. Learn about ancient temples, sacred traditions, and the profound history of Buddha's enlightenment. A journey beyond just accommodation - a spiritual awakening.
-                    </p>
+                    <h2 class="fw-bold text-white mb-3"><i class="bi bi-temple2"></i> Bodhi Path: Discover Sacred Heritage</h2>
+                    <p class="text-white fs-6 mb-4">Explore the rich spiritual and cultural heritage of Bodh Gaya. Learn about ancient temples, sacred traditions, and the profound history of Buddha's enlightenment. A journey beyond just accommodation - a spiritual awakening.</p>
                     <div class="d-flex gap-3 flex-wrap">
-                        <a href="bodhi-path.html" class="btn btn-light btn-lg rounded-pill px-4 fw-bold">
-                            <i class="bi bi-compass"></i> Explore Heritage Now
-                        </a>
-                        <button class="btn btn-outline-light btn-lg rounded-pill px-4 fw-bold" onclick="openBodhiPathInfo()">
-                            <i class="bi bi-info-circle"></i> Learn More
-                        </button>
+                        <a href="bodhi-path.html" class="btn btn-light btn-lg rounded-pill px-4 fw-bold"><i class="bi bi-compass"></i> Explore Heritage Now</a>
+                        <button class="btn btn-outline-light btn-lg rounded-pill px-4 fw-bold" onclick="openBodhiPathInfo()"><i class="bi bi-info-circle"></i> Learn More</button>
                     </div>
                 </div>
                 <div class="col-lg-4 text-center d-none d-lg-block">
@@ -401,7 +390,6 @@
                         <div class="alert alert-info mb-3" id="detRating" style="font-size: 1.1rem;">⭐ 4.5</div>
                         <p id="detDescription" class="text-muted small mb-3">Comfort and luxury combined</p>
 
-                        <!-- 🆕 NEW FIELDS: Distance & Highlights -->
                         <div class="alert alert-light border mb-3">
                             <small class="fw-bold text-muted d-block mb-2"><i class="bi bi-geo-alt"></i> Distance from Landmark</small>
                             <p id="detDistance" class="mb-0" style="color: #667eea; font-weight: 600;">Mahabodhi Temple: 0.5 km</p>
@@ -431,9 +419,7 @@
                         </div>
 
                         <button onclick="confirmQuickBooking()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg mb-2">CONFIRM BOOKING NOW</button>
-                        <a href="bodhi-path.html" class="btn btn-outline-primary w-100 rounded-pill py-3 fw-bold" target="_blank">
-                            <i class="bi bi-compass"></i> Explore Bodh Gaya Heritage
-                        </a>
+                        <a href="bodhi-path.html" class="btn btn-outline-primary w-100 rounded-pill py-3 fw-bold" target="_blank"><i class="bi bi-compass"></i> Explore Bodh Gaya Heritage</a>
                     </div>
                 </div>
             </div>
@@ -479,9 +465,20 @@
     const userEmail = localStorage.getItem('userEmail');
     const userId = localStorage.getItem('userId');
     let selectedHotelId = '';
+    let allHotels = []; 
+
+    const AI_CONSENT_KEY = 'ai_consent_accepted';
+    const AI_LEARNING_POOL_KEY = 'ai_learning_pool';
+    let aiLearningPool = JSON.parse(localStorage.getItem(AI_LEARNING_POOL_KEY)) || [];
+    let aiLaunchAfterConsent = false;
+
+    const verifiedDataSource = {
+        mahabobhiTemple: { name: 'Mahabodhi Temple', timings: '5:00 AM - 9:00 PM', entryFee: 'Free', location: 'Bodh Gaya, Bihar', verified: true, source: 'Official Tourism Database' },
+        greatBuddhaStatue: { name: 'Great Buddha Statue', timings: '6:00 AM - 6:00 PM', location: 'Near Rajgir, Bihar', height: '80 feet', verified: true, source: 'Official Tourism Database' },
+        bodhTree: { name: 'Sacred Bodhi Tree', location: 'Mahabodhi Temple premises', description: 'Ancient fig tree where Buddha attained enlightenment', verified: true, source: 'Historical Records' }
+    };
 
     async function loadMitrasFromDB() {
-        console.log('Fetching data...');
         const list = document.getElementById('mitraList');
         try {
             const res = await fetch(`${API_URL}/all-mitras`);
@@ -534,24 +531,19 @@
         if (userName) {
             document.getElementById('userSection').innerHTML = `
                 <a href="my-booking.html" class="user-link me-3"><i class="bi bi-person-circle"></i> Profile</a>
-                <button type="button" class="nav-ai-btn me-3" onclick="launchCustomerAIAssistant()"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
+                <button type="button" class="nav-ai-btn me-3" onclick="launchCustomerAIAssistant()"><i class="bi bi-robot"></i> Chat with AI</button>
                 <button onclick="logout()" class="btn btn-sm btn-outline-light rounded-pill px-3">Logout</button>
             `;
         } else {
             document.getElementById('userSection').innerHTML = `<a href="index.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold">Login</a>`;
         }
 
-        const hotelOk = await fetchHotelDetails();
-        const mitraOk = await loadMitrasFromDB();
-        if (hotelOk && mitraOk) {
-            console.log('API Connection: [OK]');
-            console.log('Data Fetching: [OK]');
-            console.log('UI Rendering: [OK]');
-        }
+        await loadHotels();
+        await loadMitrasFromDB();
     };
 
     window.onfocus = async function() {
-        await fetchHotelDetails();
+        await loadHotels();
         await loadMitrasFromDB();
     };
 
@@ -568,17 +560,12 @@
         return price && price > 0 ? `₹${price}/Night` : 'Price on Request';
     }
 
-    async function fetchHotelDetails() {
-        console.log('Fetching data...');
-        return await loadHotels();
-    }
-
     async function loadHotels() {
-        console.log('Fetching data...');
         const container = document.getElementById('hotelsContainer');
         try {
             const res = await fetch(`${API_URL}/all-hotels`);
             const hotels = await res.json();
+            allHotels = hotels; 
             container.innerHTML = "";
             hotels.forEach(h => {
                 const imgUrl = h.imageUrl || h.imageUrl2 || h.imageUrl3 || "https://images.unsplash.com/photo-1566073771259-6a8506099945";
@@ -588,12 +575,17 @@
                 const rating = h.rating || 4.5;
                 const description = h.description || 'Comfort and luxury combined';
                 const locationText = h.location || 'Bodhgaya';
+                
+                const safeId = h._id || '';
                 const safeName = (h.hotelName || 'Hotel').replace(/'/g, "\\'");
                 const safeLocation = locationText.replace(/'/g, "\\'");
                 const safeDescription = description.replace(/'/g, "\\'");
+                const landmarkText = h.distanceFromLandmark ? `${h.distanceFromLandmark.landmark || 'Mahabodhi Temple'}: ${h.distanceFromLandmark.value || '0.5'} ${h.distanceFromLandmark.unit || 'km'}` : 'Mahabodhi Temple: 0.5 km';
+                const highlightsText = (h.gyanGarbhHighlights || 'Peaceful environment, vegetarian meals available').replace(/'/g, "\\'");
+
                 container.innerHTML += `
                     <div class="col-md-4 hotel-item">
-                        <div class="hotel-card" onclick="openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">
+                        <div class="hotel-card" onclick="openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}', '${safeId}', '${landmarkText}', '${highlightsText}')">
                             <span class="urgency-badge">Filling Fast!</span>
                             <div class="img-box"><img src="${imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'"></div>
                             <div class="p-4">
@@ -607,7 +599,7 @@
                                         <button class="btn btn-success btn-sm rounded-pill px-2 fw-bold shadow-sm" onclick="event.stopPropagation(); chatOnWhatsApp('${safeName}')">
                                             <i class="bi bi-whatsapp"></i>
                                         </button>
-                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">View Room</button>
+                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}', '${safeId}', '${landmarkText}', '${highlightsText}')">View Room</button>
                                     </div>
                                 </div>
                             </div>
@@ -633,24 +625,23 @@
         Swal.fire('Mitra Assigned!', `${name} will guide your trip.`, 'success');
     }
 
-    function openHotelDetails(name, loc, price, img, rating, description, hotelId = '') {
+    function openHotelDetails(name, loc, price, img, rating, description, hotelId = '', landmark = 'Mahabodhi Temple: 0.5 km', highlights = 'Peaceful environment, vegetarian meals available') {
         selectedHotelId = hotelId;
         const priceText = price && price > 0 ? '₹' + price : 'Price on Request';
         document.getElementById('detName').innerText = name;
         document.getElementById('detLoc').innerText = loc;
         document.getElementById('detPrice').innerText = priceText;
-        document.getElementById('detImg').src = img || 'https://via.placeholder.com/800x600?text=Hotel+Interior';
+        document.getElementById('detImg').src = img || 'https://via.unsplash.com/photo-1566073771259-6a8506099945';
+        
         const ratingEl = document.getElementById('detRating');
         const descEl = document.getElementById('detDescription');
         if (ratingEl) ratingEl.innerText = `⭐ ${rating || 4.5}`;
         if (descEl) descEl.innerText = description || 'Comfort and luxury combined';
 
-        // 🆕 POPULATE DISTANCE AND HIGHLIGHTS
-        // Default values - will be updated from actual hotel data
         const detDistance = document.getElementById('detDistance');
         const detHighlights = document.getElementById('detHighlights');
-        if (detDistance) detDistance.innerText = 'Mahabodhi Temple: 0.5 km';
-        if (detHighlights) detHighlights.innerText = 'Peaceful garden, vegetarian meals available, meditation space';
+        if (detDistance) detDistance.innerText = landmark;
+        if (detHighlights) detHighlights.innerText = highlights;
 
         new bootstrap.Modal(document.getElementById('hotelDetailModal')).show();
     }
@@ -686,18 +677,21 @@
         const cOut = document.getElementById('bookOut').value;
         const priceText = document.getElementById('detPrice').innerText;
         const price = Number(priceText.replace(/[^0-9]/g, '')) || 0;
+        
         if(!userName) { Swal.fire('Login Required', 'Please log in before booking.', 'warning').then(() => location.href='index.html'); return; }
         if(!cIn || !cOut) { Swal.fire('Select Dates', 'Please select your check-in and check-out dates.', 'warning'); return; }
+        if(!selectedHotelId) { Swal.fire('Notice', 'Invalid properties session context. Please refresh stays feed.', 'warning'); return; }
+        
         try {
-            console.log('Fetching data...');
             const res = await fetch(`${API_URL}/api/bookings`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
                 body: JSON.stringify({ userId, hotelId: selectedHotelId, hotelName: hName, price, roomType: 'Standard Room', checkIn: cIn, checkOut: cOut, status: 'Pending' })
             });
             const data = await res.json();
             if (res.ok && data.success) {
                 Swal.fire('Success!', 'Success! Gyan Garbh Mitra will contact you soon.', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('hotelDetailModal')).hide();
             } else {
                 Swal.fire('Error', data.message || 'Booking failed, please try again.', 'error');
             }
@@ -724,9 +718,10 @@
         const dropoff = document.getElementById('taxiDropoff').value.trim();
         const vehicleType = document.getElementById('taxiVehicle').value;
         if (!pickup || !dropoff) return Swal.fire('Route Required', 'Please enter pickup and dropoff locations.', 'warning');
+        
         const response = await fetch(`${API_URL}/api/taxi/estimate`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
             body: JSON.stringify({ pickup, dropoff, vehicleType })
         });
         const data = await response.json();
@@ -741,9 +736,10 @@
         const vehicleType = document.getElementById('taxiVehicle').value;
         if (!userEmail) return Swal.fire('Login Required', 'Please login before requesting a ride.', 'warning').then(() => location.href = 'index.html');
         if (!pickup || !dropoff) return Swal.fire('Route Required', 'Please enter pickup and dropoff locations.', 'warning');
+        
         const response = await fetch(`${API_URL}/api/taxi/rides`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
             body: JSON.stringify({ pickup, dropoff, vehicleType })
         });
         const data = await response.json();
@@ -755,7 +751,7 @@
         if (!userEmail) return Swal.fire('Login Required', 'Please login before contacting support.', 'warning').then(() => location.href = 'index.html');
         const { value: form } = await Swal.fire({
             title: 'Report an Issue',
-            html: '<input id="supportSubject" class="swal2-input" autocomplete="off"><textarea id="supportDescription" class="swal2-textarea" autocomplete="off"></textarea>',
+            html: '<input id="supportSubject" class="swal2-input" placeholder="Subject" autocomplete="off"><textarea id="supportDescription" class="swal2-textarea" placeholder="Issue description..." autocomplete="off"></textarea>',
             showCancelButton: true,
             confirmButtonText: 'Create Ticket',
             preConfirm: () => ({
@@ -765,9 +761,10 @@
         });
         if (!form) return;
         if (!form.subject || !form.description) return Swal.fire('Details Required', 'Please enter a subject and issue details.', 'warning');
+        
         const response = await fetch(`${API_URL}/api/support/tickets`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
             body: JSON.stringify({ ...form, category: 'customer-help' })
         });
         const data = await response.json();
@@ -780,84 +777,16 @@
         location.reload();
     }
 
-    // 🤖 AI TRIP PLANNER CHATBOT - PRODUCTION VERSION
-    let allHotels = []; // Store live hotels from database
-
-    // 🔐 PRIVACY CONSENT & SELF-LEARNING SYSTEM
-    const AI_CONSENT_KEY = 'ai_consent_accepted';
-    const AI_LEARNING_POOL_KEY = 'ai_learning_pool';
-    let aiLearningPool = JSON.parse(localStorage.getItem(AI_LEARNING_POOL_KEY)) || [];
-    let aiLaunchAfterConsent = false;
-
-    // Verified Bodhgaya Data Reference
-    const verifiedDataSource = {
-        mahabodhiTemple: {
-            name: 'Mahabodhi Temple',
-            timings: '5:00 AM - 9:00 PM',
-            entryFee: 'Free',
-            location: 'Bodh Gaya, Bihar',
-            verified: true,
-            source: 'Official Tourism Database'
-        },
-        greatBuddhaStatue: {
-            name: 'Great Buddha Statue',
-            timings: '6:00 AM - 6:00 PM',
-            location: 'Near Rajgir, Bihar',
-            height: '80 feet',
-            verified: true,
-            source: 'Official Tourism Database'
-        },
-        bodhTree: {
-            name: 'Sacred Bodhi Tree',
-            location: 'Mahabodhi Temple premises',
-            description: 'Ancient fig tree where Buddha attained enlightenment',
-            verified: true,
-            source: 'Historical Records'
+    function launchCustomerAIAssistant() {
+        const consentAccepted = localStorage.getItem(AI_CONSENT_KEY);
+        if (!consentAccepted || consentAccepted !== 'true') {
+            aiLaunchAfterConsent = true;
+            showConsentModal();
+            return;
         }
-    };
-
-    // Copyright-Safe Fact Checker
-    function verifyChatResponse(userQuery, response) {
-        const lowercaseQuery = userQuery.toLowerCase();
-        const lowercaseResponse = response.toLowerCase();
-
-        // Check if response contains verified information
-        let verificationScore = 0;
-        let flaggedHallucination = false;
-
-        // Check against verified data
-        for (const [key, data] of Object.entries(verifiedDataSource)) {
-            if (lowercaseQuery.includes(key.replace(/([A-Z])/g, ' $1').toLowerCase()) ||
-                lowercaseQuery.includes(data.name.toLowerCase())) {
-                if (lowercaseResponse.includes(data.name.toLowerCase())) {
-                    verificationScore += 30;
-                }
-                if (data.timings && lowercaseResponse.includes(data.timings.toLowerCase())) {
-                    verificationScore += 20;
-                }
-            }
-        }
-
-        // Flag if response makes specific claims without verification
-        if ((lowercaseQuery.includes('price') || lowercaseQuery.includes('cost')) &&
-            /₹\d+/.test(response) && !isVerifiedPrice(response)) {
-            flaggedHallucination = true;
-        }
-
-        return {
-            isVerified: verificationScore > 25 || flaggedHallucination === false,
-            score: verificationScore,
-            flagged: flaggedHallucination,
-            confidence: Math.min(verificationScore, 100)
-        };
+        openAIChatbotWindow();
     }
 
-    function isVerifiedPrice(text) {
-        // Only hotels' actual prices from allHotels array
-        return allHotels.some(h => text.includes(h.acRoomPrice) || text.includes(h.nonAcRoomPrice));
-    }
-
-    // Show Privacy Consent Modal
     function showConsentModal() {
         const consentAccepted = localStorage.getItem(AI_CONSENT_KEY);
         if (consentAccepted === 'true') return;
@@ -883,16 +812,11 @@
                         <label for="consentCheck">I agree that Gyan Garbh AI may use my interactions to improve recommendations and provide better service. I understand this is optional.</label>
                     </div>
                     <div class="consent-actions">
-                        <button class="consent-accept" onclick="acceptConsent()">
-                            <i class="bi bi-check-circle"></i> I Agree & Continue
-                        </button>
-                        <button class="consent-decline" onclick="declineConsent()">
-                            <i class="bi bi-x-circle"></i> Use Without Learning
-                        </button>
+                        <button class="consent-accept" onclick="acceptConsent()"><i class="bi bi-check-circle"></i> I Agree & Continue</button>
+                        <button class="consent-decline" onclick="declineConsent()"><i class="bi bi-x-circle"></i> Use Without Learning</button>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 
@@ -923,123 +847,23 @@
         }
     }
 
-    // Add interaction to learning pool
     function recordAIInteraction(userQuery, aiResponse, userFeedback = null) {
         if (localStorage.getItem('ai_learning_enabled') !== 'true') return;
-
         const interaction = {
             timestamp: new Date().toISOString(),
             userQuery: userQuery,
             aiResponse: aiResponse,
             userFeedback: userFeedback,
-            verification: verifyChatResponse(userQuery, aiResponse),
             userRole: localStorage.getItem('userRole') || 'guest'
         };
-
         aiLearningPool.push(interaction);
         localStorage.setItem(AI_LEARNING_POOL_KEY, JSON.stringify(aiLearningPool));
-        console.log('[AI Learning] Interaction recorded:', interaction);
-    }
-
-    // Adapt AI tone based on learning pool
-    function getAdaptiveAITone() {
-        if (aiLearningPool.length === 0) return 'friendly';
-
-        // Analyze user preferences from learning pool
-        const recentInteractions = aiLearningPool.slice(-10);
-        const formalCount = recentInteractions.filter(i => i.userQuery.toLowerCase().includes('business') || i.userQuery.toLowerCase().includes('professional')).length;
-        const casualCount = recentInteractions.filter(i => i.userQuery.toLowerCase().includes('budget') || i.userQuery.toLowerCase().includes('fun')).length;
-
-        if (formalCount > casualCount && formalCount > 2) return 'professional';
-        if (casualCount > formalCount && casualCount > 2) return 'casual';
-        return 'friendly';
-    }
-
-    // Get self-learned recommendations
-    function getSelfLearnedContext(userQuery) {
-        if (aiLearningPool.length === 0) return null;
-
-        const similarInteractions = aiLearningPool.filter(i => {
-            const queryTerms = userQuery.toLowerCase().split(/\s+/);
-            const interactionTerms = i.userQuery.toLowerCase().split(/\s+/);
-            const matchCount = queryTerms.filter(term => interactionTerms.includes(term)).length;
-            return matchCount > 0;
-        });
-
-        if (similarInteractions.length === 0) return null;
-
-        // Get most relevant previous response
-        return similarInteractions[similarInteractions.length - 1];
-    }
-
-    // Store hotels when they're fetched from live API
-    const originalLoadHotels = loadHotels;
-    loadHotels = async function() {
-        console.log('Fetching data...');
-        const container = document.getElementById('hotelsContainer');
-        try {
-            const res = await fetch(`${API_URL}/all-hotels`);
-            const hotels = await res.json();
-            allHotels = hotels; // 🤖 Store live data for chatbot filtering
-            console.log('[AI Chatbot] Live hotels loaded:', allHotels.length);
-            container.innerHTML = "";
-            hotels.forEach(h => {
-                const imgUrl = h.imageUrl || h.imageUrl2 || h.imageUrl3 || "https://images.unsplash.com/photo-1566073771259-6a8506099945";
-                const priceValue = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
-                const priceDisplay = getPriceDisplay(priceValue);
-                const amenityIcons = getAmenityIcons(h.facilities);
-                const rating = h.rating || 4.5;
-                const description = h.description || 'Comfort and luxury combined';
-                const locationText = h.location || 'Bodhgaya';
-                const safeName = (h.hotelName || 'Hotel').replace(/'/g, "\\'");
-                const safeLocation = locationText.replace(/'/g, "\\'");
-                const safeDescription = description.replace(/'/g, "\\'");
-                container.innerHTML += `
-                    <div class="col-md-4 hotel-item">
-                        <div class="hotel-card" onclick="openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">
-                            <span class="urgency-badge">Filling Fast!</span>
-                            <div class="img-box"><img src="${imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'"></div>
-                            <div class="p-4">
-                                <h6 class="fw-bold mb-1 text-capitalize text-truncate">${h.hotelName || 'Premium Stay'}</h6>
-                                <div class="small text-warning mb-2">⭐ ${rating} | <i class="bi bi-geo-alt"></i> ${locationText}</div>
-                                <p class="small text-muted mb-2" style="min-height: 30px;">${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</p>
-                                <div class="mb-2 small">${amenityIcons}</div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="h6 fw-bold text-success mb-0">${priceDisplay}</span>
-                                    <div class="d-flex gap-2">
-                                        <button class="btn btn-success btn-sm rounded-pill px-2 fw-bold shadow-sm" onclick="event.stopPropagation(); chatOnWhatsApp('${safeName}')">
-                                            <i class="bi bi-whatsapp"></i>
-                                        </button>
-                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}')">View Room</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-            });
-            return true;
-        } catch (err) {
-            console.error(err);
-            container.innerHTML = '<div class="text-center text-danger py-5">Unable to load hotels. Please check the backend connection.</div>';
-            return false;
-        }
-    };
-
-    function launchCustomerAIAssistant() {
-        const consentAccepted = localStorage.getItem(AI_CONSENT_KEY);
-        if (!consentAccepted || consentAccepted !== 'true') {
-            aiLaunchAfterConsent = true;
-            showConsentModal();
-            return;
-        }
-        openAIChatbotWindow();
     }
 
     function openAIChatbotWindow() {
         const chatWindow = document.getElementById('aiChatWindow');
         if (!chatWindow) return;
         chatWindow.style.display = 'flex';
-        const greetingTone = getAdaptiveAITone();
         const greeting = 'Welcome to Gyan Garbh AI Assistant. I am here to help you discover the perfect accommodation and spiritual experiences in Bodhgaya. You can ask about budget options, amenities, locations, or specific travel requirements.';
         if (!chatWindow.dataset.greeted) {
             addChatbotMessage(greeting, 'assistant');
@@ -1047,13 +871,7 @@
         }
     }
 
-    function toggleAIChatbot() {
-        launchCustomerAIAssistant();
-    }
-
-    function closeAIChatbot() {
-        document.getElementById('aiChatWindow').style.display = 'none';
-    }
+    function closeAIChatbot() { document.getElementById('aiChatWindow').style.display = 'none'; }
 
     function addChatbotMessage(text, sender = 'user') {
         const msgContainer = document.getElementById('aiMessagesContainer');
@@ -1064,119 +882,35 @@
         msgContainer.scrollTop = msgContainer.scrollHeight;
     }
 
-    // 🔥 ADVANCED KEYWORD MATCHING WITH LIVE DATABASE
     function filterHotelsByInput(userInput) {
-        if (!allHotels || allHotels.length === 0) {
-            console.warn('[AI Chatbot] No hotels available for filtering');
-            return [];
-        }
-
+        if (!allHotels || allHotels.length === 0) return [];
         const keywords = userInput.toLowerCase().split(/[\s,]+/).filter(k => k.length > 0);
 
-        // Budget categories
-        const budgetKeywords = ['budget', 'cheap', 'affordable', 'economical', 'sasta', 'kam', 'low', 'gareeb'];
-        const midKeywords = ['moderate', 'mid-range', 'average', 'normal', 'madhyam'];
-        const luxuryKeywords = ['luxury', 'premium', 'expensive', 'high-end', 'mahal', 'expensive'];
-
-        // Description keywords
-        const peacefulKeywords = ['peaceful', 'quiet', 'calm', 'serene', 'tranquil', 'shant', 'shaanti'];
-        const meditationKeywords = ['meditation', 'yoga', 'spiritual', 'mandir', 'temple', 'dhyan', 'sadhna'];
-        const familyKeywords = ['family', 'kids', 'children', 'bachchon', 'parivar', 'couple', 'jodi'];
-        const templeKeywords = ['temple', 'mandir', 'bodhi', 'mahabodhi', 'near temple', 'temple ke pass'];
-
-        // Amenity keywords
-        const wifiKeywords = ['wifi', 'internet', 'connection', 'net', 'broadband', 'online'];
-        const poolKeywords = ['pool', 'swimming', 'water', 'talab', 'swimmingpool'];
-        const acKeywords = ['ac', 'air-conditioning', 'cool', 'air conditioned', 'khandi hawa'];
-        const parkingKeywords = ['parking', 'car', 'vehicle', 'gaadi', 'bike', 'parking space'];
-        const foodKeywords = ['food', 'restaurant', 'meal', 'khana', 'vegetarian', 'shak-ahar', 'dining'];
+        const budgetKeywords = ['budget', 'cheap', 'affordable', 'economical', 'sasta', 'kam', 'low'];
+        const midKeywords = ['moderate', 'mid-range', 'average', 'normal'];
+        const luxuryKeywords = ['luxury', 'premium', 'expensive', 'high-end'];
+        const peacefulKeywords = ['peaceful', 'quiet', 'calm', 'serene', 'shant'];
+        const meditationKeywords = ['meditation', 'yoga', 'spiritual', 'dhyan'];
 
         const scored = allHotels.map(hotel => {
             let score = 0;
-            const hotelName = (hotel.hotelName || '').toLowerCase();
-            const description = (hotel.description || '').toLowerCase();
-            const location = (hotel.location || '').toLowerCase();
-            const price = hotel.acRoomPrice || hotel.nonAcRoomPrice || hotel.roomRate || 5000;
-            const facilities = hotel.facilities || {};
+            const name = (hotel.hotelName || '').toLowerCase();
+            const desc = (hotel.description || '').toLowerCase();
+            const loc = (hotel.location || '').toLowerCase();
+            const price = hotel.acRoomPrice || hotel.nonAcRoomPrice || hotel.roomRate || 0;
+            const fullText = `${name} ${desc} ${loc}`;
 
-            // Text content for matching
-            const fullText = `${hotelName} ${description} ${location}`.toLowerCase();
-            const facilitiesText = JSON.stringify(facilities).toLowerCase();
+            if (keywords.some(kw => budgetKeywords.includes(kw)) && price < 2000) score += 10;
+            if (keywords.some(kw => midKeywords.includes(kw)) && price >= 2000 && price <= 4000) score += 10;
+            if (keywords.some(kw => luxuryKeywords.includes(kw)) && price > 4000) score += 10;
+            if (keywords.some(kw => peacefulKeywords.includes(kw)) && (fullText.includes('peaceful') || fullText.includes('garden'))) score += 8;
+            if (keywords.some(kw => meditationKeywords.includes(kw)) && (fullText.includes('meditation') || fullText.includes('spiritual'))) score += 9;
 
-            // ✅ BUDGET CATEGORY MATCHING
-            if (keywords.some(kw => budgetKeywords.includes(kw))) {
-                if (price < 2000) score += 10; // Best budget option
-                else if (price < 3000) score += 7;
-                else if (price < 4000) score += 3;
-            }
-
-            // ✅ MID-RANGE CATEGORY MATCHING
-            if (keywords.some(kw => midKeywords.includes(kw))) {
-                if (price >= 2000 && price <= 4000) score += 10;
-                else if (price >= 1500 && price <= 5000) score += 6;
-            }
-
-            // ✅ LUXURY CATEGORY MATCHING
-            if (keywords.some(kw => luxuryKeywords.includes(kw))) {
-                if (price > 4000) score += 10;
-                else if (price > 3000) score += 5;
-            }
-
-            // ✅ DESCRIPTION MATCHING
-            if (keywords.some(kw => peacefulKeywords.includes(kw))) {
-                if (fullText.includes('peaceful') || fullText.includes('quiet') || fullText.includes('garden')) score += 8;
-                else if (fullText.includes('serene') || fullText.includes('calm')) score += 5;
-            }
-
-            if (keywords.some(kw => meditationKeywords.includes(kw))) {
-                if (fullText.includes('meditation') || fullText.includes('yoga') || fullText.includes('spiritual')) score += 9;
-                else if (fullText.includes('retreat') || fullText.includes('zen')) score += 6;
-            }
-
-            if (keywords.some(kw => familyKeywords.includes(kw))) {
-                if (fullText.includes('family') || fullText.includes('kids') || fullText.includes('children')) score += 8;
-                else if (fullText.includes('couple') || fullText.includes('group')) score += 5;
-            }
-
-            if (keywords.some(kw => templeKeywords.includes(kw))) {
-                if (fullText.includes('temple') || fullText.includes('mandir') || fullText.includes('bodhi')) score += 8;
-                else if (description.includes('near') || description.includes('close')) score += 4;
-            }
-
-            // ✅ AMENITIES MATCHING
-            if (keywords.some(kw => wifiKeywords.includes(kw))) {
-                if (facilities.wifi || facilitiesText.includes('wifi')) score += 9;
-            }
-
-            if (keywords.some(kw => poolKeywords.includes(kw))) {
-                if (facilities.pool || facilitiesText.includes('pool') || facilitiesText.includes('swimming')) score += 9;
-            }
-
-            if (keywords.some(kw => acKeywords.includes(kw))) {
-                if (facilities.ac || facilitiesText.includes('ac') || facilitiesText.includes('air conditioning')) score += 7;
-            }
-
-            if (keywords.some(kw => parkingKeywords.includes(kw))) {
-                if (facilities.parking || facilitiesText.includes('parking')) score += 8;
-            }
-
-            if (keywords.some(kw => foodKeywords.includes(kw))) {
-                if (facilities.food || fullText.includes('vegetarian') || fullText.includes('restaurant')) score += 8;
-            }
-
-            // ✅ GENERAL KEYWORD MATCHING (bonus points)
-            keywords.forEach(kw => {
-                if (fullText.includes(kw)) score += 2;
-                if (facilitiesText.includes(kw)) score += 3;
-            });
-
+            keywords.forEach(kw => { if (fullText.includes(kw)) score += 2; });
             return { ...hotel, matchScore: score };
         });
 
-        return scored
-            .filter(h => h.matchScore > 0)
-            .sort((a, b) => b.matchScore - a.matchScore)
-            .slice(0, 2); // Top 2 matches
+        return scored.filter(h => h.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore).slice(0, 2);
     }
 
     function sendAIMessage() {
@@ -1187,84 +921,62 @@
         addChatbotMessage(userText, 'user');
         input.value = '';
 
-        // Simulate typing delay
         setTimeout(() => {
-            // Check self-learned context first
-            const learnedContext = getSelfLearnedContext(userText);
-
-            // Detect greeting patterns
-            const greetingKeywords = ['hi', 'hello', 'hey', 'namaste', 'greetings', 'howdy', 'hola', 'salaam', 'bonjour', 'welcome'];
+            const greetingKeywords = ['hi', 'hello', 'hey', 'namaste'];
             const isGreeting = greetingKeywords.some(word => userText.toLowerCase().includes(word));
 
             if (isGreeting) {
-                const greetingResponse = 'Welcome to Gyan Garbh AI. How can I assist with your Bodhgaya travel logistics or hotel bookings today?';
-                addChatbotMessage(greetingResponse, 'assistant');
-                recordAIInteraction(userText, greetingResponse);
+                const resText = 'Welcome to Gyan Garbh AI. How can I assist with your Bodhgaya travel logistics or hotel bookings today?';
+                addChatbotMessage(resText, 'assistant');
+                recordAIInteraction(userText, resText);
             } else {
                 const matches = filterHotelsByInput(userText);
-
                 if (matches.length === 0) {
-                    const aiResponse = 'I could not identify properties matching your specified criteria at this time. Please refine your search using keywords such as "budget", "luxury", "pool", "peaceful", "WiFi", "meditation", or "family-friendly".';
-                    addChatbotMessage(aiResponse, 'assistant');
-                    recordAIInteraction(userText, aiResponse);
+                    const failText = 'I could not identify properties matching your specified criteria. Please try again using keywords like budget, luxury, peaceful, or WiFi.';
+                    addChatbotMessage(failText, 'assistant');
+                    recordAIInteraction(userText, failText);
                 } else {
-                    const matchCount = matches.length;
-                    const greeting = matchCount === 1 ? 'Found one perfect match!' : 'Found two excellent properties!';
-                    addChatbotMessage(`${greeting} 🎯`, 'assistant');
+                    addChatbotMessage(matches.length === 1 ? 'Found one perfect match! 🎯' : 'Found two excellent properties! 🎯', 'assistant');
+                    matches.forEach((h, idx) => {
+                        const price = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
+                        const priceText = price > 0 ? `₹${price}/Night` : 'Price on Request';
+                        const landmarkText = h.distanceFromLandmark ? `${h.distanceFromLandmark.landmark || 'Mahabodhi Temple'}: ${h.distanceFromLandmark.value || '0.5'} ${h.distanceFromLandmark.unit || 'km'}` : 'Mahabodhi Temple: 0.5 km';
+                        const highlightsText = (h.gyanGarbhHighlights || 'Peaceful environment, vegetarian meals available').replace(/'/g, "\\'");
 
-                matches.forEach((h, idx) => {
-                    const price = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
-                    const priceText = price > 0 ? `₹${price}/Night` : 'Price on Request';
-                    const priceCategory = price < 2000 ? '💰 Budget' : (price <= 4000 ? '💵 Mid-Range' : '💎 Luxury');
-                    const facilityIcons = getAmenityIcons(h.facilities);
+                        const recEl = document.createElement('div');
+                        recEl.className = 'ai-hotel-recommendation';
+                        recEl.innerHTML = `
+                            <div class="ai-hotel-name">${idx + 1}. ${h.hotelName || 'Hotel'}</div>
+                            <div class="ai-hotel-detail"><i class="bi bi-geo-alt"></i> ${h.location || 'Bodhgaya'}</div>
+                            <div class="ai-hotel-detail">⭐ ${h.rating || 4.5} | ${priceText}</div>
+                            <div class="ai-hotel-detail" style="margin-top: 6px; font-size: 0.8rem;">${getAmenityIcons(h.facilities)}</div>`;
+                        
+                        recEl.onclick = () => {
+                            closeAIChatbot();
+                            openHotelDetails(h.hotelName.replace(/'/g, "\\'"), (h.location || 'Bodhgaya').replace(/'/g, "\\'"), price, h.imageUrl, h.rating || 4.5, (h.description || '').replace(/'/g, "\\'"), h._id, landmarkText, highlightsText);
+                        };
+                        document.getElementById('aiMessagesContainer').appendChild(recEl);
+                    });
 
-                    const recEl = document.createElement('div');
-                    recEl.className = 'ai-hotel-recommendation';
-                    recEl.innerHTML = `
-                        <div class="ai-hotel-name">${idx + 1}. ${h.hotelName || 'Hotel'}</div>
-                        <div class="ai-hotel-detail"><i class="bi bi-geo-alt"></i> ${h.location || 'Bodhgaya'}</div>
-                        <div class="ai-hotel-detail">⭐ ${h.rating || 4.5} | ${priceCategory} | ${priceText}</div>
-                        <div class="ai-hotel-detail">${h.description ? h.description.substring(0, 45) + '...' : 'Authentic Bodhgaya accommodation with premium amenities.'}</div>
-                        <div class="ai-hotel-detail" style="margin-top: 6px; font-size: 0.8rem;">${facilityIcons}</div>
-                    `;
-                    recEl.onclick = () => openHotelDetails(h.hotelName, h.location, price, h.imageUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945', h.rating || 4.5, h.description || 'Premium accommodation in Bodhgaya with full service amenities.', h._id || '');
-                    document.getElementById('aiMessagesContainer').appendChild(recEl);
-                });
-
-                document.getElementById('aiMessagesContainer').scrollTop = document.getElementById('aiMessagesContainer').scrollHeight;
-
-                // Add feedback options for self-learning
-                const feedbackEl = document.createElement('div');
-                feedbackEl.style.marginTop = '12px';
-                feedbackEl.innerHTML = `
-                    <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 8px;">Was this helpful?</div>
-                    <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'helpful')">👍 Helpful</button>
-                    <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'notHelpful')">👎 Not Helpful</button>
-                    <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'refine')">🔄 Refine Search</button>
-                `;
-                document.getElementById('aiMessagesContainer').appendChild(feedbackEl);
-                document.getElementById('aiMessagesContainer').scrollTop = document.getElementById('aiMessagesContainer').scrollHeight;
-
-                addChatbotMessage('Click any property to view detailed information, or provide additional search parameters for further refinement.', 'assistant');
-            }
+                    const feedbackEl = document.createElement('div');
+                    feedbackEl.style.marginTop = '12px';
+                    feedbackEl.innerHTML = `
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 8px;">Was this helpful?</div>
+                        <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'helpful')">👍 Helpful</button>
+                        <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'notHelpful')">👎 Not Helpful</button>`;
+                    document.getElementById('aiMessagesContainer').appendChild(feedbackEl);
+                    document.getElementById('aiMessagesContainer').scrollTop = document.getElementById('aiMessagesContainer').scrollHeight;
+                }
             }
         }, 600);
     }
 
     function recordUserFeedback(query, feedbackType) {
-        recordAIInteraction(query, 'User provided feedback', feedbackType);
-
-        const feedbackMessages = {
-            'helpful': 'Thank you! Your feedback helps us enhance our recommendation algorithms.',
-            'notHelpful': 'We apologize. We will refine our search criteria for improved results.',
-            'refine': 'Of course. Please share additional details about your requirements for a more targeted search.'
-        };
-
-        addChatbotMessage(feedbackMessages[feedbackType], 'assistant');
+        recordAIInteraction(query, 'User feedback submitted', feedbackType);
+        addChatbotMessage(feedbackType === 'helpful' ? 'Thank you! Your feedback helps us enhance our AI algorithms.' : 'We apologize. We will refine our search criteria.', 'assistant');
         Swal.fire('Feedback Recorded!', 'Your input helps us optimize our AI recommendations.', 'success');
     }
 
-    // Handle Enter key in chatbot input
     document.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && document.getElementById('aiChatInput') && document.activeElement === document.getElementById('aiChatInput')) {
             sendAIMessage();
@@ -1272,7 +984,6 @@
     });
 </script>
 
-<!-- 🤖 AI TRIP PLANNER CHATBOT WIDGET -->
 <div id="aiChatWindow" class="ai-chat-window" style="display: none;">
     <div class="ai-chat-header">
         <span><i class="bi bi-robot"></i> AI Trip Planner</span>
@@ -1281,9 +992,7 @@
     <div id="aiMessagesContainer" class="ai-messages"></div>
     <div class="ai-input-container">
         <input type="text" id="aiChatInput" class="ai-input-box" placeholder="Ask me anything...">
-        <button class="ai-send-btn" onclick="sendAIMessage()" title="Send">
-            <i class="bi bi-send-fill"></i>
-        </button>
+        <button class="ai-send-btn" onclick="sendAIMessage()" title="Send"><i class="bi bi-send-fill"></i></button>
     </div>
 </div>
 
