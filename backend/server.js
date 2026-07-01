@@ -298,6 +298,8 @@ const allowedCorsOrigins = new Set([
 
     'http://127.0.0.1:5173',
 
+    'null',
+
     'https://gyangarbh-project.vercel.app',
 
     'https://gyan-garbh-project.vercel.app',

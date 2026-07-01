@@ -7,11 +7,12 @@
     // 🌐 Local Testing Ke Liye Base URL
     const LOCAL_API_URL = 'http://localhost:5000';
     const PRODUCTION_API_URL = 'https://gyangarbh-project.onrender.com';
-    const LOCAL_HOSTS = new Set(['', 'localhost', '127.0.0.1', '::1']);
+    const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
     const KNOWN_API_ORIGINS = new Set([LOCAL_API_URL, PRODUCTION_API_URL]);
 
     function resolveApiBaseUrl() {
         if (window.GYAN_GARBH_API_URL) return window.GYAN_GARBH_API_URL.replace(/\/$/, '');
+        if (window.location.protocol === 'file:') return PRODUCTION_API_URL;
         return LOCAL_HOSTS.has(window.location.hostname) ? LOCAL_API_URL : PRODUCTION_API_URL;
     }
 
