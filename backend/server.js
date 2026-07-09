@@ -2608,7 +2608,7 @@ app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (r
 
 // Hotel image upload via Cloudinary
 
-app.post('/admin/upload-hotel-images', verifyAdminOrAssistant('manageHotels'), uploadHotelImages.array('hotelImages', 3), async (req, res) => {
+app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assistant']), uploadHotelImages.array('hotelImages', 3), async (req, res) => {
 
     try {
 

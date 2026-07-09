@@ -451,7 +451,7 @@
                                         </div>
                                         <div class="upload-body">
                                             <label class="small fw-bold text-muted mb-2">Main Property Image</label>
-                                            <input type="file" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
+                                            <input type="file" id="hotelImgInput1" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
                                             <small class="text-muted">Choose a polished cover image.</small>
                                         </div>
                                     </div>
@@ -465,7 +465,7 @@
                                         </div>
                                         <div class="upload-body">
                                             <label class="small fw-bold text-muted mb-2">Gallery Image 2</label>
-                                            <input type="file" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl2').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
+                                            <input type="file" id="hotelImgInput2" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl2').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
                                             <small class="text-muted">Add a lobby, room, or exterior view.</small>
                                         </div>
                                     </div>
@@ -479,7 +479,7 @@
                                         </div>
                                         <div class="upload-body">
                                             <label class="small fw-bold text-muted mb-2">Gallery Image 3</label>
-                                            <input type="file" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl3').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
+                                            <input type="file" id="hotelImgInput3" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl3').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
                                             <small class="text-muted">Show another guest-facing angle.</small>
                                         </div>
                                     </div>
@@ -698,8 +698,46 @@
     }
 
     // ⭐ SAVE HOTEL DETAILS
+    async function uploadHotelImagesToServer() {
+        const imageInputs = [
+            { inputId: 'hotelImgInput1', targetId: 'imageUrl' },
+            { inputId: 'hotelImgInput2', targetId: 'imageUrl2' },
+            { inputId: 'hotelImgInput3', targetId: 'imageUrl3' }
+        ];
+
+        const selectedImages = imageInputs
+            .map((item) => ({ ...item, file: document.getElementById(item.inputId)?.files?.[0] }))
+            .filter((item) => item.file);
+
+        if (!selectedImages.length) return [];
+
+        const formData = new FormData();
+        selectedImages.forEach((item) => formData.append('hotelImages', item.file));
+
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+        const uploadResponse = await fetch(`${API_URL}/admin/upload-hotel-images`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: formData
+        });
+
+        const uploadData = await uploadResponse.json().catch(() => ({ success: false, message: 'Invalid upload response from server.' }));
+        if (!uploadResponse.ok || !uploadData.success || !Array.isArray(uploadData.images)) {
+            throw new Error(uploadData.message || 'Hotel image upload failed.');
+        }
+
+        uploadData.images.forEach((url, index) => {
+            const target = document.getElementById(selectedImages[index]?.targetId);
+            if (target && url) target.value = url;
+        });
+
+        return uploadData.images;
+    }
+
     async function saveHotelDetails() {
         try {
+            await uploadHotelImagesToServer();
+
             const facilities = {
                 wifi: document.getElementById('wifi').checked,
                 food: document.getElementById('food').checked,
