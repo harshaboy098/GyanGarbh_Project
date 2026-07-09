@@ -578,6 +578,19 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script>
+    const dashboardNativeFetch = window.fetch.bind(window);
+    window.fetch = function(input, init) {
+        const requestUrl = typeof input === 'string' ? input : input?.url || '';
+        if (requestUrl.includes('admin_load-hotel-images')) {
+            console.warn('Blocked legacy dashboard image endpoint:', requestUrl);
+            return Promise.resolve(new Response(JSON.stringify({ success: true, images: [] }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            }));
+        }
+        return dashboardNativeFetch(input, init);
+    };
+
     const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
     const hotelName = localStorage.getItem('hotelName');
     const hotelOwnerEmail = localStorage.getItem('hotelOwnerEmail');

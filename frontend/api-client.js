@@ -1,5 +1,4 @@
 (function () {
-    const originalFetch = window.fetch.bind(window);
     let eventSource = null;
     let reconnectTimer = null;
     let pollTimer = null;
@@ -46,39 +45,6 @@
         );
     }
 
-    window.fetch = function (input, init) {
-        input = rewriteApiUrl(input);
-
-        const requestUrl = typeof input === 'string' ? input : input?.url || '';
-        if (requestUrl.includes('admin_load-hotel-images')) {
-            console.warn('Blocked legacy hotel image preload endpoint:', requestUrl);
-            return Promise.resolve(new Response(JSON.stringify({ success: true, images: [] }), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            }));
-        }
-
-        const options = { ...(init || {}) };
-        const headers = new Headers(options.headers || {});
-        const token = getToken();
-        if (token && !headers.has('Authorization')) {
-            headers.set('Authorization', `Bearer ${token}`);
-        }
-        options.headers = headers;
-
-        const timeoutMs = Number(options.timeoutMs || 30000);
-        delete options.timeoutMs;
-
-        if (!options.signal && typeof AbortController !== 'undefined' && timeoutMs > 0) {
-            const controller = new AbortController();
-            const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-            options.signal = controller.signal;
-            return originalFetch(input, options).finally(() => window.clearTimeout(timeoutId));
-        }
-
-        return originalFetch(input, options);
-    };
-
     function notify(detail) {
         window.dispatchEvent(new CustomEvent('gyangarbh:realtime', { detail }));
     }
@@ -117,6 +83,6 @@
         };
     }
 
-    window.GyanGarbhApi = { connectRealtime: connect, getToken, getApiBaseUrl: resolveApiBaseUrl };
+    window.GyanGarbhApi = { connectRealtime: connect, getToken, getApiBaseUrl: resolveApiBaseUrl, rewriteApiUrl };
     window.addEventListener('DOMContentLoaded', connect);
 }());
