@@ -7,68 +7,269 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        :root { --brand-blue: #1e3c72; --bg-gray: #f4f7fb; }
-        body { background: var(--bg-gray); font-family: 'Segoe UI', sans-serif; }
-        .sidebar { background: var(--brand-blue); min-height: 100vh; color: white; padding: 30px 20px; position: sticky; top: 0; }
-        .nav-link { color: rgba(255,255,255,0.7); border-radius: 10px; margin-bottom: 10px; padding: 12px; transition: 0.3s; text-decoration: none; display: block; }
-        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.1); color: white; }
-        .stat-card { background: white; border-radius: 20px; padding: 25px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .hotel-header { background: white; padding: 20px 40px; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 100; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-confirmed { background: #d1e7dd; color: #0f5132; }
+        :root {
+            --brand-blue: #14365d;
+            --brand-dark: #0f2846;
+            --accent: #f5b700;
+            --bg-gray: #f3f6fa;
+            --panel: #ffffff;
+            --ink: #172033;
+            --muted: #697386;
+            --line: #d9e1ec;
+            --soft: #eef3f8;
+        }
 
-        /* Modern Business Dashboard Styles */
-        .nav-tabs .nav-link.active {
-            color: #007bff !important;
-            font-weight: bold !important;
-            border-bottom: 3px solid #007bff !important;
-            background-color: transparent !important;
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-gray);
+            color: var(--ink);
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+            letter-spacing: 0;
+        }
+        .dashboard-shell { min-height: 100vh; background: var(--bg-gray); }
+        .sidebar {
+            width: 280px;
+            flex: 0 0 280px;
+            background: var(--brand-dark);
+            min-height: 100vh;
+            color: white;
+            padding: 26px 18px;
+            position: sticky;
+            top: 0;
+            border-right: 1px solid rgba(255,255,255,0.08);
+        }
+        .sidebar h4 {
+            font-size: 1.08rem;
+            letter-spacing: 0;
+        }
+        .nav-link {
+            color: rgba(255,255,255,0.76);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            padding: 11px 12px;
+            transition: background-color 0.18s ease, color 0.18s ease;
+            text-decoration: none;
+            display: block;
+            font-weight: 700;
+        }
+        .nav-link:hover,
+        .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .workspace { min-width: 0; }
+        .hotel-header {
+            background: var(--panel);
+            padding: 18px 28px;
+            border-bottom: 1px solid var(--line);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 10px 26px rgba(23,32,51,0.05);
+        }
+        .hotel-header h4 {
+            color: var(--ink);
+            font-size: 1.26rem;
+        }
+        .content-wrap {
+            max-width: 1220px;
+            margin: 0 auto;
+            padding: 26px;
+        }
+        .stat-card {
+            background: var(--panel);
+            border-radius: 8px;
+            padding: 24px;
+            border: 1px solid var(--line);
+            box-shadow: 0 14px 34px rgba(23,32,51,0.07);
+        }
+        .stat-card label,
+        .stat-card h5,
+        .stat-card h6 { color: var(--ink) !important; }
+        .section-heading {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+        .section-heading h5 { margin: 0; }
+        .section-note {
+            color: var(--muted);
+            margin: 4px 0 0;
+            font-size: 0.92rem;
+        }
+        .nav-tabs {
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 8px;
+            padding: 6px;
+            box-shadow: 0 10px 24px rgba(23,32,51,0.05);
         }
         .nav-tabs .nav-link {
             border: none !important;
-            border-bottom: 2px solid transparent !important;
-            color: #111827 !important;
-            font-weight: 500;
-            transition: all 0.3s ease;
+            border-radius: 6px !important;
+            color: #344054 !important;
+            font-weight: 800;
+            margin-bottom: 0;
+            padding: 10px 14px;
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--brand-blue) !important;
+            background-color: #edf4fb !important;
         }
         .nav-tabs .nav-link:hover {
-            color: #007bff !important;
-            border-bottom-color: #cce7ff !important;
+            color: var(--brand-blue) !important;
+            background-color: #f6f9fd !important;
         }
-        .stat-card label, .stat-card h5, .stat-card h6 {
-            color: #222 !important;
+        .form-control,
+        .form-select {
+            border: 1px solid #cfd8e5;
+            border-radius: 6px;
+            min-height: 44px;
+            color: var(--ink);
+        }
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 3px rgba(20,54,93,0.12);
+        }
+        textarea.form-control { min-height: 104px; }
+        .form-check {
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 12px 12px 12px 38px;
+            background: #fbfcfe;
+            min-height: 48px;
+        }
+        .form-check-input:checked {
+            background-color: var(--brand-blue);
+            border-color: var(--brand-blue);
+        }
+        .btn {
+            border-radius: 6px !important;
+            font-weight: 800;
         }
         .btn-primary {
-            background: linear-gradient(45deg, #0056b3, #007bff) !important;
-            border: none !important;
-            font-size: 1.1rem !important;
-            padding: 12px 24px !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 15px rgba(0, 86, 179, 0.3) !important;
-            transition: all 0.3s ease !important;
+            background: var(--brand-blue) !important;
+            border-color: var(--brand-blue) !important;
+            box-shadow: 0 8px 18px rgba(20,54,93,0.18) !important;
         }
         .btn-primary:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0 6px 20px rgba(0, 86, 179, 0.4) !important;
+            background: var(--brand-dark) !important;
+            border-color: var(--brand-dark) !important;
         }
-        .stat-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .btn-success {
+            background: #188754 !important;
+            border-color: #188754 !important;
         }
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+        .ai-navbar-btn {
+            border: 1px solid #cfd8e5;
+            background: #fff;
+            color: var(--brand-blue);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-weight: 800;
         }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #d1e7dd; color: #0f5132; }
+        .table {
+            --bs-table-hover-bg: #f6f9fd;
+            margin-bottom: 0;
+        }
+        .table thead th {
+            color: #445167;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--line);
+        }
+        .rating-preview {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid #dfe7f1;
+            border-radius: 6px;
+            background: #fbfcfe;
+            padding: 10px 12px;
+        }
+        .rating-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 10px;
+            border-radius: 6px;
+            background: #fff8dc;
+            color: #8a6500;
+            font-weight: 900;
+        }
+        .upload-card {
+            height: 100%;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fbfcfe;
+            overflow: hidden;
+        }
+        .upload-preview {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: linear-gradient(135deg, #edf4fb, #f8fafc);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            overflow: hidden;
+        }
+        .upload-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .upload-body { padding: 14px; }
+        .upload-body input[type="file"] {
+            border: 1px dashed #b9c6d6;
+            background: #fff;
+        }
+        .room-gallery-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .room-gallery-thumb {
+            width: 82px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--line);
+            background: #fff;
+        }
+        .hidden-url-field {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal-backdrop { display: none !important; }
 
-        /* Bug Fixes */
-        .modal-backdrop { display: none !important; } /* Remove stuck backdrops */
-    </style>
-    </style>
+        @media (max-width: 991px) {
+            .dashboard-shell { display: block !important; }
+            .sidebar {
+                width: 100%;
+                min-height: auto;
+                position: static;
+            }
+            .content-wrap { padding: 18px; }
+            .hotel-header { position: static; padding: 16px 18px; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container-fluid p-0 d-flex">
-    <div class="sidebar col-md-2 d-none d-md-block">
+<div class="container-fluid p-0 d-flex dashboard-shell">
+    <div class="sidebar d-none d-md-block">
         <h4 class="fw-bold mb-5"><i class="bi bi-building-fill me-2"></i>GYAN GARBH</h4>
         <nav class="nav flex-column">
             <a class="nav-link active" href="#"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
@@ -78,7 +279,7 @@
         </nav>
     </div>
 
-    <div class="flex-grow-1">
+    <div class="flex-grow-1 workspace">
         <div class="hotel-header d-flex justify-content-between align-items-center">
             <div>
                 <h4 class="fw-bold mb-0" id="hotelNameTitle">Loading...</h4>
@@ -90,7 +291,7 @@
             </div>
         </div>
 
-        <div class="p-4">
+        <div class="content-wrap">
             <ul class="nav nav-tabs mb-4" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="bookings-tab" data-bs-toggle="tab" data-bs-target="#bookings" type="button" role="tab" aria-controls="bookings" aria-selected="true">
@@ -162,8 +363,15 @@
                                     <input type="number" id="nonAcRoomPrice" class="form-control" placeholder="1200" min="100" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Rating</label>
-                                    <input type="number" id="hotelRating" class="form-control" placeholder="4.0" min="0" max="5" step="0.1" required>
+                                    <label class="small fw-bold text-muted mb-2">Guest Rating</label>
+                                    <input type="hidden" id="hotelRating" value="4.0">
+                                    <div class="rating-preview">
+                                        <div>
+                                            <div class="fw-bold">Customer feedback score</div>
+                                            <small class="text-muted">Ratings are controlled by guest reviews, not hotel owners.</small>
+                                        </div>
+                                        <span class="rating-badge"><i class="bi bi-star-fill"></i> Live</span>
+                                    </div>
                                 </div>
                                 <div class="col-12">
                                     <label class="small fw-bold text-muted mb-2">Hotel Description</label>
@@ -232,19 +440,49 @@
                                 </div>
                             </div>
 
-                            <h6 class="fw-bold mt-4 mb-3">Images</h6>
+                            <h6 class="fw-bold mt-4 mb-3">Property Gallery</h6>
                             <div class="row g-3">
-                                <div class="col-md-12">
-                                    <label class="small fw-bold text-muted mb-2">Image URL 1 (Main)</label>
-                                    <input type="url" id="imageUrl" class="form-control" placeholder="https://...">
+                                <div class="col-md-4">
+                                    <input type="hidden" id="imageUrl">
+                                    <div class="upload-card">
+                                        <div class="upload-preview">
+                                            <img alt="Main property preview">
+                                            <span><i class="bi bi-image me-1"></i>Main Image</span>
+                                        </div>
+                                        <div class="upload-body">
+                                            <label class="small fw-bold text-muted mb-2">Main Property Image</label>
+                                            <input type="file" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
+                                            <small class="text-muted">Choose a polished cover image.</small>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Image URL 2</label>
-                                    <input type="url" id="imageUrl2" class="form-control" placeholder="https://...">
+                                <div class="col-md-4">
+                                    <input type="hidden" id="imageUrl2">
+                                    <div class="upload-card">
+                                        <div class="upload-preview">
+                                            <img alt="Second property preview">
+                                            <span><i class="bi bi-image me-1"></i>Gallery Image</span>
+                                        </div>
+                                        <div class="upload-body">
+                                            <label class="small fw-bold text-muted mb-2">Gallery Image 2</label>
+                                            <input type="file" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl2').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
+                                            <small class="text-muted">Add a lobby, room, or exterior view.</small>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Image URL 3</label>
-                                    <input type="url" id="imageUrl3" class="form-control" placeholder="https://...">
+                                <div class="col-md-4">
+                                    <input type="hidden" id="imageUrl3">
+                                    <div class="upload-card">
+                                        <div class="upload-preview">
+                                            <img alt="Third property preview">
+                                            <span><i class="bi bi-image me-1"></i>Gallery Image</span>
+                                        </div>
+                                        <div class="upload-body">
+                                            <label class="small fw-bold text-muted mb-2">Gallery Image 3</label>
+                                            <input type="file" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl3').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
+                                            <small class="text-muted">Show another guest-facing angle.</small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -274,8 +512,18 @@
                                     <input type="number" id="roomPrice" class="form-control" placeholder="1500" min="100" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Image URL (Optional)</label>
-                                    <input type="url" id="roomImageUrl" class="form-control" placeholder="https://example.com/room.jpg">
+                                    <input type="hidden" id="roomImageUrl">
+                                    <div class="upload-card">
+                                        <div class="upload-preview">
+                                            <img alt="Room cover preview">
+                                            <span><i class="bi bi-door-open me-1"></i>Room Cover</span>
+                                        </div>
+                                        <div class="upload-body">
+                                            <label class="small fw-bold text-muted mb-2">Room Cover Image</label>
+                                            <input type="file" class="form-control" accept="image/*" onchange="const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('roomImageUrl').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); }">
+                                            <small class="text-muted">Used as the primary room thumbnail.</small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -305,8 +553,9 @@
                             <div class="row g-3">
                                 <div class="col-md-12">
                                     <label class="small fw-bold text-muted mb-2">Upload Room Images</label>
-                                    <input type="file" id="roomImages" class="form-control" multiple accept="image/*">
+                                    <input type="file" id="roomImages" class="form-control" multiple accept="image/*" onchange="const wrap = this.closest('.row').querySelector('.room-gallery-preview'); wrap.innerHTML = ''; Array.from(this.files || []).slice(0, 6).forEach(file => { const reader = new FileReader(); reader.onload = () => { const img = document.createElement('img'); img.src = reader.result; img.alt = file.name; img.className = 'room-gallery-thumb'; wrap.appendChild(img); }; reader.readAsDataURL(file); });">
                                     <small class="text-muted">Select multiple images for the room gallery.</small>
+                                    <div class="room-gallery-preview mt-3"></div>
                                 </div>
                             </div>
 
