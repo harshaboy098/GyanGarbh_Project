@@ -705,14 +705,18 @@
             { inputId: 'hotelImgInput3', targetId: 'imageUrl3' }
         ];
 
-        const selectedImages = imageInputs
-            .map((item) => ({ ...item, file: document.getElementById(item.inputId)?.files?.[0] }))
-            .filter((item) => item.file);
+        const formData = new FormData();
+        const selectedImages = [];
+
+        imageInputs.forEach((item) => {
+            const fileInput = document.getElementById(item.inputId);
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                formData.append('hotelImages', fileInput.files[0]);
+                selectedImages.push(item);
+            }
+        });
 
         if (!selectedImages.length) return [];
-
-        const formData = new FormData();
-        selectedImages.forEach((item) => formData.append('hotelImages', item.file));
 
         const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
         const uploadResponse = await fetch(`${API_URL}/admin/upload-hotel-images`, {
