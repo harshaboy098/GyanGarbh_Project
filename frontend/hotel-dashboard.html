@@ -718,10 +718,14 @@
 
         if (!selectedImages.length) return [];
 
-        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+        const hotelAuthToken = localStorage.getItem('authToken');
+        if (!hotelAuthToken) {
+            throw new Error('Hotel session token missing. Please login again.');
+        }
+
         const uploadResponse = await fetch(`${API_URL}/admin/upload-hotel-images`, {
             method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            headers: { Authorization: `Bearer ${hotelAuthToken}` },
             body: formData
         });
 
