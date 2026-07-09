@@ -589,6 +589,15 @@
         bookings: []
     };
 
+    function getHotelAuthToken() {
+        return localStorage.getItem('authToken') || '';
+    }
+
+    function getHotelAuthHeaders(extraHeaders = {}) {
+        const token = getHotelAuthToken();
+        return token ? { ...extraHeaders, Authorization: `Bearer ${token}` } : extraHeaders;
+    }
+
     window.onload = async function() {
         if (userRole !== 'hotel') {
             localStorage.clear();
@@ -626,7 +635,9 @@
     // ⭐ LOAD HOTEL DETAILS
     async function loadHotelDetails() {
         try {
-            const res = await fetch(`${API_URL}/hotel-details/${encodeURIComponent(hotelOwnerEmail)}`);
+            const res = await fetch(`${API_URL}/hotel-details/${encodeURIComponent(hotelOwnerEmail)}`, {
+                headers: getHotelAuthHeaders()
+            });
             if (!res.ok) {
                 throw new Error(`Status ${res.status} ${res.statusText}`);
             }
@@ -718,7 +729,7 @@
 
         if (!selectedImages.length) return [];
 
-        const hotelAuthToken = localStorage.getItem('authToken');
+        const hotelAuthToken = getHotelAuthToken();
         if (!hotelAuthToken) {
             throw new Error('Hotel session token missing. Please login again.');
         }
@@ -764,7 +775,7 @@
 
             const res = await fetch(`${API_URL}/hotel/update-details`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     ownerEmail: hotelOwnerEmail,
                     totalRooms: document.getElementById('totalRooms').value,
@@ -796,7 +807,9 @@
     async function loadMyBookings() {
         const tableBody = document.getElementById('bookingTableBody');
         try {
-            const res = await fetch(`${API_URL}/all-bookings`);
+            const res = await fetch(`${API_URL}/all-bookings`, {
+                headers: getHotelAuthHeaders()
+            });
             if (!res.ok) {
                 throw new Error(`Status ${res.status} ${res.statusText}`);
             }
@@ -840,7 +853,7 @@
         try {
             const res = await fetch(`${API_URL}/update-booking-status`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ bookingId: id, status: newStatus })
             });
             if(res.ok) {
@@ -882,7 +895,7 @@
         try {
             const res = await fetch(`${API_URL}/admin/add-room`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(roomData)
             });
 
