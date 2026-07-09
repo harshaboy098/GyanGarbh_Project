@@ -35,15 +35,35 @@
     window.API_URL = window.GYAN_GARBH_API_URL;
 
     function getToken() {
-        return localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+        return (
+            localStorage.getItem('authToken') ||
+            sessionStorage.getItem('authToken') ||
+            localStorage.getItem('hotelToken') ||
+            sessionStorage.getItem('hotelToken') ||
+            localStorage.getItem('token') ||
+            sessionStorage.getItem('token') ||
+            ''
+        );
     }
 
     window.fetch = function (input, init) {
         input = rewriteApiUrl(input);
+
+        const requestUrl = typeof input === 'string' ? input : input?.url || '';
+        if (requestUrl.includes('admin_load-hotel-images')) {
+            console.warn('Blocked legacy hotel image preload endpoint:', requestUrl);
+            return Promise.resolve(new Response(JSON.stringify({ success: true, images: [] }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            }));
+        }
+
         const options = { ...(init || {}) };
         const headers = new Headers(options.headers || {});
         const token = getToken();
-        if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+        if (token && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${token}`);
+        }
         options.headers = headers;
 
         const timeoutMs = Number(options.timeoutMs || 30000);
