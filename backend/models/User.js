@@ -101,11 +101,10 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ phone: 1 });
 userSchema.index({ name: 1, dob: 1, phone: 1 });
 
-userSchema.pre('validate', function(next) {
+userSchema.pre('validate', function() {
     if (!this.fullName && this.name) this.fullName = this.name;
     if (!this.name && this.fullName) this.name = this.fullName;
     if (this.address && !this.villageCity) this.villageCity = this.address;
-    next();
 });
 
 // ⭐ ASYNC FIX: Removed 'next' completely from parameter and call stack
