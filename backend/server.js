@@ -1156,7 +1156,11 @@ const mongooseOptions = {
 
     ...(mongooseMajorVersion < 6 ? { useNewUrlParser: true, useUnifiedTopology: true } : {}),
 
-    serverSelectionTimeoutMS: 15000
+    serverSelectionTimeoutMS: 15000,
+
+    connectTimeoutMS: 30000,
+
+    socketTimeoutMS: 45000
 
 };
 
