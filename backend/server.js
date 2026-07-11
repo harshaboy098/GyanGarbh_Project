@@ -2166,7 +2166,9 @@ app.post('/mitra-enquiry', async (req, res) => {
 
 app.use('/admin', (req, res, next) => {
 
-    const allowedRoles = req.path === '/add-room' ? ['admin', 'assistant', 'hotel'] : ['admin', 'assistant'];
+    const hotelAllowedAdminPaths = ['/add-room', '/upload-hotel-images'];
+
+    const allowedRoles = hotelAllowedAdminPaths.includes(req.path) ? ['admin', 'assistant', 'hotel'] : ['admin', 'assistant'];
 
     return requireSession(allowedRoles)(req, res, () => {
 
