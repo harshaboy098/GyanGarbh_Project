@@ -238,21 +238,29 @@ const MONGO_URI = process.env.MONGODB_URI || '';
 
 const EMAIL_PASS = process.env.EMAIL_PASS || '';
 
+const cloudinaryCloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim().replace(/^['"]|['"]$/g, '');
+
+const cloudinaryApiKey = String(process.env.CLOUDINARY_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+
+const cloudinaryApiSecret = String(process.env.CLOUDINARY_API_SECRET || '').trim().replace(/^['"]|['"]$/g, '');
+
 
 
 cloudinary.config({
 
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    cloud_name: cloudinaryCloudName,
 
-    api_key: process.env.CLOUDINARY_API_KEY,
+    api_key: cloudinaryApiKey,
 
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    api_secret: cloudinaryApiSecret,
+
+    secure: true
 
 });
 
 
 
-if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
 
     console.warn('Cloudinary config warning: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are required for hotel image uploads.');
 
@@ -268,9 +276,9 @@ const hotelImageStorage = new CloudinaryStorage({
 
         folder: 'GyanGarbh/Hotels',
 
-        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+        allowed_formats: 'jpg,jpeg,png,webp',
 
-        transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
+        transformation: 'c_limit,h_1200,w_1600'
 
     }
 
