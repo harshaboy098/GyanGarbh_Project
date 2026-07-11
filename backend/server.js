@@ -2610,37 +2610,49 @@ app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (r
 
 // Hotel image upload via Cloudinary
 
-app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assistant']), uploadHotelImages.array('hotelImages', 3), async (req, res) => {
+app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assistant']), (req, res) => {
 
-    try {
+    uploadHotelImages.array('hotelImages', 3)(req, res, async (uploadErr) => {
 
-        if (!req.files || !req.files.length) {
+        try {
 
-            return res.status(400).json({ success: false, message: 'No hotel images were uploaded.' });
+            if (uploadErr) {
+
+                throw uploadErr;
+
+            }
+
+
+
+            if (!req.files || !req.files.length) {
+
+                return res.status(400).json({ success: false, message: 'No hotel images were uploaded.' });
+
+            }
+
+
+
+            const uploadedUrls = req.files.map((file) => file.path || file.secure_url || file.url).filter(Boolean);
+
+            if (!uploadedUrls.length) {
+
+                return res.status(500).json({ success: false, message: 'Uploaded files did not return valid Cloudinary URLs.' });
+
+            }
+
+
+
+            res.json({ success: true, images: uploadedUrls });
+
+        } catch (err) {
+
+            console.error("SERVER UPLOAD CRASH:", err);
+
+            res.status(500).json({ success: false, message: err.message || 'Hotel image upload failed.' });
 
         }
 
-
-
-        const uploadedUrls = req.files.map((file) => file.path || file.secure_url || file.url).filter(Boolean);
-
-        if (!uploadedUrls.length) {
-
-            return res.status(500).json({ success: false, message: 'Uploaded files did not return valid Cloudinary URLs.' });
-
-        }
-
-
-
-        res.json({ success: true, images: uploadedUrls });
-
-    } catch (err) {
-
-        console.error('Hotel image upload error:', err);
-
-        res.status(500).json({ success: false, message: 'Hotel image upload failed.' });
-
-    }
+    });
 
 });
 
