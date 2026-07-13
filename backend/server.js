@@ -276,7 +276,7 @@ const hotelImageStorage = new CloudinaryStorage({
 
         folder: 'GyanGarbh/Hotels',
 
-        allowed_formats: 'jpg,jpeg,png,webp',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
 
         transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
 
@@ -2704,7 +2704,11 @@ app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assist
 
             console.error("SERVER UPLOAD CRASH:", err);
 
-            res.status(500).json({ success: false, message: err.message || 'Hotel image upload failed.' });
+            res.status(500).json({
+                success: false,
+                message: err.message || 'Hotel image upload failed.',
+                error: err.name || 'UploadError'
+            });
 
         }
 
@@ -2938,7 +2942,11 @@ app.put('/hotel/update-details', requireSession(['hotel']), async (req, res) => 
 
         console.error('Error updating hotel details:', err);
 
-        res.status(500).json({ success: false, message: 'Error updating hotel details' });
+        res.status(500).json({
+            success: false,
+            message: err.message || 'Error updating hotel details',
+            error: err.name || 'HotelUpdateError'
+        });
 
     }
 
