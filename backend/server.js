@@ -2718,6 +2718,66 @@ app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assist
 
 
 
+app.get('/admin/cloudinary-hotel-upload-signature', requireSession(['hotel', 'admin', 'assistant']), (req, res) => {
+
+    try {
+
+        const timestamp = Math.round(Date.now() / 1000);
+
+        const paramsToSign = {
+
+            allowed_formats: 'jpg,jpeg,png,webp',
+
+            folder: 'GyanGarbh/Hotels',
+
+            timestamp: timestamp,
+
+            transformation: 'c_limit,h_1200,w_1600'
+
+        };
+
+        const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
+
+        res.json({
+
+            success: true,
+
+            allowed_formats: paramsToSign.allowed_formats,
+
+            apiKey: cloudinaryApiKey,
+
+            cloudName: cloudinaryCloudName,
+
+            folder: paramsToSign.folder,
+
+            signature,
+
+            timestamp,
+
+            transformation: paramsToSign.transformation
+
+        });
+
+    } catch (err) {
+
+        console.error('Cloudinary signature generation failed:', err);
+
+        res.status(500).json({
+
+            success: false,
+
+            message: err.message || 'Cloudinary signature generation failed.',
+
+            error: err.name || 'CloudinarySignatureError'
+
+        });
+
+    }
+
+});
+
+
+
 app.get('/admin_load-hotel-images', requireSession(['hotel', 'admin', 'assistant']), async (req, res) => {
 
     try {
@@ -2880,7 +2940,7 @@ app.put('/hotel/update-details', requireSession(['hotel']), async (req, res) => 
 
     try {
 
-        const { hotelName, roomRate, totalRooms, acRoomPrice, nonAcRoomPrice, description, facilities, imageUrl, imageUrl2, imageUrl3, distanceFromLandmark, gyanGarbhHighlights } = req.body;
+        const { hotelName, roomRate, totalRooms, acRoomPrice, nonAcRoomPrice, description, facilities, imageUrl, imageUrl2, imageUrl3, images, distanceFromLandmark, gyanGarbhHighlights } = req.body;
 
         const ownerEmail = req.session.email;
 
@@ -2907,6 +2967,8 @@ app.put('/hotel/update-details', requireSession(['hotel']), async (req, res) => 
         if (imageUrl2 !== undefined) updateData.imageUrl2 = imageUrl2 || "";
 
         if (imageUrl3 !== undefined) updateData.imageUrl3 = imageUrl3 || "";
+
+        if (images !== undefined) updateData.images = Array.isArray(images) ? images.filter(Boolean).map((url) => String(url).trim()).filter(Boolean) : [];
 
         if (distanceFromLandmark !== undefined) updateData.distanceFromLandmark = distanceFromLandmark || { value: 0, unit: 'km', landmark: 'Mahabodhi Temple' };
 
