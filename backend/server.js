@@ -2726,15 +2726,15 @@ app.get('/admin/cloudinary-hotel-upload-signature', (req, res) => {
 
     try {
 
-        const timestamp = Math.round(Date.now() / 1000);
+        const timestamp = String(Math.round(Date.now() / 1000));
 
         const paramsToSign = {
+
+            timestamp: timestamp,
 
             allowed_formats: 'jpg,jpeg,png,webp',
 
             folder: 'GyanGarbh/Hotels',
-
-            timestamp: timestamp,
 
             transformation: 'c_limit,h_1200,w_1600'
 
