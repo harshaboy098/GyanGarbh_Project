@@ -278,7 +278,7 @@ const hotelImageStorage = new CloudinaryStorage({
 
         allowed_formats: 'jpg,jpeg,png,webp',
 
-        transformation: 'c_limit,h_1200,w_1600'
+        transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
 
     }
 
@@ -2638,23 +2638,67 @@ app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assist
 
             if (!req.files || !req.files.length) {
 
-                return res.status(400).json({ success: false, message: 'No hotel images were uploaded.' });
+                return res.json({ success: true, images: [], message: 'No hotel images were uploaded.' });
 
             }
 
 
 
-            const uploadedUrls = req.files.map((file) => file.path || file.secure_url || file.url).filter(Boolean);
+            const uploadedUrls = req.files
+
+                .map((file) => file.path || file.secure_url || file.url)
+
+                .filter(Boolean)
+
+                .map((url) => String(url).trim())
+
+                .filter(Boolean);
 
             if (!uploadedUrls.length) {
 
-                return res.status(500).json({ success: false, message: 'Uploaded files did not return valid Cloudinary URLs.' });
+                return res.json({ success: true, images: [], message: 'Uploaded files did not return valid Cloudinary URLs.' });
+
+            }
+
+            const updateData = {
+
+                images: uploadedUrls,
+
+                imageUrl: uploadedUrls[0] || '',
+
+                imageUrl2: uploadedUrls[1] || '',
+
+                imageUrl3: uploadedUrls[2] || '',
+
+                updatedAt: new Date()
+
+            };
+
+            let updatedHotel = null;
+
+            if (req.session?.role === 'hotel' && req.session?.email) {
+
+                updatedHotel = await Hotel.findOneAndUpdate(
+
+                    { ownerEmail: normalizeEmail(req.session.email) },
+
+                    updateData,
+
+                    { new: true }
+
+                );
+
+                if (updatedHotel) {
+
+                    emitRealtime('hotel-updated', { ownerEmail: updatedHotel.ownerEmail, hotelName: updatedHotel.hotelName });
+
+                }
 
             }
 
 
 
-            res.json({ success: true, images: uploadedUrls });
+            res.json({ success: true, images: uploadedUrls, hotel: updatedHotel });
 
         } catch (err) {
 
@@ -2665,6 +2709,46 @@ app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assist
         }
 
     });
+
+});
+
+
+
+app.get('/admin_load-hotel-images', requireSession(['hotel', 'admin', 'assistant']), async (req, res) => {
+
+    try {
+
+        const ownerEmail = normalizeEmail(req.query.ownerEmail || req.session?.email);
+
+        const hotelId = String(req.query.hotelId || '').trim();
+
+        let hotel = null;
+
+        if (hotelId && mongoose.Types.ObjectId.isValid(hotelId)) {
+
+            hotel = await Hotel.findById(hotelId).select('images imageUrl imageUrl2 imageUrl3');
+
+        } else if (ownerEmail) {
+
+            hotel = await Hotel.findOne({ ownerEmail }).select('images imageUrl imageUrl2 imageUrl3');
+
+        }
+
+        const images = Array.isArray(hotel?.images)
+
+            ? hotel.images.filter(Boolean)
+
+            : [hotel?.imageUrl, hotel?.imageUrl2, hotel?.imageUrl3].filter(Boolean);
+
+        res.json({ success: true, images: images || [] });
+
+    } catch (err) {
+
+        console.error('Error loading hotel images:', err);
+
+        res.json({ success: true, images: [], message: 'Hotel images are not available yet.' });
+
+    }
 
 });
 

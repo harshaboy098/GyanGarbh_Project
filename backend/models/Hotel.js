@@ -35,6 +35,7 @@ const HotelSchema = new mongoose.Schema({
     imageUrl: { type: String, default: "https://images.unsplash.com/photo-1566073771259-6a8506099945" },
     imageUrl2: { type: String, default: "" },
     imageUrl3: { type: String, default: "" },
+    images: { type: [String], default: [] },
     
     // 🆕 NEW FIELDS - Distance from Landmark & Gyan Garbh Highlights
     distanceFromLandmark: {
