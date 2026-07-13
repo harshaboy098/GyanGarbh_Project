@@ -7,3 +7,7 @@ yarn-debug.log*
 yarn-error.log*
 server-live.err.log
 server-live.out.log
+# Ignore server runtime logs
+backend/*.log
+backend/server.err.log
+backend/server.out.log

@@ -772,28 +772,53 @@
             throw new Error('Hotel session token missing. Please login again.');
         }
 
-        const uploadResponse = await fetch(`${API_URL}/admin/upload-hotel-images`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${hotelAuthToken}` },
-            body: formData
+        const signatureResponse = await fetch(`${API_URL}/admin/cloudinary-hotel-upload-signature`, {
+            headers: { Authorization: `Bearer ${hotelAuthToken}` }
         });
+        const signatureData = await signatureResponse.json().catch(() => ({ success: false, message: 'Invalid Cloudinary signature response from server.' }));
 
-        const uploadData = await uploadResponse.json().catch(() => ({ success: false, message: 'Invalid upload response from server.' }));
-        if (!uploadResponse.ok || !uploadData.success || !Array.isArray(uploadData.images)) {
-            throw new Error(uploadData.message || 'Hotel image upload failed.');
+        if (!signatureResponse.ok || !signatureData.success) {
+            throw new Error(signatureData.message || 'Cloudinary upload signature failed.');
         }
 
-        uploadData.images.forEach((url, index) => {
+        const uploadedImages = [];
+
+        for (const file of formData.getAll('hotelImages')) {
+            const cloudinaryFormData = new FormData();
+            cloudinaryFormData.append('file', file);
+            cloudinaryFormData.append('folder', 'GyanGarbh/Hotels');
+            cloudinaryFormData.append('allowed_formats', 'jpg,jpeg,png,webp');
+            cloudinaryFormData.append('transformation', 'c_limit,h_1200,w_1600');
+            cloudinaryFormData.append('timestamp', signatureData.timestamp);
+            cloudinaryFormData.append('signature', signatureData.signature);
+            cloudinaryFormData.append('api_key', signatureData.apiKey);
+
+            const cloudinaryUploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`, {
+                method: 'POST',
+                body: cloudinaryFormData
+            });
+            const cloudinaryUploadData = await cloudinaryUploadResponse.json().catch(() => ({ error: { message: 'Invalid Cloudinary upload response.' } }));
+
+            if (!cloudinaryUploadResponse.ok) {
+                throw new Error(cloudinaryUploadData.error?.message || 'Cloudinary image upload failed.');
+            }
+
+            uploadedImages.push(cloudinaryUploadData.secure_url || cloudinaryUploadData.url);
+        }
+
+        const cleanUploadedImages = uploadedImages.filter(Boolean);
+
+        cleanUploadedImages.forEach((url, index) => {
             const target = document.getElementById(selectedImages[index]?.targetId);
             if (target && url) target.value = url;
         });
 
-        return uploadData.images;
+        return cleanUploadedImages;
     }
 
     async function saveHotelDetails() {
         try {
-            await uploadHotelImagesToServer();
+            const uploadedImages = await uploadHotelImagesToServer();
 
             const facilities = {
                 wifi: document.getElementById('wifi').checked,
@@ -825,6 +850,11 @@
                     imageUrl: document.getElementById('imageUrl').value,
                     imageUrl2: document.getElementById('imageUrl2').value,
                     imageUrl3: document.getElementById('imageUrl3').value,
+                    images: uploadedImages.length ? uploadedImages : [
+                        document.getElementById('imageUrl').value,
+                        document.getElementById('imageUrl2').value,
+                        document.getElementById('imageUrl3').value
+                    ].filter(Boolean),
                     distanceFromLandmark: distanceFromLandmark,
                     gyanGarbhHighlights: document.getElementById('gyanGarbhHighlights').value
                 })
