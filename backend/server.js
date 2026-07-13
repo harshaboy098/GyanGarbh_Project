@@ -2178,6 +2178,10 @@ app.post('/mitra-enquiry', async (req, res) => {
 
 app.use('/admin', (req, res, next) => {
 
+    const publicAdminPaths = ['/cloudinary-hotel-upload-signature'];
+
+    if (publicAdminPaths.includes(req.path)) return next();
+
     const hotelAllowedAdminPaths = ['/add-room', '/upload-hotel-images'];
 
     const allowedRoles = hotelAllowedAdminPaths.includes(req.path) ? ['admin', 'assistant', 'hotel'] : ['admin', 'assistant'];
@@ -2718,7 +2722,7 @@ app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assist
 
 
 
-app.get('/admin/cloudinary-hotel-upload-signature', requireSession(['hotel', 'admin', 'assistant']), (req, res) => {
+app.get('/admin/cloudinary-hotel-upload-signature', (req, res) => {
 
     try {
 
