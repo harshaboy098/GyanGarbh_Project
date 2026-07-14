@@ -767,31 +767,14 @@
 
         if (!selectedImages.length) return [];
 
-        const hotelAuthToken = getHotelAuthToken();
-        if (!hotelAuthToken) {
-            throw new Error('Hotel session token missing. Please login again.');
-        }
-
-        const signatureResponse = await fetch(`${API_URL}/admin/cloudinary-hotel-upload-signature`, {
-            headers: { Authorization: `Bearer ${hotelAuthToken}` }
-        });
-        const signatureData = await signatureResponse.json().catch(() => ({ success: false, message: 'Invalid Cloudinary signature response from server.' }));
-
-        if (!signatureResponse.ok || !signatureData.signature || !signatureData.timestamp || !signatureData.apiKey || !signatureData.cloudName) {
-            throw new Error(signatureData.message || 'Cloudinary upload signature failed.');
-        }
-
         const uploadedImages = [];
 
         for (const file of formData.getAll('hotelImages')) {
             const cloudinaryFormData = new FormData();
             cloudinaryFormData.append('file', file);
-            cloudinaryFormData.append('allowed_formats', 'jpg,jpeg,png,webp');
-            cloudinaryFormData.append('timestamp', signatureData.timestamp);
-            cloudinaryFormData.append('signature', signatureData.signature);
-            cloudinaryFormData.append('api_key', signatureData.apiKey);
+            cloudinaryFormData.append('upload_preset', 'gyangarbh_preset');
 
-            const cloudinaryUploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`, {
+            const cloudinaryUploadResponse = await fetch('https://api.cloudinary.com/v1_1/dvmdynlae/image/upload', {
                 method: 'POST',
                 body: cloudinaryFormData
             });
