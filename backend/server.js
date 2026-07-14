@@ -3670,6 +3670,92 @@ app.get('/all-hotels', async (req, res) => {
 
 });
 
+app.get('/api/hotels/:id', async (req, res) => {
+
+    try {
+
+        const hotelId = String(req.params.id || '').trim();
+
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) {
+
+            return res.status(400).json({ success: false, message: 'Invalid hotel id' });
+
+        }
+
+        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true } }));
+
+        if (!hotel) {
+
+            return res.status(404).json({ success: false, message: 'Hotel not found' });
+
+        }
+
+        res.json({ success: true, hotel });
+
+    } catch (err) {
+
+        res.status(500).json({ success: false, message: err.message });
+
+    }
+
+});
+
+app.post('/api/hotels/:id/reviews', async (req, res) => {
+
+    try {
+
+        const hotelId = String(req.params.id || '').trim();
+        const rating = Number(req.body?.rating);
+        const comment = String(req.body?.comment || '').trim();
+
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) {
+
+            return res.status(400).json({ success: false, message: 'Invalid hotel id' });
+
+        }
+
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+
+            return res.status(400).json({ success: false, message: 'Rating must be a number from 1 to 5' });
+
+        }
+
+        if (!comment || comment.length > 1000) {
+
+            return res.status(400).json({ success: false, message: 'Review comment is required and must be under 1000 characters' });
+
+        }
+
+        const hotel = await Hotel.findOne({ _id: hotelId, isLocked: { $ne: true } }).select('-password');
+
+        if (!hotel) {
+
+            return res.status(404).json({ success: false, message: 'Hotel not found' });
+
+        }
+
+        hotel.reviews.push({ rating, comment });
+
+        const totalRating = hotel.reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
+        hotel.totalReviews = hotel.reviews.length;
+        hotel.averageRating = Number((totalRating / hotel.totalReviews).toFixed(1));
+        hotel.updatedAt = new Date();
+
+        await hotel.save();
+
+        const updatedHotel = hotel.toObject();
+        delete updatedHotel.password;
+
+        res.status(201).json({ success: true, hotel: updatedHotel });
+
+    } catch (err) {
+
+        res.status(500).json({ success: false, message: err.message });
+
+    }
+
+});
+
 
 
 // ⭐ GET HOTEL DETAILS BY EMAIL (for hotel dashboard)

@@ -59,7 +59,13 @@ const HotelSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now },
     isLocked: { type: Boolean, default: false }, // Status toggle for lock
     isAvailable: { type: Boolean, default: true },
-    averageRating: { type: Number, default: 5.0 }
+    reviews: [{
+        rating: Number,
+        comment: String,
+        date: { type: Date, default: Date.now }
+    }],
+    averageRating: { type: Number, default: 4.0 },
+    totalReviews: { type: Number, default: 0 }
 });
 
 HotelSchema.pre('save', async function() {

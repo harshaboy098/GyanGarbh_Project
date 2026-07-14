@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Details | Gyan Garbh</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root {
+            --brand: #1e3c72;
+            --brand-deep: #102847;
+            --gold: #ffc107;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --paper: #ffffff;
+            --line: #e2e8f0;
+            --bg: #f8fafc;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: "Plus Jakarta Sans", "Segoe UI", Arial, sans-serif;
+        }
+
+        .nav-custom {
+            background: var(--brand);
+            border-bottom: 4px solid var(--gold);
+            padding: 12px 0;
+        }
+
+        .nav-custom a { color: #fff; text-decoration: none; }
+
+        .hero {
+            min-height: 72vh;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            background: #0f172a center / cover no-repeat;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.1) 0%, rgba(15, 23, 42, 0.78) 72%, rgba(15, 23, 42, 0.92) 100%);
+        }
+
+        .hero-content {
+            position: relative;
+            width: 100%;
+            padding: 120px 0 52px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            max-width: 860px;
+            margin: 18px 0 12px;
+            font-size: clamp(2.4rem, 6vw, 5.2rem);
+            line-height: 1;
+            font-weight: 900;
+            letter-spacing: 0;
+        }
+
+        .hero-meta {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            color: rgba(255, 255, 255, 0.88);
+            font-weight: 700;
+        }
+
+        .price-panel {
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            border-radius: 8px;
+            padding: 22px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+        }
+
+        .price-panel strong {
+            display: block;
+            font-size: 2rem;
+            line-height: 1.1;
+            color: #15803d;
+        }
+
+        .section-wrap { padding: 56px 0; }
+        .section-title {
+            font-size: clamp(1.6rem, 3vw, 2.4rem);
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        .section-kicker {
+            color: var(--muted);
+            max-width: 720px;
+            margin-bottom: 28px;
+            line-height: 1.7;
+        }
+
+        .spec-grid,
+        .amenities-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .spec-card,
+        .amenity-card,
+        .review-panel {
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+        }
+
+        .spec-card {
+            padding: 24px;
+            min-height: 150px;
+        }
+
+        .spec-icon,
+        .amenity-icon {
+            width: 46px;
+            height: 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: #eef4ff;
+            color: var(--brand);
+            margin-bottom: 18px;
+        }
+
+        .spec-label,
+        .amenity-card span {
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .spec-value {
+            display: block;
+            margin-top: 7px;
+            font-size: 1.2rem;
+            font-weight: 900;
+        }
+
+        .amenity-card {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-height: 92px;
+        }
+
+        .amenity-icon {
+            margin: 0;
+            flex: 0 0 46px;
+            background: #fff7d6;
+            color: #9a6700;
+        }
+
+        .gallery-strip {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 14px;
+        }
+
+        .gallery-strip img {
+            width: 100%;
+            height: 260px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .review-panel {
+            padding: 30px;
+        }
+
+        .review-stars {
+            color: var(--gold);
+            font-size: 1.3rem;
+            white-space: nowrap;
+        }
+
+        .review-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 24px;
+        }
+
+        .score-badge {
+            min-width: 152px;
+            padding: 18px;
+            border-radius: 8px;
+            background: var(--brand-deep);
+            color: #fff;
+            text-align: center;
+        }
+
+        .score-badge strong {
+            display: block;
+            font-size: 2.4rem;
+            line-height: 1;
+        }
+
+        .rating-picker {
+            display: inline-flex;
+            gap: 8px;
+            margin: 8px 0 16px;
+        }
+
+        .rating-picker button {
+            width: 42px;
+            height: 42px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            color: #cbd5e1;
+            font-size: 1.25rem;
+            transition: 0.18s ease;
+        }
+
+        .rating-picker button.active,
+        .rating-picker button:hover {
+            color: var(--gold);
+            border-color: rgba(255, 193, 7, 0.65);
+            background: #fff7d6;
+        }
+
+        .review-input {
+            min-height: 128px;
+            resize: vertical;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            padding: 15px;
+            box-shadow: none;
+        }
+
+        .review-input:focus {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 4px rgba(30, 60, 114, 0.12);
+        }
+
+        .review-message {
+            min-height: 24px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .review-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .review-item {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 16px;
+            background: #f8fafc;
+        }
+
+        .review-item p {
+            color: #334155;
+            margin: 8px 0 0;
+        }
+
+        .review-toast {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            z-index: 1200;
+            max-width: min(360px, calc(100vw - 44px));
+            padding: 16px 18px;
+            border-radius: 8px;
+            background: #102847;
+            color: #fff;
+            box-shadow: 0 18px 44px rgba(15, 23, 42, 0.24);
+            opacity: 0;
+            transform: translateY(12px);
+            pointer-events: none;
+            transition: 0.22s ease;
+            font-weight: 800;
+        }
+
+        .review-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .state {
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .state-box {
+            max-width: 560px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 34px;
+            box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+        }
+
+        @media (max-width: 991px) {
+            .hero { min-height: 66vh; }
+            .spec-grid,
+            .amenities-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .gallery-strip { grid-template-columns: 1fr; }
+            .gallery-strip img { height: 220px; }
+            .review-panel { align-items: flex-start; flex-direction: column; }
+        }
+
+        @media (max-width: 575px) {
+            .spec-grid,
+            .amenities-grid { grid-template-columns: 1fr; }
+            .hero-content { padding: 96px 0 34px; }
+            .price-panel { margin-top: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar nav-custom sticky-top">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand fw-bold fs-4" href="hotel.html"><i class="fa-solid fa-compass text-warning me-2"></i>GYAN GARBH</a>
+            <a class="fw-bold small" href="hotel.html"><i class="fa-solid fa-arrow-left me-2"></i>Back to Hotels</a>
+        </div>
+    </nav>
+
+    <main id="app">
+        <section class="state">
+            <div class="state-box">
+                <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+                <h1 class="h4 fw-bold">Loading hotel details</h1>
+                <p class="text-muted mb-0">Preparing the stay specification view.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1800&auto=format&fit=crop';
+        let currentHotel = null;
+        let selectedReviewRating = 0;
+
+        function escapeHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function getHotelId() {
+            return String(new URLSearchParams(window.location.search).get('id') || '').trim();
+        }
+
+        function formatPrice(hotel) {
+            const price = Number(hotel.acRoomPrice || hotel.nonAcRoomPrice || hotel.roomRate || 0);
+            return price > 0 ? `Rs. ${price.toLocaleString('en-IN')}/Night` : 'Price on Request';
+        }
+
+        function getImages(hotel) {
+            const images = [
+                hotel.imageUrl,
+                hotel.imageUrl2,
+                hotel.imageUrl3,
+                ...(Array.isArray(hotel.images) ? hotel.images : [])
+            ].filter(Boolean);
+            return images.length ? [...new Set(images)] : [FALLBACK_IMAGE];
+        }
+
+        function getSpecs(hotel) {
+            const firstRoom = Array.isArray(hotel.rooms) && hotel.rooms.length ? hotel.rooms[0] : {};
+            const landmark = hotel.distanceFromLandmark || {};
+            const view = landmark.landmark
+                ? `${landmark.landmark} side`
+                : (hotel.location || 'Bodhgaya view');
+
+            return [
+                { icon: 'fa-vector-square', label: 'Space', value: `${Number(hotel.totalRooms || 0) || 10} rooms` },
+                { icon: 'fa-bed', label: 'Bed Type', value: firstRoom.roomType || (hotel.facilities?.ac ? 'AC Deluxe' : 'Standard') },
+                { icon: 'fa-mountain-sun', label: 'View', value: view },
+                { icon: 'fa-users', label: 'Capacity', value: firstRoom.roomsAvailable ? `${firstRoom.roomsAvailable} rooms open` : 'Family friendly' }
+            ];
+        }
+
+        function getAmenities(hotel) {
+            const facilities = hotel.facilities || {};
+            const amenities = [
+                { key: 'wifi', icon: 'fa-wifi', label: 'High Speed WiFi', active: facilities.wifi },
+                { key: 'food', icon: 'fa-utensils', label: 'Food Service', active: facilities.food },
+                { key: 'parking', icon: 'fa-square-parking', label: 'Parking', active: facilities.parking },
+                { key: 'laundry', icon: 'fa-shirt', label: 'Laundry', active: facilities.laundry },
+                { key: 'ac', icon: 'fa-snowflake', label: 'Air Conditioning', active: facilities.ac },
+                { key: 'frontDesk', icon: 'fa-concierge-bell', label: 'Front Desk', active: facilities.frontDesk }
+            ];
+            const roomAmenities = Array.isArray(hotel.rooms)
+                ? hotel.rooms.flatMap((room) => Array.isArray(room.amenities) ? room.amenities : [])
+                : [];
+
+            const mappedRoomAmenities = [...new Set(roomAmenities)].slice(0, 4).map((name) => ({
+                icon: 'fa-circle-check',
+                label: name,
+                active: true
+            }));
+
+            return [...amenities.filter((item) => item.active), ...mappedRoomAmenities];
+        }
+
+        function renderStaticStars(score) {
+            const rating = Number(score || 0);
+            return Array.from({ length: 5 }, (_, index) => {
+                const starValue = index + 1;
+                if (rating >= starValue) return '<i class="fa-solid fa-star"></i>';
+                if (rating >= starValue - 0.5) return '<i class="fa-solid fa-star-half-stroke"></i>';
+                return '<i class="fa-regular fa-star"></i>';
+            }).join('');
+        }
+
+        function formatReviewDate(value) {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return 'Just now';
+            return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function renderReviewItems(reviews) {
+            if (!Array.isArray(reviews) || reviews.length === 0) {
+                return '<div class="review-item text-muted">No customer reviews yet. Be the first to rate this stay.</div>';
+            }
+
+            return reviews.slice().reverse().slice(0, 5).map((review) => `
+                <article class="review-item">
+                    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                        <div class="review-stars">${renderStaticStars(review.rating)}</div>
+                        <span class="text-muted small fw-bold">${escapeHTML(formatReviewDate(review.date))}</span>
+                    </div>
+                    <p>${escapeHTML(review.comment || '')}</p>
+                </article>
+            `).join('');
+        }
+
+        function updateRatingPicker(value, commit = false) {
+            const displayRating = Number(value) || 0;
+            if (commit) selectedReviewRating = displayRating;
+            document.querySelectorAll('.rating-picker button').forEach((button) => {
+                const rating = Number(button.dataset.rating);
+                const active = rating <= displayRating;
+                button.classList.toggle('active', active);
+                button.innerHTML = `<i class="${active ? 'fas' : 'far'} fa-star"></i>`;
+            });
+        }
+
+        function setReviewMessage(message, type = 'muted') {
+            const messageEl = document.getElementById('reviewMessage');
+            if (!messageEl) return;
+            messageEl.className = `review-message text-${type}`;
+            messageEl.textContent = message;
+        }
+
+        function showReviewToast(message) {
+            const existingToast = document.getElementById('reviewToast');
+            if (existingToast) existingToast.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'reviewToast';
+            toast.className = 'review-toast';
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-warning me-2"></i>${escapeHTML(message)}`;
+            document.body.appendChild(toast);
+
+            requestAnimationFrame(() => toast.classList.add('show'));
+            window.setTimeout(() => {
+                toast.classList.remove('show');
+                window.setTimeout(() => toast.remove(), 240);
+            }, 2600);
+        }
+
+        function initReviewForm() {
+            const picker = document.getElementById('ratingPicker');
+            const form = document.getElementById('reviewForm');
+            if (!picker || !form) return;
+
+            picker.querySelectorAll('button').forEach((button) => {
+                const rating = Number(button.dataset.rating);
+                button.addEventListener('mouseenter', () => updateRatingPicker(rating));
+                button.addEventListener('focus', () => updateRatingPicker(rating));
+                button.addEventListener('click', () => updateRatingPicker(rating, true));
+            });
+
+            picker.addEventListener('mouseleave', () => updateRatingPicker(selectedReviewRating));
+            form.addEventListener('submit', submitHotelReview);
+            updateRatingPicker(0);
+        }
+
+        async function submitHotelReview(event) {
+            event.preventDefault();
+            const id = getHotelId();
+            const commentEl = document.getElementById('reviewComment');
+            const submitButton = document.getElementById('submitReviewButton');
+            const comment = String(commentEl?.value || '').trim();
+
+            if (!selectedReviewRating) {
+                setReviewMessage('Please select a star rating.', 'warning');
+                return;
+            }
+
+            if (!comment) {
+                setReviewMessage('Please write a short review comment.', 'warning');
+                return;
+            }
+
+            try {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Submitting';
+                setReviewMessage('Submitting your review...', 'muted');
+
+                const response = await fetch(`${API_URL}/api/hotels/${encodeURIComponent(id)}/reviews`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rating: selectedReviewRating, comment })
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok || data.success === false) {
+                    throw new Error(data.message || 'Review submission failed.');
+                }
+
+                selectedReviewRating = 0;
+                renderHotel(data.hotel);
+                setReviewMessage('Thank you. Your review has been published.', 'success');
+                showReviewToast('Review submitted successfully');
+            } catch (error) {
+                setReviewMessage(error.message || 'Unable to submit review. Please try again.', 'danger');
+            } finally {
+                const freshButton = document.getElementById('submitReviewButton');
+                if (freshButton) {
+                    freshButton.disabled = false;
+                    freshButton.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Submit Review';
+                }
+            }
+        }
+
+        function renderError(message) {
+            document.getElementById('app').innerHTML = `
+                <section class="state">
+                    <div class="state-box">
+                        <i class="fa-solid fa-triangle-exclamation text-warning fs-1 mb-3"></i>
+                        <h1 class="h4 fw-bold">Unable to open this hotel</h1>
+                        <p class="text-muted">${escapeHTML(message)}</p>
+                        <a href="hotel.html" class="btn btn-primary rounded-pill px-4 fw-bold">Browse Hotels</a>
+                    </div>
+                </section>`;
+        }
+
+        function renderHotel(hotel) {
+            currentHotel = hotel;
+            const images = getImages(hotel);
+            const specs = getSpecs(hotel);
+            const amenities = getAmenities(hotel);
+            const rating = Number(hotel.averageRating || hotel.rating || 4.5).toFixed(1);
+            const totalReviews = Number(hotel.totalReviews || (Array.isArray(hotel.reviews) ? hotel.reviews.length : 0));
+            const distance = hotel.distanceFromLandmark
+                ? `${hotel.distanceFromLandmark.value || 0} ${hotel.distanceFromLandmark.unit || 'km'} from ${hotel.distanceFromLandmark.landmark || 'Mahabodhi Temple'}`
+                : 'Near Mahabodhi Temple';
+
+            document.title = `${hotel.hotelName || 'Hotel Details'} | Gyan Garbh`;
+            document.getElementById('app').innerHTML = `
+                <section class="hero" style="background-image: url('${escapeHTML(images[0])}');">
+                    <div class="hero-content">
+                        <div class="container">
+                            <div class="row align-items-end g-4">
+                                <div class="col-lg-8">
+                                    <span class="eyebrow"><i class="fa-solid fa-shield-heart"></i> Verified Gyan Garbh Stay</span>
+                                    <h1>${escapeHTML(hotel.hotelName || 'Premium Stay')}</h1>
+                                    <div class="hero-meta">
+                                        <span><i class="fa-solid fa-location-dot text-warning me-2"></i>${escapeHTML(hotel.location || hotel.address || 'Bodhgaya')}</span>
+                                        <span><i class="fa-solid fa-star text-warning me-2"></i>${escapeHTML(rating)} rating</span>
+                                        <span><i class="fa-solid fa-route text-warning me-2"></i>${escapeHTML(distance)}</span>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="price-panel">
+                                        <span class="text-muted small fw-bold text-uppercase">Starting from</span>
+                                        <strong>${escapeHTML(formatPrice(hotel))}</strong>
+                                        <p class="text-muted small mb-0 mt-2">Final availability and booking confirmation are handled by the Gyan Garbh team.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="section-wrap">
+                    <div class="container">
+                        <h2 class="section-title">Hotel Details & Specification</h2>
+                        <p class="section-kicker">${escapeHTML(hotel.description || 'A refined stay experience for Bodhgaya visitors, designed around comfort, clarity, and trusted local support.')}</p>
+                        <div class="spec-grid">
+                            ${specs.map((spec) => `
+                                <article class="spec-card">
+                                    <div class="spec-icon"><i class="fa-solid ${escapeHTML(spec.icon)}"></i></div>
+                                    <span class="spec-label">${escapeHTML(spec.label)}</span>
+                                    <strong class="spec-value">${escapeHTML(spec.value)}</strong>
+                                </article>
+                            `).join('')}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="section-wrap pt-0">
+                    <div class="container">
+                        <h2 class="section-title">Amenities</h2>
+                        <p class="section-kicker">${escapeHTML(hotel.gyanGarbhHighlights || 'Essential facilities for a smooth stay, surfaced from verified hotel information.')}</p>
+                        <div class="amenities-grid">
+                            ${(amenities.length ? amenities : [{ icon: 'fa-circle-check', label: 'Verified Stay' }]).map((item) => `
+                                <article class="amenity-card">
+                                    <div class="amenity-icon"><i class="fa-solid ${escapeHTML(item.icon)}"></i></div>
+                                    <span>${escapeHTML(item.label)}</span>
+                                </article>
+                            `).join('')}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="section-wrap pt-0">
+                    <div class="container">
+                        <h2 class="section-title">Gallery</h2>
+                        <div class="gallery-strip">
+                            ${images.slice(0, 3).map((src) => `<img src="${escapeHTML(src)}" alt="${escapeHTML(hotel.hotelName || 'Hotel image')}" loading="lazy" onerror="this.src='${FALLBACK_IMAGE}'">`).join('')}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="section-wrap pt-0">
+                    <div class="container">
+                        <div class="review-panel">
+                            <div class="review-summary">
+                                <div>
+                                    <h2 class="section-title mb-2">Customer Ratings & Reviews</h2>
+                                    <p class="text-muted mb-0">Share your stay experience and help future Bodhgaya visitors choose with confidence.</p>
+                                </div>
+                                <div class="score-badge">
+                                    <strong>${escapeHTML(rating)}</strong>
+                                    <div class="review-stars my-2">${renderStaticStars(rating)}</div>
+                                    <span class="small fw-bold">${escapeHTML(totalReviews)} review${totalReviews === 1 ? '' : 's'}</span>
+                                </div>
+                            </div>
+
+                            <form id="reviewForm">
+                                <label class="fw-bold mb-1" for="ratingPicker">Your Rating</label>
+                                <div id="ratingPicker" class="rating-picker" aria-label="Choose a rating from 1 to 5">
+                                    ${[1, 2, 3, 4, 5].map((value) => `<button type="button" data-rating="${value}" aria-label="${value} star"><i class="far fa-star"></i></button>`).join('')}
+                                </div>
+                                <label class="fw-bold mb-2" for="reviewComment">Your Review</label>
+                                <textarea id="reviewComment" class="form-control review-input" maxlength="1000" placeholder="Tell guests about cleanliness, location, service, comfort, or anything that made the stay special."></textarea>
+                                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mt-3">
+                                    <div id="reviewMessage" class="review-message text-muted"></div>
+                                    <button id="submitReviewButton" class="btn btn-primary rounded-pill px-4 fw-bold" type="submit">
+                                        <i class="fa-solid fa-paper-plane me-2"></i>Submit Review
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="review-list" id="reviewList">
+                                ${renderReviewItems(hotel.reviews)}
+                            </div>
+                        </div>
+                    </div>
+                </section>`;
+            initReviewForm();
+        }
+
+        async function loadHotelDetails() {
+            const id = getHotelId();
+            if (!id) {
+                renderError('Missing hotel id in the page URL.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/hotels/${encodeURIComponent(id)}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.success === false) {
+                    throw new Error(data.message || 'Hotel details could not be loaded.');
+                }
+                renderHotel(data.hotel || data);
+            } catch (error) {
+                renderError(error.message || 'Server unavailable. Please try again.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadHotelDetails);
+    </script>
+</body>
+</html>

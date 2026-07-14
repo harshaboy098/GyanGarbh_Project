@@ -560,6 +560,12 @@
         return price && price > 0 ? `₹${price}/Night` : 'Price on Request';
     }
 
+    function openHotelDetailsPage(hotelId) {
+        const id = String(hotelId || '').trim();
+        if (!id) return;
+        window.location.href = `./hotel-details.html?id=${encodeURIComponent(id)}`;
+    }
+
     async function loadHotels() {
         const container = document.getElementById('hotelsContainer');
         try {
@@ -585,7 +591,7 @@
 
                 container.innerHTML += `
                     <div class="col-md-4 hotel-item">
-                        <div class="hotel-card" onclick="openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}', '${safeId}', '${landmarkText}', '${highlightsText}')">
+                        <div class="hotel-card" onclick="openHotelDetailsPage('${safeId}')">
                             <span class="urgency-badge">Filling Fast!</span>
                             <div class="img-box"><img src="${imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'"></div>
                             <div class="p-4">
@@ -599,7 +605,7 @@
                                         <button class="btn btn-success btn-sm rounded-pill px-2 fw-bold shadow-sm" onclick="event.stopPropagation(); chatOnWhatsApp('${safeName}')">
                                             <i class="bi bi-whatsapp"></i>
                                         </button>
-                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetails('${safeName}', '${safeLocation}', '${priceValue}', '${imgUrl}', '${rating}', '${safeDescription}', '${safeId}', '${landmarkText}', '${highlightsText}')">View Room</button>
+                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetailsPage('${safeId}')">View Room</button>
                                     </div>
                                 </div>
                             </div>
