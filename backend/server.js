@@ -2726,17 +2726,13 @@ app.get('/admin/cloudinary-hotel-upload-signature', (req, res) => {
 
     try {
 
-        const timestamp = String(Math.round(Date.now() / 1000));
+        const timestamp = Math.round(new Date().getTime() / 1000);
 
         const paramsToSign = {
 
-            timestamp: timestamp,
-
             allowed_formats: 'jpg,jpeg,png,webp',
 
-            folder: 'GyanGarbh/Hotels',
-
-            transformation: 'c_limit,h_1200,w_1600'
+            timestamp: timestamp
 
         };
 
@@ -2744,21 +2740,13 @@ app.get('/admin/cloudinary-hotel-upload-signature', (req, res) => {
 
         res.json({
 
-            success: true,
-
-            allowed_formats: paramsToSign.allowed_formats,
-
-            apiKey: cloudinaryApiKey,
-
             cloudName: cloudinaryCloudName,
-
-            folder: paramsToSign.folder,
 
             signature,
 
             timestamp,
 
-            transformation: paramsToSign.transformation
+            apiKey: process.env.CLOUDINARY_API_KEY
 
         });
 

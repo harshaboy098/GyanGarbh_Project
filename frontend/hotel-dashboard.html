@@ -777,13 +777,8 @@
         });
         const signatureData = await signatureResponse.json().catch(() => ({ success: false, message: 'Invalid Cloudinary signature response from server.' }));
 
-        if (!signatureResponse.ok || !signatureData.success) {
+        if (!signatureResponse.ok || !signatureData.signature || !signatureData.timestamp || !signatureData.apiKey || !signatureData.cloudName) {
             throw new Error(signatureData.message || 'Cloudinary upload signature failed.');
-        }
-
-        const timestampFromBackend = String(signatureData.timestamp || '').trim();
-        if (!timestampFromBackend) {
-            throw new Error('Cloudinary upload signature did not include timestamp.');
         }
 
         const uploadedImages = [];
@@ -791,10 +786,8 @@
         for (const file of formData.getAll('hotelImages')) {
             const cloudinaryFormData = new FormData();
             cloudinaryFormData.append('file', file);
-            cloudinaryFormData.append('timestamp', timestampFromBackend);
             cloudinaryFormData.append('allowed_formats', 'jpg,jpeg,png,webp');
-            cloudinaryFormData.append('folder', 'GyanGarbh/Hotels');
-            cloudinaryFormData.append('transformation', 'c_limit,h_1200,w_1600');
+            cloudinaryFormData.append('timestamp', signatureData.timestamp);
             cloudinaryFormData.append('signature', signatureData.signature);
             cloudinaryFormData.append('api_key', signatureData.apiKey);
 
