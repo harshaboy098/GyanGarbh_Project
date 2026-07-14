@@ -391,7 +391,11 @@
 <script>
     const uName = localStorage.getItem('userName');
     const uEmail = localStorage.getItem('userEmail');
-    const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('token') || sessionStorage.getItem('authToken') || '';
+
+    function getAuthToken() {
+        return localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('token') || sessionStorage.getItem('authToken') || '';
+    }
 
     function getDefaultAvatar(name = 'GG') {
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'GG')}&background=1e3c72&color=fff&size=220`;
@@ -408,7 +412,9 @@
 
     function showAuthExpiredState() {
         localStorage.removeItem('authToken');
+        localStorage.removeItem('token');
         sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('token');
         document.getElementById('bookingsContainer').innerHTML = `
             <div class="text-center py-5 bg-white rounded-4 shadow-sm">
                 <i class="bi bi-shield-lock display-1 text-warning"></i>
@@ -430,6 +436,7 @@
     }
 
     window.onload = function() {
+        const authToken = getAuthToken();
         if(!uName || !uEmail || !authToken) {
             resetProfileForm();
             showAuthExpiredState();
@@ -456,9 +463,16 @@
             const formData = new FormData();
             formData.append('profilePic', file);
 
+            const uploadToken = getAuthToken();
+            if (!uploadToken) {
+                alert('Your session has expired. Please log in again.');
+                showAuthExpiredState();
+                return;
+            }
+
             const uploadResponse = await fetch(`${API_URL}/api/user/upload-profile-pic`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${authToken}` },
+                headers: { Authorization: `Bearer ${uploadToken}` },
                 body: formData
             });
 
@@ -538,9 +552,16 @@
                 }
             });
 
+            const profileToken = getAuthToken();
+            if (!profileToken) {
+                alert('Your session has expired. Please log in again.');
+                showAuthExpiredState();
+                return;
+            }
+
             const response = await fetch(`${API_URL}/api/user/profile`, {
                 method: 'PUT',
-                headers: { Authorization: `Bearer ${authToken}` },
+                headers: { Authorization: `Bearer ${profileToken}` },
                 body: formData
             });
 
