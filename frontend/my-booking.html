@@ -391,6 +391,7 @@
 <script>
     const uName = localStorage.getItem('userName');
     const uEmail = localStorage.getItem('userEmail');
+    const storedRole = String(localStorage.getItem('userRole') || sessionStorage.getItem('userRole') || '').trim().toLowerCase();
     const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('token') || sessionStorage.getItem('authToken') || '';
 
     function getAuthToken() {
@@ -424,6 +425,22 @@
             </div>`;
     }
 
+    function showCustomerOnlyBlockedState() {
+        const workspace = document.querySelector('.workspace');
+        if (!workspace) return;
+        workspace.innerHTML = `
+            <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+                <i class="bi bi-person-x display-1 text-warning"></i>
+                <h5 class="mt-3 mb-2">Customer access only</h5>
+                <p class="text-muted mb-3">This account area is reserved for regular customer profiles and bookings.</p>
+                <a href="index.html" class="btn btn-primary rounded-pill px-4 fw-bold">Go to Home</a>
+            </div>`;
+    }
+
+    function isCustomerOnlySession() {
+        return ['admin', 'assistant', 'support', 'specialist', 'driver', 'hotel', 'mitra'].includes(storedRole);
+    }
+
     // ⭐ Unique logic for Greeting based on time
     function setGreeting() {
         const hour = new Date().getHours();
@@ -440,6 +457,11 @@
         if(!uName || !uEmail || !authToken) {
             resetProfileForm();
             showAuthExpiredState();
+            return;
+        }
+
+        if (isCustomerOnlySession()) {
+            showCustomerOnlyBlockedState();
             return;
         }
         
@@ -532,6 +554,11 @@
     }
 
     async function saveProfile(extra = {}, showToastEnabled = true) {
+        if (isCustomerOnlySession()) {
+            showCustomerOnlyBlockedState();
+            return;
+        }
+
         const saveButton = document.getElementById('saveProfileButton');
         if (saveButton) {
             saveButton.disabled = true;
