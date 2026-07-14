@@ -486,12 +486,6 @@
             formData.append('profilePic', file);
 
             const uploadToken = getAuthToken();
-            if (!uploadToken) {
-                alert('Your session has expired. Please log in again.');
-                showAuthExpiredState();
-                return;
-            }
-
             const uploadResponse = await fetch(`${API_URL}/api/user/upload-profile-pic`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${uploadToken}` },
@@ -580,12 +574,6 @@
             });
 
             const profileToken = getAuthToken();
-            if (!profileToken) {
-                alert('Your session has expired. Please log in again.');
-                showAuthExpiredState();
-                return;
-            }
-
             const response = await fetch(`${API_URL}/api/user/profile`, {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${profileToken}` },
