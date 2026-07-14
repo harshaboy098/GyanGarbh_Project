@@ -192,10 +192,89 @@
             height: 260px;
             object-fit: cover;
             border-radius: 8px;
+            cursor: zoom-in;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
+        }
+
+        .gallery-strip img:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+            filter: saturate(1.04);
+        }
+
+        #imageModal.modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+            background: rgba(15, 23, 42, 0.86);
+            backdrop-filter: blur(12px);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.24s ease, visibility 0.24s ease;
+        }
+
+        #imageModal.modal.show {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .image-modal-frame {
+            position: relative;
+            max-width: min(1120px, 94vw);
+            max-height: 88vh;
+            transform: scale(0.94);
+            opacity: 0;
+            transition: transform 0.26s ease, opacity 0.26s ease;
+        }
+
+        #imageModal.modal.show .image-modal-frame {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .image-modal-frame img {
+            display: block;
+            max-width: 100%;
+            max-height: 88vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.38);
+            background: #0f172a;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: -18px;
+            right: -18px;
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            font-size: 1.8rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+            transition: transform 0.18s ease, background 0.18s ease;
+        }
+
+        .image-modal-close:hover {
+            transform: scale(1.06);
+            background: #fff7d6;
         }
 
         .review-panel {
             padding: 30px;
+            overflow: hidden;
         }
 
         .review-stars {
@@ -233,6 +312,8 @@
             display: inline-flex;
             gap: 8px;
             margin: 8px 0 16px;
+            min-height: 42px;
+            flex-wrap: wrap;
         }
 
         .rating-picker button {
@@ -244,6 +325,7 @@
             color: #cbd5e1;
             font-size: 1.25rem;
             transition: 0.18s ease;
+            flex: 0 0 42px;
         }
 
         .rating-picker button.active,
@@ -255,6 +337,7 @@
 
         .review-input {
             min-height: 128px;
+            width: 100%;
             resize: vertical;
             border-radius: 8px;
             border: 1px solid var(--line);
@@ -267,16 +350,28 @@
             box-shadow: 0 0 0 4px rgba(30, 60, 114, 0.12);
         }
 
+        .review-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+            min-height: 46px;
+        }
+
         .review-message {
-            min-height: 24px;
+            min-height: 28px;
             font-weight: 700;
             font-size: 0.9rem;
+            flex: 1 1 260px;
+            overflow-wrap: anywhere;
         }
 
         .review-list {
             display: grid;
             gap: 12px;
-            margin-top: 22px;
+            margin-top: 26px;
         }
 
         .review-item {
@@ -338,7 +433,8 @@
             .amenities-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .gallery-strip { grid-template-columns: 1fr; }
             .gallery-strip img { height: 220px; }
-            .review-panel { align-items: flex-start; flex-direction: column; }
+            .review-summary { align-items: flex-start; flex-direction: column; }
+            .score-badge { width: 100%; }
         }
 
         @media (max-width: 575px) {
@@ -346,6 +442,10 @@
             .amenities-grid { grid-template-columns: 1fr; }
             .hero-content { padding: 96px 0 34px; }
             .price-panel { margin-top: 20px; }
+            .review-panel { padding: 22px; }
+            .review-actions { align-items: stretch; }
+            .review-actions .btn { width: 100%; }
+            .image-modal-close { top: 10px; right: 10px; }
         }
     </style>
 </head>
@@ -366,6 +466,13 @@
             </div>
         </section>
     </main>
+
+    <div id="imageModal" class="modal" aria-hidden="true" role="dialog" aria-label="Hotel image preview">
+        <div class="image-modal-frame">
+            <button class="image-modal-close" type="button" aria-label="Close image preview">&times;</button>
+            <img id="imageModalImg" src="" alt="Hotel gallery preview">
+        </div>
+    </div>
 
     <script>
         const API_URL = 'http://localhost:5000';
@@ -505,6 +612,51 @@
                 toast.classList.remove('show');
                 window.setTimeout(() => toast.remove(), 240);
             }, 2600);
+        }
+
+        function openImageModal(src, altText = 'Hotel gallery preview') {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('imageModalImg');
+            if (!modal || !modalImg || !src) return;
+
+            modalImg.src = src;
+            modalImg.alt = altText;
+            modal.classList.add('show');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('imageModalImg');
+            if (!modal || !modalImg) return;
+
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            window.setTimeout(() => {
+                if (!modal.classList.contains('show')) modalImg.src = '';
+            }, 260);
+        }
+
+        function initGalleryLightbox() {
+            document.querySelectorAll('#gallery-container img, .gallery-strip img').forEach((img) => {
+                img.addEventListener('click', () => openImageModal(img.currentSrc || img.src, img.alt || 'Hotel gallery preview'));
+            });
+        }
+
+        function initImageModalControls() {
+            const modal = document.getElementById('imageModal');
+            const closeButton = modal?.querySelector('.image-modal-close');
+            if (!modal || !closeButton) return;
+
+            closeButton.addEventListener('click', closeImageModal);
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) closeImageModal();
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && modal.classList.contains('show')) closeImageModal();
+            });
         }
 
         function initReviewForm() {
@@ -656,7 +808,7 @@
                 <section class="section-wrap pt-0">
                     <div class="container">
                         <h2 class="section-title">Gallery</h2>
-                        <div class="gallery-strip">
+                        <div id="gallery-container" class="gallery-strip">
                             ${images.slice(0, 3).map((src) => `<img src="${escapeHTML(src)}" alt="${escapeHTML(hotel.hotelName || 'Hotel image')}" loading="lazy" onerror="this.src='${FALLBACK_IMAGE}'">`).join('')}
                         </div>
                     </div>
@@ -684,7 +836,7 @@
                                 </div>
                                 <label class="fw-bold mb-2" for="reviewComment">Your Review</label>
                                 <textarea id="reviewComment" class="form-control review-input" maxlength="1000" placeholder="Tell guests about cleanliness, location, service, comfort, or anything that made the stay special."></textarea>
-                                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mt-3">
+                                <div class="review-actions">
                                     <div id="reviewMessage" class="review-message text-muted"></div>
                                     <button id="submitReviewButton" class="btn btn-primary rounded-pill px-4 fw-bold" type="submit">
                                         <i class="fa-solid fa-paper-plane me-2"></i>Submit Review
@@ -699,6 +851,7 @@
                     </div>
                 </section>`;
             initReviewForm();
+            initGalleryLightbox();
         }
 
         async function loadHotelDetails() {
@@ -720,7 +873,10 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadHotelDetails);
+        document.addEventListener('DOMContentLoaded', () => {
+            initImageModalControls();
+            loadHotelDetails();
+        });
     </script>
 </body>
 </html>
