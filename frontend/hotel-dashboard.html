@@ -234,17 +234,73 @@
             background: #fff;
         }
         .room-gallery-preview {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+            gap: 12px;
+            padding: 12px;
+            border: 1px dashed #b9c6d6;
+            border-radius: 8px;
+            background: #fbfcfe;
+            min-height: 116px;
         }
         .room-gallery-thumb {
-            width: 82px;
-            height: 64px;
+            width: 100%;
+            aspect-ratio: 4 / 3;
             object-fit: cover;
             border-radius: 6px;
             border: 1px solid var(--line);
             background: #fff;
+        }
+        .room-gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 10px 24px rgba(23,32,51,0.08);
+        }
+        .room-gallery-remove {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 26px;
+            height: 26px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(15,40,70,0.92);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.86rem;
+            line-height: 1;
+        }
+        .room-gallery-remove:hover { background: #b42318; }
+        .room-gallery-name {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 7px 8px;
+            background: linear-gradient(180deg, transparent, rgba(15,40,70,0.82));
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .setup-commit-card {
+            margin-top: 26px;
+            padding: 22px;
+            border-radius: 8px;
+            border: 1px solid rgba(245,183,0,0.38);
+            background: linear-gradient(135deg, #fffaf0 0%, #ffffff 52%, #edf4fb 100%);
+            box-shadow: 0 18px 42px rgba(23,32,51,0.08);
+        }
+        .setup-commit-btn {
+            min-height: 52px;
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-dark)) !important;
+            border-color: var(--brand-dark) !important;
         }
         .hidden-url-field {
             position: absolute;
@@ -558,9 +614,11 @@
                             <div class="row g-3">
                                 <div class="col-md-12">
                                     <label class="small fw-bold text-muted mb-2">Upload Room Images</label>
-                                    <input type="file" id="roomImages" class="form-control" multiple accept="image/*" onchange="const wrap = this.closest('.row').querySelector('.room-gallery-preview'); wrap.innerHTML = ''; Array.from(this.files || []).slice(0, 6).forEach(file => { const reader = new FileReader(); reader.onload = () => { const img = document.createElement('img'); img.src = reader.result; img.alt = file.name; img.className = 'room-gallery-thumb'; wrap.appendChild(img); }; reader.readAsDataURL(file); });">
-                                    <small class="text-muted">Select multiple images for the room gallery.</small>
-                                    <div class="room-gallery-preview mt-3"></div>
+                                    <input type="file" id="roomImages" class="form-control" multiple accept="image/*" onchange="handleRoomImageSelection(this.files)">
+                                    <small class="text-muted">Select Bathroom, Balcony, Interior, and Detail shots for the room gallery.</small>
+                                    <div id="roomGalleryPreview" class="room-gallery-preview mt-3">
+                                        <div class="text-muted small d-flex align-items-center">No interior images selected yet.</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -573,6 +631,15 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="setup-commit-card d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-shield-check me-2 text-warning"></i>Complete Hotel Setup</h5>
+                    <p class="section-note mb-0">Commit hotel details and the current room inventory to the live guest-facing record.</p>
+                </div>
+                <button type="button" id="completeSetupButton" class="btn btn-primary setup-commit-btn px-4" onclick="saveCompleteHotelSetup()">
+                    <i class="bi bi-cloud-check me-2"></i>Save & Complete Hotel Setup
+                </button>
             </div>
         </div>
     </div>
@@ -607,6 +674,7 @@
         hotel: {},
         bookings: []
     };
+    let selectedRoomImageFiles = [];
 
     function getHotelAuthToken() {
         return localStorage.getItem('authToken') || '';
@@ -615,6 +683,16 @@
     function getHotelAuthHeaders(extraHeaders = {}) {
         const token = getHotelAuthToken();
         return token ? { ...extraHeaders, Authorization: `Bearer ${token}` } : extraHeaders;
+    }
+
+    function escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
     }
 
     window.onload = async function() {
@@ -915,6 +993,87 @@
     }
 
     // ⭐ SAVE NEW ROOM
+    function syncRoomImageInputFiles() {
+        const input = document.getElementById('roomImages');
+        if (!input || typeof DataTransfer === 'undefined') return;
+
+        const transfer = new DataTransfer();
+        selectedRoomImageFiles.forEach((file) => transfer.items.add(file));
+        input.files = transfer.files;
+    }
+
+    function renderRoomGalleryPreview() {
+        const preview = document.getElementById('roomGalleryPreview');
+        if (!preview) return;
+
+        if (!selectedRoomImageFiles.length) {
+            preview.innerHTML = '<div class="text-muted small d-flex align-items-center">No interior images selected yet.</div>';
+            return;
+        }
+
+        preview.innerHTML = '';
+        selectedRoomImageFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'room-gallery-item';
+
+            const img = document.createElement('img');
+            img.className = 'room-gallery-thumb';
+            img.alt = file.name || `Room image ${index + 1}`;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'room-gallery-remove';
+            removeButton.innerHTML = '&times;';
+            removeButton.setAttribute('aria-label', `Remove ${file.name || 'room image'}`);
+            removeButton.onclick = () => removeRoomImage(index);
+
+            const name = document.createElement('div');
+            name.className = 'room-gallery-name';
+            name.textContent = file.name || `Interior ${index + 1}`;
+
+            const reader = new FileReader();
+            reader.onload = () => { img.src = reader.result; };
+            reader.readAsDataURL(file);
+
+            item.appendChild(img);
+            item.appendChild(removeButton);
+            item.appendChild(name);
+            preview.appendChild(item);
+        });
+    }
+
+    function handleRoomImageSelection(fileList) {
+        const incomingFiles = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
+        const mergedFiles = [...selectedRoomImageFiles, ...incomingFiles];
+        const uniqueFiles = [];
+        const seen = new Set();
+
+        mergedFiles.forEach((file) => {
+            const key = `${file.name}-${file.size}-${file.lastModified}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueFiles.push(file);
+            }
+        });
+
+        selectedRoomImageFiles = uniqueFiles.slice(0, 12);
+        syncRoomImageInputFiles();
+        renderRoomGalleryPreview();
+    }
+
+    function removeRoomImage(index) {
+        selectedRoomImageFiles.splice(index, 1);
+        syncRoomImageInputFiles();
+        renderRoomGalleryPreview();
+    }
+
+    function resetRoomImageSelection() {
+        selectedRoomImageFiles = [];
+        const input = document.getElementById('roomImages');
+        if (input) input.value = '';
+        renderRoomGalleryPreview();
+    }
+
     async function saveNewRoom() {
         const roomType = document.getElementById('roomType').value;
         const roomPrice = parseFloat(document.getElementById('roomPrice').value);
@@ -924,8 +1083,7 @@
         if (document.getElementById('amenityTV').checked) amenities.push('TV');
         if (document.getElementById('amenityGeyser').checked) amenities.push('Geyser');
 
-        const imageFiles = document.getElementById('roomImages').files;
-        const images = Array.from(imageFiles).map(file => file.name);
+        const images = selectedRoomImageFiles.map(file => file.name);
         if (roomImageUrl) images.unshift(roomImageUrl);
 
         if (!roomType || !roomPrice || roomPrice <= 0) {
@@ -959,7 +1117,7 @@
                 document.getElementById('amenityWifi').checked = false;
                 document.getElementById('amenityTV').checked = false;
                 document.getElementById('amenityGeyser').checked = false;
-                document.getElementById('roomImages').value = '';
+                resetRoomImageSelection();
                 await loadHotelDetails();
             } else {
                 Swal.fire('Error', data.message || 'Failed to add room.', 'error');
@@ -967,6 +1125,139 @@
         } catch (err) {
             console.error('Error saving room:', err);
             Swal.fire('Error', 'Server connection failed.', 'error');
+        }
+    }
+
+    function collectDraftRoom() {
+        const roomType = document.getElementById('roomType')?.value || '';
+        const roomPrice = parseFloat(document.getElementById('roomPrice')?.value || '');
+        const roomImageUrl = document.getElementById('roomImageUrl')?.value || '';
+        const amenities = [];
+
+        if (document.getElementById('amenityWifi')?.checked) amenities.push('WiFi');
+        if (document.getElementById('amenityTV')?.checked) amenities.push('TV');
+        if (document.getElementById('amenityGeyser')?.checked) amenities.push('Geyser');
+
+        if (!roomType && !roomPrice && !roomImageUrl && !amenities.length && !selectedRoomImageFiles.length) return null;
+        if (!roomType || !Number.isFinite(roomPrice) || roomPrice <= 0) return null;
+
+        const images = selectedRoomImageFiles.map((file) => file.name);
+        if (roomImageUrl) images.unshift(roomImageUrl);
+
+        return {
+            roomType,
+            price: roomPrice,
+            roomsAvailable: 1,
+            amenities,
+            images,
+            status: 'Available'
+        };
+    }
+
+    function hasDraftRoomInput() {
+        return !!(
+            document.getElementById('roomType')?.value ||
+            document.getElementById('roomPrice')?.value ||
+            document.getElementById('roomImageUrl')?.value ||
+            document.getElementById('amenityWifi')?.checked ||
+            document.getElementById('amenityTV')?.checked ||
+            document.getElementById('amenityGeyser')?.checked ||
+            selectedRoomImageFiles.length
+        );
+    }
+
+    function collectHotelSetupPayload(uploadedImages = []) {
+        const hotel = window.gyanGarbhDashboardData.hotel || {};
+        const existingRooms = Array.isArray(hotel.rooms) ? hotel.rooms.map((room) => ({
+            roomType: room.roomType || 'Room',
+            price: Number(room.price) || 0,
+            roomsAvailable: Number(room.roomsAvailable) || 1,
+            amenities: Array.isArray(room.amenities) ? room.amenities : [],
+            images: Array.isArray(room.images) ? room.images : [],
+            status: room.status || 'Available'
+        })) : [];
+        const draftRoom = collectDraftRoom();
+        const rooms = draftRoom ? [...existingRooms, draftRoom] : existingRooms;
+
+        return {
+            hotelName: document.getElementById('hotelNameInput').value.trim(),
+            totalRooms: Number(document.getElementById('totalRooms').value) || 1,
+            acRoomPrice: Number(document.getElementById('acRoomPrice').value) || 0,
+            nonAcRoomPrice: Number(document.getElementById('nonAcRoomPrice').value) || 0,
+            description: document.getElementById('hotelDescription').value.trim(),
+            facilities: {
+                wifi: document.getElementById('wifi').checked,
+                food: document.getElementById('food').checked,
+                parking: document.getElementById('parking').checked,
+                laundry: document.getElementById('laundry').checked,
+                ac: document.getElementById('ac').checked,
+                frontDesk: document.getElementById('frontDesk').checked
+            },
+            imageUrl: document.getElementById('imageUrl').value,
+            imageUrl2: document.getElementById('imageUrl2').value,
+            imageUrl3: document.getElementById('imageUrl3').value,
+            images: uploadedImages.length ? uploadedImages : [
+                document.getElementById('imageUrl').value,
+                document.getElementById('imageUrl2').value,
+                document.getElementById('imageUrl3').value,
+                ...(Array.isArray(hotel.images) ? hotel.images : [])
+            ].filter(Boolean),
+            rooms,
+            distanceFromLandmark: {
+                value: parseFloat(document.getElementById('distanceFromLandmark').value) || 0,
+                unit: 'km',
+                landmark: document.getElementById('landmarkName').value || 'Mahabodhi Temple'
+            },
+            gyanGarbhHighlights: document.getElementById('gyanGarbhHighlights').value.trim()
+        };
+    }
+
+    async function saveCompleteHotelSetup() {
+        const hotel = window.gyanGarbhDashboardData.hotel || {};
+        const hotelId = String(hotel._id || '').trim();
+        const button = document.getElementById('completeSetupButton');
+
+        if (!hotelId) {
+            Swal.fire('Hotel Not Loaded', 'Please refresh the dashboard before completing setup.', 'warning');
+            return;
+        }
+
+        try {
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving Setup...';
+            }
+
+            const uploadedImages = await uploadHotelImagesToServer();
+            if (hasDraftRoomInput() && !collectDraftRoom()) {
+                throw new Error('Please complete Room Type and a valid Price before including the draft room in setup.');
+            }
+            const payload = collectHotelSetupPayload(uploadedImages);
+
+            const res = await fetch(`${API_URL}/api/hotels/${encodeURIComponent(hotelId)}`, {
+                method: 'PUT',
+                headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({ success: false, message: 'Invalid server response.' }));
+
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || 'Hotel setup update failed.');
+            }
+
+            window.gyanGarbhDashboardData.hotel = data.hotel;
+            resetRoomImageSelection();
+            renderRoomList(data.hotel.rooms || []);
+            Swal.fire('Setup Complete', 'Your hotel details and room inventory are now live.', 'success');
+            await loadHotelDetails();
+        } catch (err) {
+            console.error('Complete setup failed:', err);
+            Swal.fire('Save Failed', err.message || 'Unable to complete hotel setup.', 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-cloud-check me-2"></i>Save & Complete Hotel Setup';
+            }
         }
     }
 

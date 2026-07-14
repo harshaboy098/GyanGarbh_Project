@@ -3700,6 +3700,96 @@ app.get('/api/hotels/:id', async (req, res) => {
 
 });
 
+app.put('/api/hotels/:id', requireSession(['hotel', 'admin', 'assistant']), async (req, res) => {
+
+    try {
+
+        const hotelId = String(req.params.id || '').trim();
+
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) {
+
+            return res.status(400).json({ success: false, message: 'Invalid hotel id' });
+
+        }
+
+        const hotel = await Hotel.findById(hotelId).select('-password');
+
+        if (!hotel || hotel.isLocked === true) {
+
+            return res.status(404).json({ success: false, message: 'Hotel not found' });
+
+        }
+
+        if (req.session.role === 'hotel' && normalizeEmail(hotel.ownerEmail) !== normalizeEmail(req.session.email)) {
+
+            return res.status(403).json({ success: false, message: 'Unauthorized hotel update' });
+
+        }
+
+        const {
+            hotelName,
+            roomRate,
+            totalRooms,
+            acRoomPrice,
+            nonAcRoomPrice,
+            description,
+            facilities,
+            imageUrl,
+            imageUrl2,
+            imageUrl3,
+            images,
+            rooms,
+            distanceFromLandmark,
+            gyanGarbhHighlights
+        } = req.body || {};
+
+        if (hotelName !== undefined) hotel.hotelName = String(hotelName || '').trim() || hotel.hotelName;
+        if (roomRate !== undefined && roomRate !== '') hotel.roomRate = Number(roomRate) || hotel.roomRate;
+        if (totalRooms !== undefined && totalRooms !== '') hotel.totalRooms = Number(totalRooms) || hotel.totalRooms;
+        if (acRoomPrice !== undefined && acRoomPrice !== '') hotel.acRoomPrice = Number(acRoomPrice) || hotel.acRoomPrice;
+        if (nonAcRoomPrice !== undefined && nonAcRoomPrice !== '') hotel.nonAcRoomPrice = Number(nonAcRoomPrice) || hotel.nonAcRoomPrice;
+        if (description !== undefined) hotel.description = String(description || '');
+        if (facilities !== undefined && typeof facilities === 'object') hotel.facilities = facilities || {};
+        if (imageUrl !== undefined) hotel.imageUrl = String(imageUrl || '').trim();
+        if (imageUrl2 !== undefined) hotel.imageUrl2 = String(imageUrl2 || '').trim();
+        if (imageUrl3 !== undefined) hotel.imageUrl3 = String(imageUrl3 || '').trim();
+        if (images !== undefined) hotel.images = Array.isArray(images) ? images.map((url) => String(url || '').trim()).filter(Boolean) : [];
+        if (Array.isArray(rooms)) {
+            hotel.rooms = rooms.map((room) => ({
+                roomType: String(room.roomType || 'Room').trim(),
+                price: Number(room.price) || 0,
+                roomsAvailable: Number(room.roomsAvailable) || 1,
+                amenities: Array.isArray(room.amenities) ? room.amenities.map((item) => String(item || '').trim()).filter(Boolean) : [],
+                images: Array.isArray(room.images) ? room.images.map((item) => String(item || '').trim()).filter(Boolean) : [],
+                status: String(room.status || 'Available').trim() || 'Available'
+            })).filter((room) => room.roomType && room.price >= 0);
+        }
+        if (distanceFromLandmark !== undefined) {
+            hotel.distanceFromLandmark = {
+                value: Number(distanceFromLandmark?.value) || 0,
+                unit: String(distanceFromLandmark?.unit || 'km').trim() || 'km',
+                landmark: String(distanceFromLandmark?.landmark || 'Mahabodhi Temple').trim() || 'Mahabodhi Temple'
+            };
+        }
+        if (gyanGarbhHighlights !== undefined) hotel.gyanGarbhHighlights = String(gyanGarbhHighlights || '');
+
+        hotel.updatedAt = new Date();
+        await hotel.save();
+
+        const updatedHotel = hotel.toObject();
+        delete updatedHotel.password;
+
+        emitRealtime('hotel-updated', { hotelId: updatedHotel._id, hotelName: updatedHotel.hotelName });
+        res.json({ success: true, message: 'Hotel setup updated successfully', hotel: updatedHotel });
+
+    } catch (err) {
+
+        res.status(500).json({ success: false, message: err.message || 'Unable to update hotel setup' });
+
+    }
+
+});
+
 app.post('/api/hotels/:id/reviews', async (req, res) => {
 
     try {
