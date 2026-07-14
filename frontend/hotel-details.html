@@ -104,6 +104,48 @@
         }
 
         .section-wrap { padding: 56px 0; }
+        section[id] { scroll-margin-top: 110px; }
+
+        .section-nav {
+            position: sticky;
+            top: 60px;
+            z-index: 80;
+            background: rgba(248, 250, 252, 0.96);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--line);
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+            padding: 14px 0;
+            margin-top: -8px;
+        }
+
+        .section-nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .section-nav-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            color: var(--muted);
+            font-weight: 700;
+            text-decoration: none;
+            background: #fff;
+            transition: all 0.24s ease;
+        }
+
+        .section-nav-link:hover,
+        .section-nav-link.active {
+            color: var(--brand);
+            border-color: rgba(30, 60, 114, 0.24);
+            background: #eef4ff;
+            box-shadow: 0 8px 20px rgba(30, 60, 114, 0.08);
+        }
+
         .section-title {
             font-size: clamp(1.6rem, 3vw, 2.4rem);
             font-weight: 900;
@@ -272,6 +314,158 @@
             background: #fff7d6;
         }
 
+        .room-list {
+            display: grid;
+            gap: 18px;
+        }
+
+        .room-card {
+            display: grid;
+            grid-template-columns: 240px minmax(0, 1fr) 230px;
+            gap: 18px;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+        }
+
+        .room-gallery-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            min-height: 180px;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
+        }
+
+        .room-gallery-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.28s ease;
+        }
+
+        .room-gallery-card:hover img {
+            transform: scale(1.04);
+        }
+
+        .room-gallery-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 34px;
+            height: 34px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.92);
+            color: var(--brand);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            z-index: 2;
+        }
+
+        .room-gallery-arrow:hover {
+            transform: translateY(-50%) scale(1.04);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.22);
+        }
+
+        .room-gallery-arrow.prev-arr { left: 10px; }
+        .room-gallery-arrow.next-arr { right: 10px; }
+
+        .room-content h4 {
+            margin: 0 0 8px;
+            font-size: 1.2rem;
+            font-weight: 900;
+        }
+
+        .room-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #f8fafc;
+            color: var(--brand);
+            font-size: 0.74rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 12px;
+        }
+
+        .room-spec-list {
+            display: grid;
+            gap: 10px;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+
+        .room-spec-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #334155;
+            font-size: 0.95rem;
+        }
+
+        .room-spec-list i {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: var(--brand);
+            flex-shrink: 0;
+        }
+
+        .room-package {
+            border: 1px solid #e6edf6;
+            border-radius: 16px;
+            padding: 16px;
+            background: linear-gradient(135deg, #fcfdff 0%, #f6f8fc 100%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 100%;
+        }
+
+        .room-package .price {
+            font-size: 1.55rem;
+            font-weight: 900;
+            color: #15803d;
+            line-height: 1.1;
+        }
+
+        .room-package .meta {
+            color: var(--muted);
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+
+        .room-book-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+            color: #fff;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            box-shadow: 0 10px 24px rgba(30, 60, 114, 0.18);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .room-book-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 28px rgba(30, 60, 114, 0.22);
+        }
+
         .review-panel {
             padding: 30px;
             overflow: hidden;
@@ -433,6 +627,8 @@
             .amenities-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .gallery-strip { grid-template-columns: 1fr; }
             .gallery-strip img { height: 220px; }
+            .room-card { grid-template-columns: 1fr; }
+            .room-package { min-height: auto; }
             .review-summary { align-items: flex-start; flex-direction: column; }
             .score-badge { width: 100%; }
         }
@@ -547,6 +743,31 @@
             return [...amenities.filter((item) => item.active), ...mappedRoomAmenities];
         }
 
+        function getRoomImages(room, hotel) {
+            const candidates = [
+                room.imageUrl,
+                room.imageUrl2,
+                room.imageUrl3,
+                ...(Array.isArray(room.images) ? room.images : []),
+                hotel.imageUrl,
+                hotel.imageUrl2,
+                hotel.imageUrl3,
+                ...(Array.isArray(hotel.images) ? hotel.images : [])
+            ].filter(Boolean);
+            return candidates.length ? [...new Set(candidates)] : [FALLBACK_IMAGE];
+        }
+
+        function getRoomSpecs(room, hotel) {
+            const amenities = Array.isArray(room.amenities) && room.amenities.length ? room.amenities : [];
+            const facilities = hotel.facilities || {};
+            return [
+                { icon: 'fa-wind', label: facilities.ac || room.roomType?.includes('AC') ? 'Air Conditioning' : 'Comfort Climate', value: facilities.ac || room.roomType?.includes('AC') ? 'Included' : 'Standard' },
+                { icon: 'fa-bed', label: 'Bed Type', value: room.roomType?.includes('Deluxe') ? 'King Bed' : (room.roomType?.includes('Simple') ? 'Twin Bed' : 'Queen Bed') },
+                { icon: 'fa-users', label: 'Max Guests', value: room.maxGuests || '2 Guests' },
+                { icon: 'fa-bath', label: 'Bathroom', value: amenities.includes('Bathroom') || amenities.includes('Private Bathroom') ? 'Private Bath' : 'Shared Bath' }
+            ];
+        }
+
         function renderStaticStars(score) {
             const rating = Number(score || 0);
             return Array.from({ length: 5 }, (_, index) => {
@@ -642,6 +863,28 @@
         function initGalleryLightbox() {
             document.querySelectorAll('#gallery-container img, .gallery-strip img').forEach((img) => {
                 img.addEventListener('click', () => openImageModal(img.currentSrc || img.src, img.alt || 'Hotel gallery preview'));
+            });
+        }
+
+        function initRoomGalleryControls() {
+            document.querySelectorAll('.room-gallery-arrow').forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const galleryCard = button.closest('.room-gallery-card');
+                    const imageEl = galleryCard?.querySelector('img');
+                    if (!imageEl) return;
+
+                    const images = button.dataset.images ? JSON.parse(button.dataset.images) : [];
+                    if (!images.length) return;
+
+                    const currentIndex = Number(imageEl.dataset.index || 0);
+                    const step = button.classList.contains('next-arr') ? 1 : -1;
+                    const nextIndex = (currentIndex + step + images.length) % images.length;
+                    imageEl.src = images[nextIndex];
+                    imageEl.dataset.index = String(nextIndex);
+                });
             });
         }
 
@@ -774,7 +1017,18 @@
                     </div>
                 </section>
 
-                <section class="section-wrap">
+                <section class="section-nav">
+                    <div class="container">
+                        <div class="section-nav-links">
+                            <a class="section-nav-link active" href="#overview">Overview</a>
+                            <a class="section-nav-link" href="#rooms">Rooms</a>
+                            <a class="section-nav-link" href="#amenities">Amenities</a>
+                            <a class="section-nav-link" href="#reviews">Reviews</a>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="overview" class="section-wrap">
                     <div class="container">
                         <h2 class="section-title">Hotel Details & Specification</h2>
                         <p class="section-kicker">${escapeHTML(hotel.description || 'A refined stay experience for Bodhgaya visitors, designed around comfort, clarity, and trusted local support.')}</p>
@@ -790,7 +1044,52 @@
                     </div>
                 </section>
 
-                <section class="section-wrap pt-0">
+                <section id="rooms" class="section-wrap pt-0">
+                    <div class="container">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                            <div>
+                                <h2 class="section-title mb-1">Rooms & Suites</h2>
+                                <p class="section-kicker mb-0">Choose from a curated set of room categories tailored to spiritual journeys and premium comfort.</p>
+                            </div>
+                        </div>
+                        <div class="room-list">
+                            ${(Array.isArray(hotel.rooms) && hotel.rooms.length ? hotel.rooms : [{ roomType: 'Signature Room', price: hotel.acRoomPrice || hotel.nonAcRoomPrice || 1800, amenities: ['Air Conditioning', 'Private Bathroom'], images: [] }]).map((room, index) => {
+                                const roomImages = getRoomImages(room, hotel);
+                                const roomSpecs = getRoomSpecs(room, hotel);
+                                const roomPrice = Number(room.price || hotel.acRoomPrice || hotel.nonAcRoomPrice || 1800);
+                                const breakfastLabel = room.breakfastIncluded || hotel.facilities?.food ? 'Breakfast Included' : 'Breakfast Available';
+                                const roomTypeLabel = room.roomType || 'Signature Room';
+                                const roomBadge = room.roomType?.includes('AC') ? 'Air Conditioned' : (room.roomType?.includes('Deluxe') ? 'Deluxe Comfort' : 'Premier Stay');
+                                const imagesAttr = `data-images='${JSON.stringify(roomImages).replace(/'/g, "\\'")}'`;
+                                return `
+                                    <article class="room-card">
+                                        <div class="room-gallery-card">
+                                            <button type="button" class="room-gallery-arrow prev-arr" ${imagesAttr} aria-label="Previous room image"><i class="fas fa-chevron-left"></i></button>
+                                            <button type="button" class="room-gallery-arrow next-arr" ${imagesAttr} aria-label="Next room image"><i class="fas fa-chevron-right"></i></button>
+                                            <img src="${escapeHTML(roomImages[0])}" alt="${escapeHTML(roomTypeLabel)}" data-index="0" loading="lazy" onerror="this.src='${FALLBACK_IMAGE}'">
+                                        </div>
+                                        <div class="room-content">
+                                            <div class="room-badge"><i class="fas fa-star"></i>${escapeHTML(roomBadge)}</div>
+                                            <h4>${escapeHTML(roomTypeLabel)}</h4>
+                                            <p class="text-muted mb-3">${escapeHTML(room.description || 'A calm, curated retreat crafted for rest, privacy, and effortless comfort.')}</p>
+                                            <ul class="room-spec-list">
+                                                ${roomSpecs.map((spec) => `<li><i class="fas ${escapeHTML(spec.icon)}"></i><span><strong>${escapeHTML(spec.label)}:</strong> ${escapeHTML(spec.value)}</span></li>`).join('')}
+                                            </ul>
+                                        </div>
+                                        <div class="room-package">
+                                            <div class="price">₹${roomPrice.toLocaleString('en-IN')}</div>
+                                            <div class="meta">Per night • ${escapeHTML(breakfastLabel)}</div>
+                                            <div class="meta">${escapeHTML(room.roomsAvailable ? `${room.roomsAvailable} room available` : 'Flexible booking window')}</div>
+                                            <button type="button" class="room-book-btn">Book Room</button>
+                                        </div>
+                                    </article>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="amenities" class="section-wrap pt-0">
                     <div class="container">
                         <h2 class="section-title">Amenities</h2>
                         <p class="section-kicker">${escapeHTML(hotel.gyanGarbhHighlights || 'Essential facilities for a smooth stay, surfaced from verified hotel information.')}</p>
@@ -814,7 +1113,7 @@
                     </div>
                 </section>
 
-                <section class="section-wrap pt-0">
+                <section id="reviews" class="section-wrap pt-0">
                     <div class="container">
                         <div class="review-panel">
                             <div class="review-summary">
@@ -852,6 +1151,7 @@
                 </section>`;
             initReviewForm();
             initGalleryLightbox();
+            initRoomGalleryControls();
         }
 
         async function loadHotelDetails() {

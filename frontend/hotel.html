@@ -6,6 +6,7 @@
     <title>Gyan Garbh | Premium Bodhgaya Tourism</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         :root { --brand: #1e3c72; --gold: #ffc107; --bg: #f8fafc; --danger: #ef4444; --accent: #2563eb; }
         body { background-color: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; }
@@ -36,9 +37,48 @@
 
         .hotel-card { border: none; border-radius: 25px; background: white; transition: 0.4s; overflow: hidden; height: 100%; cursor: pointer; }
         .hotel-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .quick-view-trigger {
+            width: 30px; height: 30px; border: 1px solid #e2e8f0; border-radius: 999px;
+            background: #fff; color: var(--brand); display: inline-flex; align-items: center; justify-content: center;
+            transition: all 0.25s ease; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+        }
+        .quick-view-trigger:hover {
+            transform: translateY(-1px); background: var(--brand); color: #fff;
+        }
+        .quick-view-panel {
+            max-height: 0; overflow: hidden; opacity: 0; transform: translateY(-8px);
+            transition: all 0.28s ease;
+        }
+        .quick-view-panel.open {
+            max-height: 120px; opacity: 1; transform: translateY(0); margin-top: 10px;
+        }
+        .quick-view-panel-inner {
+            border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
+            color: #475569; font-size: 0.82rem; line-height: 1.5;
+        }
+        .quick-view-panel-inner strong {
+            display: block; color: var(--brand); font-weight: 700; margin-bottom: 4px;
+        }
         .img-box { height: 220px; overflow: hidden; position: relative; }
         .img-box img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
         .hotel-card:hover .img-box img { transform: scale(1.1); }
+        .slider-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%) scale(0.92);
+            width: 38px; height: 38px; border: none; border-radius: 50%;
+            background: rgba(255,255,255,0.9); color: var(--brand);
+            display: inline-flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 24px rgba(15,23,42,0.16); opacity: 0;
+            transition: all 0.28s ease; z-index: 5;
+        }
+        .slider-arrow.prev-arr { left: 12px; }
+        .slider-arrow.next-arr { right: 12px; }
+        .hotel-card:hover .slider-arrow {
+            opacity: 1; transform: translateY(-50%) scale(1);
+        }
+        .slider-arrow:hover {
+            background: #ffffff; color: var(--accent); transform: translateY(-50%) scale(1.04);
+        }
 
         .urgency-badge { position: absolute; top: 15px; left: 15px; background: var(--danger); color: white; padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 800; z-index: 10; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
@@ -588,16 +628,44 @@
                 const safeDescription = description.replace(/'/g, "\\'");
                 const landmarkText = h.distanceFromLandmark ? `${h.distanceFromLandmark.landmark || 'Mahabodhi Temple'}: ${h.distanceFromLandmark.value || '0.5'} ${h.distanceFromLandmark.unit || 'km'}` : 'Mahabodhi Temple: 0.5 km';
                 const highlightsText = (h.gyanGarbhHighlights || 'Peaceful environment, vegetarian meals available').replace(/'/g, "\\'");
+                const imageGallery = [
+                    h.imageUrl,
+                    h.imageUrl2,
+                    h.imageUrl3,
+                    ...(Array.isArray(h.images) ? h.images : []),
+                    imgUrl
+                ].filter(Boolean);
+                const uniqueImages = [...new Set(imageGallery)].slice(0, 6);
+                const galleryData = JSON.stringify(uniqueImages);
 
                 container.innerHTML += `
                     <div class="col-md-4 hotel-item">
                         <div class="hotel-card" onclick="openHotelDetailsPage('${safeId}')">
                             <span class="urgency-badge">Filling Fast!</span>
-                            <div class="img-box"><img src="${imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'"></div>
+                            <div class="img-box">
+                                <button type="button" class="slider-arrow prev-arr" data-gallery='${galleryData}' data-direction="prev" aria-label="Previous image">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button type="button" class="slider-arrow next-arr" data-gallery='${galleryData}' data-direction="next" aria-label="Next image">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                                <img class="hotel-card-image" src="${uniqueImages[0] || imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'" data-index="0">
+                            </div>
                             <div class="p-4">
-                                <h6 class="fw-bold mb-1 text-capitalize text-truncate">${h.hotelName || 'Premium Stay'}</h6>
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                    <h6 class="fw-bold mb-0 text-capitalize text-truncate">${h.hotelName || 'Premium Stay'}</h6>
+                                    <button type="button" class="quick-view-trigger" aria-expanded="false" aria-label="Show overview for ${safeName}">
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                </div>
                                 <div class="small text-warning mb-2">⭐ ${rating} | <i class="bi bi-geo-alt"></i> ${locationText}</div>
-                                <p class="small text-muted mb-2" style="min-height: 30px;">${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</p>
+                                <div class="quick-view-panel">
+                                    <div class="quick-view-panel-inner">
+                                        <strong>${safeName}</strong>
+                                        <span>${landmarkText} • ${highlightsText.substring(0, 72)}${highlightsText.length > 72 ? '…' : ''}</span>
+                                    </div>
+                                </div>
+                                <p class="small text-muted mb-2 mt-2" style="min-height: 30px;">${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</p>
                                 <div class="mb-2 small">${amenityIcons}</div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="h6 fw-bold text-success mb-0">${priceDisplay}</span>
@@ -619,6 +687,54 @@
             return false;
         }
     }
+
+    function toggleHotelQuickView(trigger) {
+        const card = trigger.closest('.hotel-card');
+        if (!card) return;
+
+        const panel = card.querySelector('.quick-view-panel');
+        const isOpen = panel?.classList.contains('open');
+
+        document.querySelectorAll('.quick-view-panel.open').forEach((activePanel) => {
+            if (activePanel !== panel) {
+                activePanel.classList.remove('open');
+                const activeTrigger = activePanel.closest('.hotel-card')?.querySelector('.quick-view-trigger');
+                if (activeTrigger) activeTrigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        if (!panel) return;
+
+        panel.classList.toggle('open', !isOpen);
+        trigger.setAttribute('aria-expanded', String(!isOpen));
+    }
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('.quick-view-trigger');
+        if (!trigger) return;
+        event.stopPropagation();
+        toggleHotelQuickView(trigger);
+    });
+
+    document.addEventListener('click', (event) => {
+        const arrow = event.target.closest('.slider-arrow');
+        if (!arrow) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const card = arrow.closest('.hotel-card');
+        const image = card?.querySelector('.hotel-card-image');
+        if (!image) return;
+
+        const gallery = arrow.dataset.gallery ? JSON.parse(arrow.dataset.gallery) : [];
+        if (!gallery.length) return;
+
+        const currentIndex = Number(image.dataset.index || 0);
+        const direction = arrow.dataset.direction === 'prev' ? -1 : 1;
+        const nextIndex = (currentIndex + direction + gallery.length) % gallery.length;
+        image.src = gallery[nextIndex];
+        image.dataset.index = String(nextIndex);
+    });
 
     function openMitraModal() { new bootstrap.Modal(document.getElementById('mitraModal')).show(); }
 
