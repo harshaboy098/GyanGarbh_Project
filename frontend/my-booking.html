@@ -366,7 +366,7 @@
                             <div class="col-md-6"><label class="small text-muted fw-bold">Pin Code</label><input id="profilePinCode" autocomplete="off"></div>
                             <div class="col-12"><label class="small text-muted fw-bold">Bio / Travel Details</label><textarea id="profileBio" rows="3" autocomplete="off"></textarea></div>
                         </div>
-                        <button class="btn btn-primary px-4 fw-bold mt-3" onclick="saveProfile()">Save Profile</button>
+                        <button id="saveProfileButton" class="btn btn-primary px-4 fw-bold mt-3" type="button" onclick="saveProfile()">Save Changes</button>
                     </div>
                 </div>
             </section>
@@ -448,17 +448,32 @@
     document.getElementById('profilePhotoInput').addEventListener('change', async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
+
+        const previewImage = document.getElementById('profilePreview');
+        previewImage.src = URL.createObjectURL(file);
+
         try {
-            document.getElementById('profilePreview').src = URL.createObjectURL(file);
             const formData = new FormData();
             formData.append('profilePic', file);
-            const uploadResponse = await fetch(`${API_URL}/api/user/upload-profile-pic`, { method: 'POST', body: formData });
+
+            const uploadResponse = await fetch(`${API_URL}/api/user/upload-profile-pic`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${authToken}` },
+                body: formData
+            });
+
             const uploadData = await uploadResponse.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
+
+            if (uploadResponse.status === 401 || uploadResponse.status === 403) {
+                showAuthExpiredState();
+                return;
+            }
+
             if (uploadData.success && uploadData.profilePic) {
                 await saveProfile({ profilePic: uploadData.profilePic }, false);
+                showToast('Profile photo updated successfully.');
             } else {
-                if (uploadResponse.status === 401 || uploadResponse.status === 403) showAuthExpiredState();
-                else alert(uploadData.message || 'Photo upload failed.');
+                alert(uploadData.message || 'Photo upload failed.');
             }
         } catch (error) {
             console.error('Photo upload failed', error);
@@ -487,31 +502,71 @@
         }
     }
 
-    async function saveProfile(extra = {}, showToast = true) {
-        const payload = {
-            fullName: document.getElementById('profileFullName').value.trim(),
-            dob: document.getElementById('profileDob').value,
-            villageCity: document.getElementById('profileVillageCity').value.trim(),
-            pinCode: document.getElementById('profilePinCode').value.trim(),
-            bio: document.getElementById('profileBio').value.trim(),
-            ...extra
-        };
-        const response = await fetch(`${API_URL}/api/user/profile`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        if (response.status === 401 || response.status === 403) {
-            showAuthExpiredState();
-            return;
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed top-0 end-0 p-3';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `
+            <div class="toast show align-items-center text-white bg-success border-0" role="status" aria-live="polite" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Close"></button>
+                </div>
+            </div>`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2600);
+    }
+
+    async function saveProfile(extra = {}, showToastEnabled = true) {
+        const saveButton = document.getElementById('saveProfileButton');
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<span class="me-2"><i class="bi bi-arrow-repeat"></i></span>Saving...';
         }
-        if (data.success) {
-            localStorage.setItem('userName', data.profile.fullName || data.profile.name || uName);
-            if (showToast) alert('Profile saved successfully.');
-            return;
+
+        try {
+            const formData = new FormData();
+            formData.append('fullName', document.getElementById('profileFullName').value.trim());
+            formData.append('dob', document.getElementById('profileDob').value || '');
+            formData.append('villageCity', document.getElementById('profileVillageCity').value.trim());
+            formData.append('pinCode', document.getElementById('profilePinCode').value.trim());
+            formData.append('bio', document.getElementById('profileBio').value.trim());
+
+            Object.entries(extra).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    formData.append(key, value);
+                }
+            });
+
+            const response = await fetch(`${API_URL}/api/user/profile`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${authToken}` },
+                body: formData
+            });
+
+            const data = await response.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
+
+            if (response.status === 401 || response.status === 403) {
+                showAuthExpiredState();
+                return;
+            }
+
+            if (data.success) {
+                localStorage.setItem('userName', data.profile.fullName || data.profile.name || uName);
+                if (showToastEnabled) showToast('Profile saved successfully.');
+                return;
+            }
+
+            if (showToastEnabled) alert(data.message || 'Profile save failed.');
+        } catch (error) {
+            console.error('Profile save failed', error);
+            if (showToastEnabled) alert('Profile save failed. Please check your connection and try again.');
+        } finally {
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.innerHTML = 'Save Changes';
+            }
         }
-        if (showToast) alert(data.message || 'Profile save failed.');
     }
 
     async function fetchMyOrders() {
