@@ -362,7 +362,7 @@
                 <div class="row g-4 align-items-start">
                     <div class="col-lg-3 col-md-4">
                         <div class="photo-actions text-center">
-                            <img id="profilePreview" class="profile-photo" alt="Profile photo">
+                            <img id="profilePreview" class="profile-photo" alt="Profile photo" src="https://ui-avatars.com/api/?name=GG&background=1e3c72&color=fff&size=220">
                             <input id="profilePhotoInput" type="file" accept="image/*" class="d-none" autocomplete="off">
                             <button class="btn btn-outline-primary mt-3 fw-bold w-100" onclick="document.getElementById('profilePhotoInput').click()">Upload/Change Photo</button>
                         </div>
@@ -550,8 +550,14 @@
             showCustomerOnlyBlockedState();
             return;
         }
-        
+
         resetProfileForm();
+        const cachedPhoto = safeStorageGet('profilePic') || safeStorageGet('userProfilePic') || getCookieValue('profilePic') || getCookieValue('userProfilePic') || getUrlParameter('profilePic') || getUrlParameter('userProfilePic');
+        const initialPhoto = cachedPhoto || getDefaultAvatar(uName || 'GG');
+        const previewImage = document.getElementById('profilePreview');
+        if (previewImage) previewImage.src = initialPhoto;
+        updateSidebarAvatar(cachedPhoto, uName);
+
         setGreeting();
         document.getElementById('profileEmail').innerText = uEmail;
         document.getElementById('userInitial').innerText = uName.charAt(0).toUpperCase();
@@ -596,6 +602,10 @@
 
             const newPhotoUrl = uploadData.profilePic || uploadData.user?.profilePic || uploadData.url || uploadData.data?.profilePic || null;
             if (uploadData.success && newPhotoUrl) {
+                localStorage.setItem('profilePic', newPhotoUrl);
+                localStorage.setItem('userProfilePic', newPhotoUrl);
+                window.userProfilePic = newPhotoUrl;
+
                 updateSidebarAvatar(newPhotoUrl, uName);
                 document.getElementById('profilePreview').src = newPhotoUrl;
                 await saveProfile({ profilePic: newPhotoUrl }, false);
@@ -632,6 +642,11 @@
             document.getElementById('profilePinCode').value = profile.pinCode || '';
             document.getElementById('profileBio').value = profile.bio || profile.experience || '';
             const photoUrl = profile.profilePic || profile.photoURL || getDefaultAvatar(profile.fullName || profile.name || 'GG');
+            if (profile.profilePic || profile.photoURL) {
+                localStorage.setItem('profilePic', profile.profilePic || profile.photoURL);
+                localStorage.setItem('userProfilePic', profile.profilePic || profile.photoURL);
+                window.userProfilePic = profile.profilePic || profile.photoURL;
+            }
             document.getElementById('profilePreview').src = photoUrl;
             updateSidebarAvatar(profile.profilePic || profile.photoURL, profile.fullName || profile.name || uName);
         } catch (error) {

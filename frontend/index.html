@@ -505,6 +505,12 @@
                 localStorage.setItem('userName', data.name);
                 localStorage.setItem('userRole', data.role || 'guest');
                 localStorage.setItem('authToken', data.sessionToken);
+                if (data.profilePic) {
+                    localStorage.setItem('profilePic', data.profilePic);
+                    localStorage.setItem('userProfilePic', data.profilePic);
+                    document.cookie = `profilePic=${encodeURIComponent(data.profilePic)}; path=/; secure; samesite=strict`;
+                    window.userProfilePic = data.profilePic;
+                }
 
                 // ⭐ REDIRECTION FIXED: willClose immediately forces redirect on alert timeout/dismissal
                 Swal.fire({ 
@@ -543,6 +549,12 @@
                 localStorage.setItem('userEmail', data.email);
                 localStorage.setItem('userRole', data.role);
                 localStorage.setItem('authToken', data.sessionToken);
+                if (data.profilePic) {
+                    localStorage.setItem('profilePic', data.profilePic);
+                    localStorage.setItem('userProfilePic', data.profilePic);
+                    document.cookie = `profilePic=${encodeURIComponent(data.profilePic)}; path=/; secure; samesite=strict`;
+                    window.userProfilePic = data.profilePic;
+                }
                 document.cookie = `authToken=${encodeURIComponent(data.sessionToken)}; path=/; secure; samesite=strict`;
                 window.userToken = data.sessionToken;
 

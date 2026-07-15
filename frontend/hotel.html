@@ -501,9 +501,24 @@
 
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
-    const userName = localStorage.getItem('userName');
-    const userEmail = localStorage.getItem('userEmail');
-    const userId = localStorage.getItem('userId');
+
+    function getCookieValue(name) {
+        const cookies = (document.cookie || '').split(';').map(cookie => cookie.trim());
+        const match = cookies.find(cookie => cookie.startsWith(`${name}=`));
+        return match ? decodeURIComponent(match.split('=')[1] || '') : '';
+    }
+
+    function safeStorageGet(key) {
+        try {
+            return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    const userName = safeStorageGet('userName') || window.userName || getCookieValue('userName') || '';
+    const userEmail = safeStorageGet('userEmail') || window.userEmail || getCookieValue('userEmail') || '';
+    const userId = safeStorageGet('userId') || window.userId || getCookieValue('userId') || '';
     let selectedHotelId = '';
     let allHotels = []; 
 
@@ -569,8 +584,15 @@
         }
 
         if (userName) {
+            const userProfilePic = safeStorageGet('profilePic') || safeStorageGet('userProfilePic') || window.userProfilePic || getCookieValue('profilePic') || getCookieValue('userProfilePic') || '';
+            const avatarMarkup = userProfilePic
+                ? `<img src="${userProfilePic}" alt="Profile" class="rounded-circle me-2" width="28" height="28" style="object-fit:cover; display:inline-block;">`
+                : `<i class="bi bi-person-circle"></i>`;
             document.getElementById('userSection').innerHTML = `
-                <a href="my-booking.html" class="user-link me-3"><i class="bi bi-person-circle"></i> Profile</a>
+                <a href="my-booking.html" class="user-link me-3 d-flex align-items-center text-white text-decoration-none">
+                    ${avatarMarkup}
+                    <span>${userName}</span>
+                </a>
                 <button type="button" class="nav-ai-btn me-3" onclick="launchCustomerAIAssistant()"><i class="bi bi-robot"></i> Chat with AI</button>
                 <button onclick="logout()" class="btn btn-sm btn-outline-light rounded-pill px-3">Logout</button>
             `;
