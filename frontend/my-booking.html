@@ -322,7 +322,7 @@
 <nav class="navbar navbar-dark nav-custom sticky-top">
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold" href="hotel.html"><i class="bi bi-houses-fill"></i> GYAN GARBH</a>
-        <a href="hotel.html" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold">Back to Hotels</a>
+            <a href="hotel.html" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold">Back to Taxis</a>
     </div>
 </nav>
 
@@ -338,14 +338,14 @@
                 <p class="profile-email mb-0"><i class="bi bi-envelope-at"></i> <span id="profileEmail"></span></p>
             </div>
             <div class="sidebar-stats">
-                <div class="stat-badge"><small>Stay Orders</small><b id="totalBookings">0</b></div>
+                <div class="stat-badge"><small>Ride Orders</small><b id="totalBookings">0</b></div>
                 <div class="stat-badge"><small>Plan</small><b class="text-success text-uppercase">Member</b></div>
                 <div class="stat-badge"><small>Status</small><b>Verified</b></div>
             </div>
             <nav class="profile-nav" aria-label="Profile navigation">
                 <a class="active" href="#profileSection"><i class="bi bi-person-badge"></i> Profile Details</a>
                 <a href="#orderHistorySection"><i class="bi bi-suitcase2"></i> Stay Orders</a>
-                <a href="hotel.html"><i class="bi bi-building-check"></i> Browse Hotels</a>
+                <a href="hotel.html"><i class="bi bi-building-check"></i> Browse Taxis</a>
             </nav>
         </aside>
 
@@ -355,7 +355,7 @@
                     <h1>My Account</h1>
                     <p>Manage your guest profile and review your Gyan Garbh stay history.</p>
                 </div>
-                <a href="hotel.html" class="btn btn-outline-primary fw-bold"><i class="bi bi-plus-circle"></i> New Booking</a>
+                <a href="hotel.html" class="btn btn-outline-primary fw-bold"><i class="bi bi-plus-circle"></i> New Ride</a>
             </div>
 
             <section class="profile-editor" id="profileSection">
@@ -760,7 +760,7 @@
             container.innerHTML = "";
 
             if(myBookings.length === 0) {
-                container.innerHTML = `<div class="text-center py-5 bg-white rounded-4 shadow-sm"><i class="bi bi-bag-plus display-1 text-light"></i><h5 class="text-muted mt-3 mb-1">No orders yet</h5><p class="text-muted small mb-0">Amazon-style new accounts start with a clean profile and empty order history.</p><a href="hotel.html" class="btn btn-primary rounded-pill mt-3 px-4">Book Your First Stay</a></div>`;
+                container.innerHTML = `<div class="text-center py-5 bg-white rounded-4 shadow-sm"><i class="bi bi-bag-plus display-1 text-light"></i><h5 class="text-muted mt-3 mb-1">No orders yet</h5><p class="text-muted small mb-0">Amazon-style new accounts start with a clean profile and empty order history.</p><a href="hotel.html" class="btn btn-primary rounded-pill mt-3 px-4">Book Your First Ride</a></div>`;
                 return;
             }
 

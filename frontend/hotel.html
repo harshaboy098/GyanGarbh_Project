@@ -308,6 +308,10 @@
 <nav class="navbar nav-custom sticky-top">
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold text-white fs-4" href="#"><i class="bi bi-compass-fill text-warning me-2"></i>GYAN GARBH</a>
+        <div class="d-flex align-items-center gap-3">
+            <a href="hotel.html" class="text-white text-decoration-none fw-bold">Browse Taxis</a>
+            <a href="my-booking.html" class="text-white text-decoration-none fw-bold">Book a Ride</a>
+        </div>
         <div class="dropdown d-inline-block align-middle" id="userSection">
             <button class="btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: white;">
                 <img id="navbarAvatar" src="" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: none;">
@@ -325,8 +329,8 @@
 
 <div class="hero-premium">
     <div class="container text-center">
-        <h1 class="fw-bold display-4">Discover Spiritual Bodhgaya</h1>
-        <p class="lead opacity-90">Verified Stays & Expert Guides for your Enlightenment Journey</p>
+        <h1 class="fw-bold display-4">Discover Bodhgaya Transport</h1>
+        <p class="lead opacity-90">Reliable Taxi Services & Verified Drivers for your Bodhgaya trips</p>
     </div>
 </div>
 
@@ -337,7 +341,7 @@
                 <div class="col-md-9 border-end">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-search text-primary me-3"></i>
-                        <input type="text" id="hotelSearch" class="form-control border-0 shadow-none py-2" placeholder="Search Hotels, Mandirs, or Areas..." onkeyup="filterHotels()">
+                        <input type="text" id="hotelSearch" class="form-control border-0 shadow-none py-2" placeholder="Search routes, pickup points, or vehicle types..." onkeyup="filterHotels()">
                     </div>
                 </div>
                 <div class="col-md-3 text-center">
@@ -349,7 +353,7 @@
 </div>
 
 <div class="container mb-5">
-    <h3 class="fw-bold mb-4">Explore Bodhgaya <span class="text-primary">Attractions</span></h3>
+    <h3 class="fw-bold mb-4">Available <span class="text-primary">Taxis</span></h3>
     <div class="row g-4">
         <div class="col-md-4">
             <div class="card place-card shadow">
@@ -404,7 +408,7 @@
 
 <div class="container mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold mb-0">Top Rated <span class="text-primary">Stays</span></h3>
+        <h3 class="fw-bold mb-0">Top Rated <span class="text-primary">Taxis</span></h3>
         <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="loadHotels()">Refresh List</button>
     </div>
     <div id="hotelsContainer" class="row g-4"></div>
@@ -524,7 +528,7 @@
                             </div>
                         </div>
 
-                        <button onclick="confirmQuickBooking()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg mb-2">CONFIRM BOOKING NOW</button>
+                        <button onclick="confirmQuickBooking()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg mb-2">CONFIRM RIDE NOW</button>
                         <a href="bodhi-path.html" class="btn btn-outline-primary w-100 rounded-pill py-3 fw-bold" target="_blank"><i class="bi bi-compass"></i> Explore Bodh Gaya Heritage</a>
                     </div>
                 </div>
@@ -637,11 +641,8 @@
         }
 
         const storedEmail = localStorage.getItem('userEmail');
-        if (!storedEmail) {
-            Swal.fire('Please Login Again', 'Your session has expired or email is missing. Please login again.', 'warning')
-                .then(() => location.href = 'index.html');
-            return;
-        }
+        const isGuestBrowsing = !storedEmail;
+        // Guests may browse taxis freely; booking and support actions prompt for authentication.
 
         const today = new Date().toISOString().split('T')[0];
         if(document.getElementById('bookIn')) {
@@ -899,7 +900,7 @@
         const priceText = document.getElementById('detPrice').innerText;
         const price = Number(priceText.replace(/[^0-9]/g, '')) || 0;
         
-        if(!userName) { Swal.fire('Login Required', 'Please log in before booking.', 'warning').then(() => location.href='index.html'); return; }
+        if(!userName) { Swal.fire('Login Required', 'Please log in to complete booking. You can continue browsing as guest and login at checkout.', 'warning'); return; }
         if(!cIn || !cOut) { Swal.fire('Select Dates', 'Please select your check-in and check-out dates.', 'warning'); return; }
         if(!selectedHotelId) { Swal.fire('Notice', 'Invalid properties session context. Please refresh stays feed.', 'warning'); return; }
         
@@ -955,7 +956,7 @@
         const pickup = document.getElementById('taxiPickup').value.trim();
         const dropoff = document.getElementById('taxiDropoff').value.trim();
         const vehicleType = document.getElementById('taxiVehicle').value;
-        if (!userEmail) return Swal.fire('Login Required', 'Please login before requesting a ride.', 'warning').then(() => location.href = 'index.html');
+        if (!userEmail) return Swal.fire('Login Required', 'Please login to request a ride. You can continue browsing and login at checkout.', 'warning');
         if (!pickup || !dropoff) return Swal.fire('Route Required', 'Please enter pickup and dropoff locations.', 'warning');
         
         const response = await fetch(`${API_URL}/api/taxi/rides`, {
@@ -969,7 +970,7 @@
     }
 
     async function openSupportTicketWidget() {
-        if (!userEmail) return Swal.fire('Login Required', 'Please login before contacting support.', 'warning').then(() => location.href = 'index.html');
+        if (!userEmail) return Swal.fire('Login Required', 'Please login to contact support. You can continue browsing as guest.', 'warning');
         const { value: form } = await Swal.fire({
             title: 'Report an Issue',
             html: '<input id="supportSubject" class="swal2-input" placeholder="Subject" autocomplete="off"><textarea id="supportDescription" class="swal2-textarea" placeholder="Issue description..." autocomplete="off"></textarea>',
