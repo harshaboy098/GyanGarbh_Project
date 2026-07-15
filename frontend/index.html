@@ -44,6 +44,8 @@
                         localStorage.setItem('userRole', body.role);
                         localStorage.setItem('googleLogin', 'true');
                         localStorage.setItem('authToken', body.sessionToken);
+                        document.cookie = `authToken=${encodeURIComponent(body.sessionToken)}; path=/; secure; samesite=strict`;
+                        window.userToken = body.sessionToken;
                         
                         // ⭐ CRITICAL ROUTING REFIX: willClose guarantees instantaneous redirection
                         Swal.fire({ 
@@ -541,6 +543,8 @@
                 localStorage.setItem('userEmail', data.email);
                 localStorage.setItem('userRole', data.role);
                 localStorage.setItem('authToken', data.sessionToken);
+                document.cookie = `authToken=${encodeURIComponent(data.sessionToken)}; path=/; secure; samesite=strict`;
+                window.userToken = data.sessionToken;
 
                 // ⭐ REDIRECTION FIXED: willClose immediately triggers dashboard load
                 Swal.fire({ 

@@ -455,9 +455,15 @@ const verifySessionToken = (token) => {
 const readSessionToken = (req) => {
 
     const header = String(req.get('authorization') || '');
+    if (header.startsWith('Bearer ')) return header.slice(7);
 
-    return header.startsWith('Bearer ') ? header.slice(7) : req.query.token;
+    if (req.query?.token) return String(req.query.token);
 
+    const cookieHeader = String(req.get('cookie') || '');
+    const cookieMatch = cookieHeader.match(/(?:^|;\s*)(?:authToken|token)=([^;]+)/);
+    if (cookieMatch) return decodeURIComponent(cookieMatch[1] || '');
+
+    return null;
 };
 
 const requireSession = (allowedRoles = []) => (req, res, next) => {

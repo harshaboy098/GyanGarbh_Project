@@ -548,7 +548,12 @@
 
     async function loadProfile() {
         try {
-            const response = await fetch(`${API_URL}/api/user/profile`);
+            const authToken = getAuthToken();
+            const response = await fetch(`${API_URL}/api/user/profile`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${authToken}` },
+                credentials: 'include'
+            });
             const data = await response.json();
             if (response.status === 401 || response.status === 403) {
                 showAuthExpiredState();
