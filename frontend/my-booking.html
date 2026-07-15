@@ -389,6 +389,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function getUrlParameter(name) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name) ? String(params.get(name) || '') : null;
+    }
+
     function getCookieValue(name) {
         const cookies = (document.cookie || '').split(';').map(cookie => cookie.trim());
         const match = cookies.find(cookie => cookie.startsWith(`${name}=`));
@@ -416,19 +421,23 @@
     const uName = safeStorageGet('userName') || window.userName || '';
     const uEmail = safeStorageGet('userEmail') || window.userEmail || '';
     const storedRole = String(safeStorageGet('userRole') || window.userRole || '').trim().toLowerCase();
-    const token = safeStorageGet('token') || safeStorageGet('authToken') || window.userToken || getCookieValue('authToken') || getCookieValue('token') || '';
+    const token = safeStorageGet('token') || safeStorageGet('authToken') || window.userToken || getCookieValue('authToken') || getCookieValue('token') || getUrlParameter('authToken') || getUrlParameter('token') || '';
 
     function getAuthToken() {
         try {
             return safeStorageGet('authToken') ||
                    safeStorageGet('token') ||
                    window.userToken ||
+                   window.sessionToken ||
+                   window.token ||
                    getCookieValue('authToken') ||
                    getCookieValue('token') ||
+                   getUrlParameter('authToken') ||
+                   getUrlParameter('token') ||
                    null;
         } catch (e) {
             console.warn("Storage access is blocked by browser tracking prevention. Trying cookie/memory fallback.", e);
-            return window.userToken || getCookieValue('authToken') || getCookieValue('token') || null;
+            return window.userToken || window.sessionToken || window.token || getCookieValue('authToken') || getCookieValue('token') || getUrlParameter('authToken') || getUrlParameter('token') || null;
         }
     }
 
@@ -521,10 +530,13 @@
 
             const uploadToken = getAuthToken();
             const cleanApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+            const uploadHeaders = {};
+            if (uploadToken) uploadHeaders.Authorization = `Bearer ${uploadToken}`;
             const uploadResponse = await fetch(`${cleanApiUrl}/api/user/upload-profile-pic`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${uploadToken}` },
-                body: formData
+                headers: uploadHeaders,
+                body: formData,
+                credentials: 'include'
             });
 
             const uploadData = await uploadResponse.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));
@@ -549,9 +561,11 @@
     async function loadProfile() {
         try {
             const authToken = getAuthToken();
+            const profileHeaders = {};
+            if (authToken) profileHeaders.Authorization = `Bearer ${authToken}`;
             const response = await fetch(`${API_URL}/api/user/profile`, {
                 method: 'GET',
-                headers: { Authorization: `Bearer ${authToken}` },
+                headers: profileHeaders,
                 credentials: 'include'
             });
             const data = await response.json();
@@ -615,15 +629,19 @@
 
             const profileToken = getAuthToken();
             console.log("Current Profile Token:", profileToken);
+            if (!profileToken) {
+                console.warn('No auth token available for profile save. Using cookie/session fallback if available.');
+            }
 
             const cleanApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+            const saveHeaders = {};
+            if (profileToken) saveHeaders.Authorization = `Bearer ${profileToken}`;
 
             const response = await fetch(`${cleanApiUrl}/api/user/profile`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${profileToken}`
-                },
-                body: formData
+                headers: saveHeaders,
+                body: formData,
+                credentials: 'include'
             });
 
             const data = await response.json().catch(() => ({ success: false, message: 'Server returned an invalid response.' }));

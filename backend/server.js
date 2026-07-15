@@ -1931,7 +1931,7 @@ app.post(['/login', '/api/login'], async (req, res) => {
 
 
 
-app.post('/api/user/upload-profile-pic', verifyProfileUploadActor('manageMitra'), uploadProfilePic.single('profilePic'), async (req, res) => {
+app.post('/api/user/upload-profile-pic', requireSession(['customer', 'mitra', 'support', 'driver', 'admin', 'assistant']), uploadProfilePic.single('profilePic'), async (req, res) => {
 
     try {
 
