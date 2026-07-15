@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Dashboard | Gyan Garbh Partner</title>
+    <title>Vehicle Dashboard | Gyan Garbh Partner</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -385,7 +385,7 @@
         <h4 class="fw-bold mb-5"><i class="bi bi-building-fill me-2"></i>GYAN GARBH</h4>
         <nav class="nav flex-column">
             <a class="nav-link active" href="#"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-            <a class="nav-link" href="#" onclick="loadMyBookings()"><i class="bi bi-calendar-event me-2"></i> Refresh Bookings</a>
+            <a class="nav-link" href="#" onclick="loadMyBookings()"><i class="bi bi-calendar-event me-2"></i> Refresh Rides</a>
             <hr>
             <a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-left me-2"></i> Logout</a>
         </nav>
@@ -430,7 +430,7 @@
                     <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
-                                <h5 class="fw-bold mb-0">Recent Guest Bookings</h5>
+                                <h5 class="fw-bold mb-0">Recent Ride Bookings</h5>
                                 <small class="text-muted">Live bookings for your hotel</small>
                             </div>
                             <div class="text-end text-muted">
@@ -461,7 +461,7 @@
                 <!-- HOTEL DETAILS TAB -->
                 <div class="tab-pane fade" id="details" role="tabpanel" aria-labelledby="details-tab">
                     <div class="stat-card">
-                        <h5 class="fw-bold mb-4"><i class="bi bi-building me-2"></i>Hotel Details & Configuration</h5>
+                        <h5 class="fw-bold mb-4"><i class="bi bi-car-front me-2"></i>Vehicle Details & Configuration</h5>
                         <form onsubmit="event.preventDefault(); saveHotelDetails();">
                             <div class="row g-3">
                                 <div class="form-group mb-3">
@@ -605,7 +605,7 @@
                             </div>
 
                             <button type="submit" class="btn btn-success mt-4 w-100 py-2">
-                                <i class="bi bi-check-circle me-2"></i>Save Hotel Details
+                                <i class="bi bi-check-circle me-2"></i>Save Vehicle Details
                             </button>
                         </form>
                     </div>
@@ -614,20 +614,20 @@
                 <!-- ADD NEW ROOM TAB -->
                 <div class="tab-pane fade" id="rooms" role="tabpanel" aria-labelledby="rooms-tab">
                     <div class="stat-card">
-                        <h5 class="fw-bold mb-4"><i class="bi bi-house-add me-2"></i>Add New Room</h5>
+                        <h5 class="fw-bold mb-4"><i class="bi bi-car-front me-2"></i>Add New Vehicle</h5>
                         <form onsubmit="event.preventDefault(); saveNewRoom();">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Room Type</label>
-                                    <select id="roomType" class="form-select" required>
-                                        <option value="">Select Type</option>
-                                        <option value="AC">AC Room</option>
-                                        <option value="Non-AC">Non-AC Room</option>
-                                    </select>
+                                    <label class="small fw-bold text-muted mb-2">Vehicle Type</label>
+                                        <select id="roomType" class="form-select" required>
+                                            <option value="">Select Type</option>
+                                            <option value="AC">AC</option>
+                                            <option value="Non-AC">Non-AC</option>
+                                        </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Price per Night (₹)</label>
-                                    <input type="number" id="roomPrice" class="form-control" placeholder="1500" min="100" required>
+                                    <label class="small fw-bold text-muted mb-2">Fare (₹)</label>
+                                    <input type="number" id="roomPrice" class="form-control" placeholder="1500" min="10" required>
                                 </div>
                                 <div class="col-md-6">
                                     <input type="hidden" id="roomImageUrl">
@@ -686,7 +686,7 @@
 
                             <div class="room-form-action-row">
                                 <button type="submit" class="btn room-form-save-btn">
-                                    <i class="fas fa-check-circle" style="margin-right: 8px;"></i>Save Room Details
+                                    <i class="fas fa-check-circle" style="margin-right: 8px;"></i>Save Vehicle Details
                                 </button>
                             </div>
                         </form>
@@ -732,12 +732,20 @@
     let selectedRoomImageFiles = [];
 
     function getHotelAuthToken() {
-        return localStorage.getItem('authToken') || '';
+        try {
+            if (window.GyanGarbhApi && typeof window.GyanGarbhApi.getToken === 'function') {
+                const t = String(window.GyanGarbhApi.getToken() || '');
+                if (t && t !== 'null' && t !== 'undefined') return t;
+            }
+        } catch (e) {}
+
+        return (localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim();
     }
 
     function getHotelAuthHeaders(extraHeaders = {}) {
         const token = getHotelAuthToken();
-        return token ? { ...extraHeaders, Authorization: `Bearer ${token}` } : extraHeaders;
+        if (token) return { ...extraHeaders, Authorization: `Bearer ${token}` };
+        return extraHeaders;
     }
 
     function escapeHTML(value) {
@@ -1272,7 +1280,10 @@
             amenities,
             images,
             status: 'Available',
-            ownerEmail: hotelOwnerEmail
+            ownerEmail: hotelOwnerEmail,
+            // Compatibility: include both boolean and string fields for AC mapping
+            isAC: roomType === 'AC',
+            acType: roomType // 'AC' or 'Non-AC'
         };
 
         try {
@@ -1284,7 +1295,7 @@
 
             const data = await res.json();
             if (res.ok) {
-                Swal.fire('Success!', 'Room added successfully!', 'success');
+                Swal.fire('Success!', 'Vehicle added successfully!', 'success');
                 document.getElementById('roomType').value = '';
                 document.getElementById('roomPrice').value = '';
                 document.getElementById('roomImageUrl').value = '';

@@ -738,6 +738,16 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
 
     try {
 
+        // Populate session from token if present so owners with valid tokens get recognized
+        const session = verifySessionToken(readSessionToken(req));
+        if (session) req.session = session;
+
+        // Allow hotel owners (role 'hotel') to proceed when they present a valid session token
+        if (req.session && req.session.role === 'hotel') {
+            req.actor = { email: req.session.email, role: 'hotel' };
+            return next();
+        }
+
         const actor = await getRequestActor(req);
 
         if (!actor) return res.status(403).json({ success: false, message: 'Admin or assistant access required' });
