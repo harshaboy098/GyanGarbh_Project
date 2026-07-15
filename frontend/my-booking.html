@@ -574,9 +574,15 @@
             });
 
             const profileToken = getAuthToken();
-            const response = await fetch(`${API_URL}/api/user/profile`, {
+            console.log("Current Profile Token:", profileToken);
+
+            const cleanApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+
+            const response = await fetch(`${cleanApiUrl}/api/user/profile`, {
                 method: 'PUT',
-                headers: { Authorization: `Bearer ${profileToken}` },
+                headers: {
+                    'Authorization': `Bearer ${profileToken}`
+                },
                 body: formData
             });
 
