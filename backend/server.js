@@ -455,15 +455,21 @@ const verifySessionToken = (token) => {
 const readSessionToken = (req) => {
 
     const header = String(req.get('authorization') || '');
-    if (header.startsWith('Bearer ')) return header.slice(7);
+    let token = null;
 
-    if (req.query?.token) return String(req.query.token);
+    if (header.startsWith('Bearer ')) token = header.slice(7);
+    else if (req.query?.token) token = String(req.query.token);
+    else {
+        const cookieHeader = String(req.get('cookie') || '');
+        const cookieMatch = cookieHeader.match(/(?:^|;\s*)(?:authToken|token)=([^;]+)/);
+        if (cookieMatch) token = decodeURIComponent(cookieMatch[1] || '');
+    }
 
-    const cookieHeader = String(req.get('cookie') || '');
-    const cookieMatch = cookieHeader.match(/(?:^|;\s*)(?:authToken|token)=([^;]+)/);
-    if (cookieMatch) return decodeURIComponent(cookieMatch[1] || '');
+    if (!token || token === 'null' || token === 'undefined') {
+        return null;
+    }
 
-    return null;
+    return token;
 };
 
 const requireSession = (allowedRoles = []) => (req, res, next) => {
