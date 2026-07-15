@@ -73,6 +73,14 @@
             font-size: 2rem;
             font-weight: 800;
             box-shadow: inset 0 0 0 4px rgba(255,255,255,0.2);
+            overflow: hidden;
+        }
+        .avatar-bubble img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
         }
         .sidebar-profile h2 {
             margin: 16px 0 6px;
@@ -323,6 +331,7 @@
         <aside class="account-sidebar">
             <div class="sidebar-profile">
                 <div class="avatar-bubble">
+                    <img id="sidebarAvatar" class="d-none" alt="Profile avatar">
                     <span id="userInitial">R</span>
                 </div>
                 <h2 class="text-capitalize" id="greetings">Good Day, Raja!</h2>
@@ -461,6 +470,24 @@
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'GG')}&background=1e3c72&color=fff&size=220`;
     }
 
+    function updateSidebarAvatar(imageUrl, name = 'GG') {
+        const sidebarAvatar = document.getElementById('sidebarAvatar');
+        const userInitial = document.getElementById('userInitial');
+        const normalizedUrl = String(imageUrl || '').trim();
+        if (normalizedUrl && normalizedUrl !== 'null' && normalizedUrl !== 'undefined') {
+            sidebarAvatar.src = normalizedUrl;
+            sidebarAvatar.classList.remove('d-none');
+            if (userInitial) userInitial.classList.add('d-none');
+            return;
+        }
+
+        if (sidebarAvatar) sidebarAvatar.classList.add('d-none');
+        if (userInitial) {
+            userInitial.classList.remove('d-none');
+            userInitial.innerText = String(name || 'GG').charAt(0).toUpperCase();
+        }
+    }
+
     function resetProfileForm() {
         document.getElementById('profileFullName').value = uName || '';
         document.getElementById('profileDob').value = '';
@@ -567,8 +594,11 @@
                 return;
             }
 
-            if (uploadData.success && uploadData.profilePic) {
-                await saveProfile({ profilePic: uploadData.profilePic }, false);
+            const newPhotoUrl = uploadData.profilePic || uploadData.user?.profilePic || uploadData.url || uploadData.data?.profilePic || null;
+            if (uploadData.success && newPhotoUrl) {
+                updateSidebarAvatar(newPhotoUrl, uName);
+                document.getElementById('profilePreview').src = newPhotoUrl;
+                await saveProfile({ profilePic: newPhotoUrl }, false);
                 showToast('Profile photo updated successfully.');
             } else {
                 alert(uploadData.message || 'Photo upload failed.');
@@ -601,7 +631,9 @@
             document.getElementById('profileVillageCity').value = profile.villageCity || profile.address || '';
             document.getElementById('profilePinCode').value = profile.pinCode || '';
             document.getElementById('profileBio').value = profile.bio || profile.experience || '';
-            document.getElementById('profilePreview').src = profile.profilePic || profile.photoURL || getDefaultAvatar(profile.fullName || profile.name || 'GG');
+            const photoUrl = profile.profilePic || profile.photoURL || getDefaultAvatar(profile.fullName || profile.name || 'GG');
+            document.getElementById('profilePreview').src = photoUrl;
+            updateSidebarAvatar(profile.profilePic || profile.photoURL, profile.fullName || profile.name || uName);
         } catch (error) {
             console.error('Profile load failed', error);
         }
@@ -635,18 +667,14 @@
         }
 
         try {
-            const formData = new FormData();
-            formData.append('fullName', document.getElementById('profileFullName').value.trim());
-            formData.append('dob', document.getElementById('profileDob').value || '');
-            formData.append('villageCity', document.getElementById('profileVillageCity').value.trim());
-            formData.append('pinCode', document.getElementById('profilePinCode').value.trim());
-            formData.append('bio', document.getElementById('profileBio').value.trim());
-
-            Object.entries(extra).forEach(([key, value]) => {
-                if (value !== undefined && value !== null) {
-                    formData.append(key, value);
-                }
-            });
+            const profileData = {
+                fullName: document.getElementById('profileFullName').value.trim(),
+                dob: document.getElementById('profileDob').value || '',
+                villageCity: document.getElementById('profileVillageCity').value.trim(),
+                pinCode: document.getElementById('profilePinCode').value.trim(),
+                bio: document.getElementById('profileBio').value.trim(),
+                ...extra
+            };
 
             const profileToken = getAuthToken();
             console.log("Current Profile Token:", profileToken);
@@ -658,12 +686,15 @@
             }
 
             const cleanApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
-            const saveHeaders = { Authorization: `Bearer ${profileToken}` };
+            const saveHeaders = {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${profileToken}`
+            };
 
             const response = await fetch(`${cleanApiUrl}/api/user/profile`, {
                 method: 'PUT',
                 headers: saveHeaders,
-                body: formData,
+                body: JSON.stringify(profileData),
                 credentials: 'include'
             });
 
