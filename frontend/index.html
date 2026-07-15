@@ -129,6 +129,22 @@
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 min-h-screen flex items-center justify-center p-4">
 
+<!-- Hidden userSection dropdown for navbar consistency across pages (shown when needed) -->
+<div id="userSection" style="display:none; position:fixed; top:12px; right:12px; z-index:1200;">
+    <div class="dropdown d-inline-block align-middle">
+        <button class="btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: #111827;">
+            <img id="navbarAvatar" src="" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: none;">
+            <span id="userInitialBubble" style="width: 32px; height: 32px; border-radius: 50%; background: #e0e0e0; color: #333; display: flex; align-items: center; justify-content: center; font-weight: bold;">U</span>
+            <span id="navUsername" style="font-weight: 500; color: #111827;">User</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuBtn">
+            <li><a class="dropdown-menu-item px-3 py-2 d-block" href="my-booking.html" style="text-decoration: none; color: #333;">My Profile</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-menu-item px-3 py-2 d-block text-danger" href="#" id="dropdownLogoutBtn" style="text-decoration: none;">Logout</a></li>
+        </ul>
+    </div>
+</div>
+
 <div class="max-w-[460px] w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
     <div class="flex bg-slate-50 p-2 gap-1 border-b border-slate-100">
         <button class="flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 bg-amber-500 text-slate-900 shadow-sm" id="btnLoginTab" onclick="showForm('login')">Login</button>

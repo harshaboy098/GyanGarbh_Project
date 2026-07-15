@@ -308,7 +308,18 @@
 <nav class="navbar nav-custom sticky-top">
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold text-white fs-4" href="#"><i class="bi bi-compass-fill text-warning me-2"></i>GYAN GARBH</a>
-        <div id="userSection"></div>
+        <div class="dropdown d-inline-block align-middle" id="userSection">
+            <button class="btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: white;">
+                <img id="navbarAvatar" src="" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: none;">
+                <span id="userInitialBubble" style="width: 32px; height: 32px; border-radius: 50%; background: #e0e0e0; color: #333; display: flex; align-items: center; justify-content: center; font-weight: bold;">U</span>
+                <span id="navUsername" style="font-weight: 500; color: white;">User</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuBtn">
+                <li><a class="dropdown-menu-item px-3 py-2 d-block" href="my-booking.html" style="text-decoration: none; color: #333;">My Profile</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-menu-item px-3 py-2 d-block text-danger" href="#" id="dropdownLogoutBtn" style="text-decoration: none;">Logout</a></li>
+            </ul>
+        </div>
     </div>
 </nav>
 
@@ -638,28 +649,32 @@
             document.getElementById('bookOut').setAttribute('min', today);
         }
 
+        const userSectionEl = document.getElementById('userSection');
+        const avatarEl = document.getElementById('navbarAvatar');
+        const initialEl = document.getElementById('userInitialBubble');
+        const nameEl = document.getElementById('navUsername');
+
         if (userName) {
+            nameEl.textContent = userName;
             const userProfilePic = safeStorageGet('profilePic') || safeStorageGet('userProfilePic') || window.userProfilePic || getCookieValue('profilePic') || getCookieValue('userProfilePic') || '';
-            const avatarMarkup = userProfilePic
-                ? `<img src="${userProfilePic}" alt="Profile" class="navbar-avatar">`
-                : `<i class="bi bi-person-circle"></i>`;
-            document.getElementById('userSection').innerHTML = `
-                <div class="d-flex align-items-center gap-2">
-                    <div class="user-menu-container">
-                        <button type="button" class="user-menu-trigger" onclick="toggleUserMenu()" aria-expanded="false" aria-haspopup="true">
-                            ${avatarMarkup}
-                            <span>${userName}</span>
-                        </button>
-                        <div class="user-menu-dropdown" id="userMenuDropdown">
-                            <a href="my-booking.html" class="user-menu-item">My Profile</a>
-                            <button type="button" class="user-menu-item" onclick="logout()">Logout</button>
-                        </div>
-                    </div>
-                    <button type="button" class="nav-ai-btn me-3" onclick="launchCustomerAIAssistant()"><i class="bi bi-robot"></i> Chat with AI</button>
-                </div>
-            `;
+            if (userProfilePic) {
+                avatarEl.src = userProfilePic;
+                avatarEl.style.display = 'inline-block';
+                initialEl.style.display = 'none';
+            } else {
+                avatarEl.style.display = 'none';
+                initialEl.style.display = 'flex';
+                initialEl.textContent = String(userName || 'U').charAt(0).toUpperCase();
+            }
+
+            // Wire logout button inside dropdown
+            const logoutBtn = document.getElementById('dropdownLogoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
+            }
         } else {
-            document.getElementById('userSection').innerHTML = `<a href="index.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold">Login</a>`;
+            // If no user, replace section with login button
+            if (userSectionEl) userSectionEl.innerHTML = `<a href="index.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold">Login</a>`;
         }
 
         await loadHotels();
