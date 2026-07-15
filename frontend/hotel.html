@@ -21,6 +21,61 @@
         }
         .nav-ai-btn:hover { color: #102847; transform: translateY(-1px); filter: brightness(1.03); }
 
+        .navbar-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 8px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .user-menu-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.08);
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-weight: 700;
+        }
+        .user-menu-trigger:hover {
+            background: rgba(255,255,255,0.16);
+        }
+        .user-menu-container { position: relative; }
+        .user-menu-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            min-width: 180px;
+            background: white;
+            color: #111827;
+            border-radius: 18px;
+            box-shadow: 0 18px 40px rgba(15,23,42,0.18);
+            overflow: hidden;
+            display: none;
+            z-index: 1200;
+        }
+        .user-menu-dropdown.show { display: block; }
+        .user-menu-item {
+            display: block;
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 0.95rem;
+            color: #111827;
+            text-align: left;
+            text-decoration: none;
+            background: white;
+            border-bottom: 1px solid #eef2f7;
+            cursor: pointer;
+        }
+        .user-menu-item:last-child { border-bottom: none; }
+        .user-menu-item:hover { background: #f8fafc; }
+
         .hero-premium {
             background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=2070');
             height: 45vh; background-size: cover; background-position: center;
@@ -586,15 +641,22 @@
         if (userName) {
             const userProfilePic = safeStorageGet('profilePic') || safeStorageGet('userProfilePic') || window.userProfilePic || getCookieValue('profilePic') || getCookieValue('userProfilePic') || '';
             const avatarMarkup = userProfilePic
-                ? `<img src="${userProfilePic}" alt="Profile" class="rounded-circle me-2" width="28" height="28" style="object-fit:cover; display:inline-block;">`
+                ? `<img src="${userProfilePic}" alt="Profile" class="navbar-avatar">`
                 : `<i class="bi bi-person-circle"></i>`;
             document.getElementById('userSection').innerHTML = `
-                <a href="my-booking.html" class="user-link me-3 d-flex align-items-center text-white text-decoration-none">
-                    ${avatarMarkup}
-                    <span>${userName}</span>
-                </a>
-                <button type="button" class="nav-ai-btn me-3" onclick="launchCustomerAIAssistant()"><i class="bi bi-robot"></i> Chat with AI</button>
-                <button onclick="logout()" class="btn btn-sm btn-outline-light rounded-pill px-3">Logout</button>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="user-menu-container">
+                        <button type="button" class="user-menu-trigger" onclick="toggleUserMenu()" aria-expanded="false" aria-haspopup="true">
+                            ${avatarMarkup}
+                            <span>${userName}</span>
+                        </button>
+                        <div class="user-menu-dropdown" id="userMenuDropdown">
+                            <a href="my-booking.html" class="user-menu-item">My Profile</a>
+                            <button type="button" class="user-menu-item" onclick="logout()">Logout</button>
+                        </div>
+                    </div>
+                    <button type="button" class="nav-ai-btn me-3" onclick="launchCustomerAIAssistant()"><i class="bi bi-robot"></i> Chat with AI</button>
+                </div>
             `;
         } else {
             document.getElementById('userSection').innerHTML = `<a href="index.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold">Login</a>`;
@@ -920,6 +982,26 @@
         localStorage.clear();
         location.reload();
     }
+
+    function toggleUserMenu() {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (!dropdown) return;
+        const isOpen = dropdown.classList.contains('show');
+        document.querySelectorAll('.user-menu-dropdown.show').forEach(el => el.classList.remove('show'));
+        if (!isOpen) {
+            dropdown.classList.add('show');
+        }
+    }
+
+    window.addEventListener('click', (event) => {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (!dropdown) return;
+        const trigger = event.target.closest('.user-menu-trigger');
+        const inside = event.target.closest('.user-menu-container');
+        if (!inside && dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+        }
+    });
 
     function launchCustomerAIAssistant() {
         const consentAccepted = localStorage.getItem(AI_CONSENT_KEY);
