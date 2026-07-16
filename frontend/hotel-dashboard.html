@@ -234,6 +234,24 @@
             border: 1px dashed #b9c6d6;
             background: #fff;
         }
+        .gallery-action-card {
+            height: 100%;
+            min-height: 248px;
+            border: 1px dashed #b9c6d6;
+            border-radius: 8px;
+            background: #f8fbff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+        }
+        .gallery-add-btn {
+            min-height: 46px;
+            border: 1px solid rgba(20,54,93,0.18);
+            background: #fff;
+            color: var(--brand-blue);
+            box-shadow: 0 10px 22px rgba(23,32,51,0.06);
+        }
         .room-gallery-preview {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
@@ -558,50 +576,13 @@
                                 </div>
                             </div>
 
-                            <h6 class="fw-bold mt-4 mb-3">Property Gallery</h6>
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <input type="hidden" id="imageUrl">
-                                    <div class="upload-card">
-                                        <div class="upload-preview">
-                                            <img alt="Main property preview">
-                                            <span><i class="bi bi-image me-1"></i>Main Image</span>
-                                        </div>
-                                        <div class="upload-body">
-                                            <label class="small fw-bold text-muted mb-2">Main Property Image</label>
-                                            <input type="file" id="hotelImgInput1" class="form-control" accept="image/*" onchange="{ const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); } }">
-                                            <small class="text-muted">Choose a polished cover image.</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <input type="hidden" id="imageUrl2">
-                                    <div class="upload-card">
-                                        <div class="upload-preview">
-                                            <img alt="Second property preview">
-                                            <span><i class="bi bi-image me-1"></i>Gallery Image</span>
-                                        </div>
-                                        <div class="upload-body">
-                                            <label class="small fw-bold text-muted mb-2">Gallery Image 2</label>
-                                            <input type="file" id="hotelImgInput2" class="form-control" accept="image/*" onchange="{ const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl2').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); } }">
-                                            <small class="text-muted">Add a lobby, room, or exterior view.</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <input type="hidden" id="imageUrl3">
-                                    <div class="upload-card">
-                                        <div class="upload-preview">
-                                            <img alt="Third property preview">
-                                            <span><i class="bi bi-image me-1"></i>Gallery Image</span>
-                                        </div>
-                                        <div class="upload-body">
-                                            <label class="small fw-bold text-muted mb-2">Gallery Image 3</label>
-                                            <input type="file" id="hotelImgInput3" class="form-control" accept="image/*" onchange="{ const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('imageUrl3').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); } }">
-                                            <small class="text-muted">Show another guest-facing angle.</small>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mt-4 mb-3">
+                                <h6 class="fw-bold mb-0">Property Gallery</h6>
+                                <button type="button" class="btn gallery-add-btn btn-sm px-3" onclick="addPropertyGalleryInput()">
+                                    <i class="fas fa-plus me-1"></i> Add More Images
+                                </button>
+                            </div>
+                            <div class="row g-3" id="propertyGalleryContainer">
                             </div>
 
                             <button type="submit" class="btn btn-success mt-4 w-100 py-2">
@@ -730,6 +711,7 @@
         bookings: []
     };
     let selectedRoomImageFiles = [];
+    let propertyGallerySlotCount = 3;
 
     function getHotelAuthToken() {
         try {
@@ -759,6 +741,8 @@
     }
 
     function attachDashboardEventHandlers() {
+        renderPropertyGalleryInputs();
+
         const refreshButton = document.getElementById('refreshDashboardButton');
         if (refreshButton) {
             refreshButton.addEventListener('click', (event) => {
@@ -767,6 +751,125 @@
             });
         }
     }
+
+    function getPropertyGalleryTargetId(index) {
+        if (index === 0) return 'imageUrl';
+        return `imageUrl${index + 1}`;
+    }
+
+    function getPropertyGalleryInputId(index) {
+        return `hotelImgInput${index + 1}`;
+    }
+
+    function getPropertyGalleryLabel(index) {
+        return index === 0 ? 'Main Property Image' : `Gallery Image ${index + 1}`;
+    }
+
+    function getPropertyGalleryHelp(index) {
+        if (index === 0) return 'Used as the primary cover image on the website.';
+        if (index === 1) return 'Maps to images[1] in the public carousel.';
+        if (index === 2) return 'Maps to images[2] in the public carousel.';
+        return `Maps to images[${index}] in the public carousel.`;
+    }
+
+    function buildPropertyGalleryCard(index, imageUrl = '') {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 property-gallery-slot';
+        col.dataset.index = String(index);
+
+        const targetId = getPropertyGalleryTargetId(index);
+        const inputId = getPropertyGalleryInputId(index);
+        const label = getPropertyGalleryLabel(index);
+        const help = getPropertyGalleryHelp(index);
+        const previewLabel = index === 0 ? 'Main Image' : 'Gallery Image';
+
+        col.innerHTML = `
+            <input type="hidden" id="${targetId}" class="property-image-url" data-index="${index}" value="${escapeHTML(imageUrl)}">
+            <div class="upload-card">
+                <div class="upload-preview">
+                    <img alt="${escapeHTML(label)} preview">
+                    <span><i class="bi bi-image me-1"></i>${previewLabel}</span>
+                </div>
+                <div class="upload-body">
+                    <label class="small fw-bold text-muted mb-2" for="${inputId}">${label}</label>
+                    <input type="file" id="${inputId}" class="form-control property-image-input" data-index="${index}" accept="image/*" onchange="handlePropertyGallerySelection(this)">
+                    <small class="text-muted">${help}</small>
+                </div>
+            </div>`;
+
+        renderPropertyGalleryPreview(col, imageUrl);
+        return col;
+    }
+
+    function renderPropertyGalleryPreview(slot, imageUrl) {
+        const img = slot.querySelector('.upload-preview img');
+        const label = slot.querySelector('.upload-preview span');
+        if (!img || !label) return;
+
+        if (imageUrl) {
+            img.src = imageUrl;
+            img.style.display = 'block';
+            label.style.display = 'none';
+        } else {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+            label.style.display = 'inline';
+        }
+    }
+
+    function renderPropertyGalleryInputs(images = []) {
+        const container = document.getElementById('propertyGalleryContainer');
+        if (!container) return;
+
+        propertyGallerySlotCount = Math.max(3, images.length || 0);
+        container.innerHTML = '';
+        for (let index = 0; index < propertyGallerySlotCount; index += 1) {
+            container.appendChild(buildPropertyGalleryCard(index, images[index] || ''));
+        }
+    }
+
+    function addPropertyGalleryInput() {
+        const container = document.getElementById('propertyGalleryContainer');
+        if (!container) return;
+
+        const index = propertyGallerySlotCount;
+        propertyGallerySlotCount += 1;
+        container.appendChild(buildPropertyGalleryCard(index));
+    }
+
+    function handlePropertyGallerySelection(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const slot = input.closest('.property-gallery-slot');
+        const hiddenInput = slot?.querySelector('.property-image-url');
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (hiddenInput) hiddenInput.value = reader.result;
+            if (slot) renderPropertyGalleryPreview(slot, reader.result);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function getExistingHotelImages(hotel = {}) {
+        const savedImages = Array.isArray(hotel.images) ? hotel.images : [];
+        return [
+            savedImages[0] || hotel.imageUrl,
+            savedImages[1] || hotel.imageUrl2,
+            savedImages[2] || hotel.imageUrl3,
+            ...savedImages.slice(3)
+        ].filter(Boolean);
+    }
+
+    function collectPropertyGalleryUrls() {
+        return Array.from(document.querySelectorAll('.property-image-url'))
+            .sort((a, b) => Number(a.dataset.index || 0) - Number(b.dataset.index || 0))
+            .map((input) => input.value.trim())
+            .filter(Boolean);
+    }
+
+    window.addPropertyGalleryInput = addPropertyGalleryInput;
+    window.handlePropertyGallerySelection = handlePropertyGallerySelection;
 
     window.onload = async function() {
         attachDashboardEventHandlers();
@@ -813,9 +916,8 @@
         document.getElementById('acRoomPrice').value = hotel.acRoomPrice || 2000;
         document.getElementById('nonAcRoomPrice').value = hotel.nonAcRoomPrice || 1200;
         document.getElementById('hotelRating').value = hotel.rating || 4.0;
-        document.getElementById('imageUrl').value = hotel.imageUrl || '';
-        document.getElementById('imageUrl2').value = hotel.imageUrl2 || '';
-        document.getElementById('imageUrl3').value = hotel.imageUrl3 || '';
+        const propertyImages = getExistingHotelImages(hotel);
+        renderPropertyGalleryInputs(propertyImages);
         document.getElementById('hotelDescription').value = hotel.description || '';
 
         if (hotel.distanceFromLandmark) {
@@ -854,9 +956,8 @@
                 document.getElementById('acRoomPrice').value = hotel.acRoomPrice || 2000;
                 document.getElementById('nonAcRoomPrice').value = hotel.nonAcRoomPrice || 1200;
                 document.getElementById('hotelRating').value = hotel.rating || 4.0;
-                document.getElementById('imageUrl').value = hotel.imageUrl || '';
-                document.getElementById('imageUrl2').value = hotel.imageUrl2 || '';
-                document.getElementById('imageUrl3').value = hotel.imageUrl3 || '';
+                const propertyImages = getExistingHotelImages(hotel);
+                renderPropertyGalleryInputs(propertyImages);
                 document.getElementById('hotelDescription').value = hotel.description || '';
                 
                 // 🆕 LOAD NEW FIELDS
@@ -968,11 +1069,12 @@
 
     // ⭐ SAVE HOTEL DETAILS
     async function uploadHotelImagesToServer() {
-        const imageInputs = [
-            { inputId: 'hotelImgInput1', targetId: 'imageUrl' },
-            { inputId: 'hotelImgInput2', targetId: 'imageUrl2' },
-            { inputId: 'hotelImgInput3', targetId: 'imageUrl3' }
-        ];
+        const imageInputs = Array.from(document.querySelectorAll('.property-image-input'))
+            .sort((a, b) => Number(a.dataset.index || 0) - Number(b.dataset.index || 0))
+            .map((input) => ({
+                input,
+                targetId: getPropertyGalleryTargetId(Number(input.dataset.index || 0))
+            }));
 
         const formData = new FormData();
         const selectedImages = [];
@@ -984,7 +1086,7 @@
         };
 
         for (const item of imageInputs) {
-            const fileInput = document.getElementById(item.inputId);
+            const fileInput = item.input;
             if (fileInput && fileInput.files && fileInput.files[0]) {
                 const originalFile = fileInput.files[0];
                 let compressedFile = originalFile;
@@ -1002,7 +1104,7 @@
             }
         }
 
-        if (!selectedImages.length) return [];
+        if (!selectedImages.length) return collectPropertyGalleryUrls();
 
         const uploadedImages = [];
 
@@ -1031,12 +1133,12 @@
             if (target && url) target.value = url;
         });
 
-        return cleanUploadedImages;
+        return collectPropertyGalleryUrls();
     }
 
     async function saveHotelDetails() {
         try {
-            const uploadedImages = await uploadHotelImagesToServer();
+            const propertyImages = await uploadHotelImagesToServer();
 
             const facilities = {
                 wifi: document.getElementById('wifi').checked,
@@ -1065,14 +1167,10 @@
                     nonAcRoomPrice: document.getElementById('nonAcRoomPrice').value,
                     description: document.getElementById('hotelDescription').value,
                     facilities: facilities,
-                    imageUrl: document.getElementById('imageUrl').value,
-                    imageUrl2: document.getElementById('imageUrl2').value,
-                    imageUrl3: document.getElementById('imageUrl3').value,
-                    images: uploadedImages.length ? uploadedImages : [
-                        document.getElementById('imageUrl').value,
-                        document.getElementById('imageUrl2').value,
-                        document.getElementById('imageUrl3').value
-                    ].filter(Boolean),
+                    imageUrl: propertyImages[0] || '',
+                    imageUrl2: propertyImages[1] || '',
+                    imageUrl3: propertyImages[2] || '',
+                    images: propertyImages,
                     distanceFromLandmark: distanceFromLandmark,
                     gyanGarbhHighlights: document.getElementById('gyanGarbhHighlights').value
                 })
@@ -1378,15 +1476,10 @@
                 ac: document.getElementById('ac').checked,
                 frontDesk: document.getElementById('frontDesk').checked
             },
-            imageUrl: document.getElementById('imageUrl').value,
-            imageUrl2: document.getElementById('imageUrl2').value,
-            imageUrl3: document.getElementById('imageUrl3').value,
-            images: uploadedImages.length ? uploadedImages : [
-                document.getElementById('imageUrl').value,
-                document.getElementById('imageUrl2').value,
-                document.getElementById('imageUrl3').value,
-                ...(Array.isArray(hotel.images) ? hotel.images : [])
-            ].filter(Boolean),
+            imageUrl: uploadedImages[0] || '',
+            imageUrl2: uploadedImages[1] || '',
+            imageUrl3: uploadedImages[2] || '',
+            images: uploadedImages.length ? uploadedImages : getExistingHotelImages(hotel),
             rooms,
             distanceFromLandmark: {
                 value: parseFloat(document.getElementById('distanceFromLandmark').value) || 0,

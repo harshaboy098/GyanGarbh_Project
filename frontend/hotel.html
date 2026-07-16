@@ -700,6 +700,23 @@
         return price && price > 0 ? `₹${price}/Night` : 'Price on Request';
     }
 
+    function escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
+
+    function getHotelGalleryImages(hotel) {
+        const dashboardImages = Array.isArray(hotel.images) ? hotel.images : [];
+        const legacyImages = [hotel.imageUrl, hotel.imageUrl2, hotel.imageUrl3];
+        const fallback = 'https://images.unsplash.com/photo-1566073771259-6a8506099945';
+        return [...new Set([...dashboardImages, ...legacyImages, fallback].filter(Boolean))].slice(0, 8);
+    }
+
     function openHotelDetailsPage(hotelId) {
         const id = String(hotelId || '').trim();
         if (!id) return;
@@ -714,7 +731,8 @@
             allHotels = hotels; 
             container.innerHTML = "";
             hotels.forEach(h => {
-                const imgUrl = h.imageUrl || h.imageUrl2 || h.imageUrl3 || "https://images.unsplash.com/photo-1566073771259-6a8506099945";
+                const uniqueImages = getHotelGalleryImages(h);
+                const imgUrl = uniqueImages[0];
                 const priceValue = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
                 const priceDisplay = getPriceDisplay(priceValue);
                 const amenityIcons = getAmenityIcons(h.facilities);
@@ -728,28 +746,23 @@
                 const safeDescription = description.replace(/'/g, "\\'");
                 const landmarkText = h.distanceFromLandmark ? `${h.distanceFromLandmark.landmark || 'Mahabodhi Temple'}: ${h.distanceFromLandmark.value || '0.5'} ${h.distanceFromLandmark.unit || 'km'}` : 'Mahabodhi Temple: 0.5 km';
                 const highlightsText = (h.gyanGarbhHighlights || 'Peaceful environment, vegetarian meals available').replace(/'/g, "\\'");
-                const imageGallery = [
-                    h.imageUrl,
-                    h.imageUrl2,
-                    h.imageUrl3,
-                    ...(Array.isArray(h.images) ? h.images : []),
-                    imgUrl
-                ].filter(Boolean);
-                const uniqueImages = [...new Set(imageGallery)].slice(0, 6);
-                const galleryData = JSON.stringify(uniqueImages);
+                const galleryData = encodeURIComponent(JSON.stringify(uniqueImages));
+                const sliderStack = uniqueImages.slice(1).map((src, index) => `
+                                    <img src="${escapeHTML(src)}" alt="${escapeHTML(h.hotelName || 'Hotel')} gallery image ${index + 2}" loading="lazy">`).join('');
 
                 container.innerHTML += `
                     <div class="col-md-4 hotel-item">
                         <div class="hotel-card" onclick="openHotelDetailsPage('${safeId}')">
                             <span class="urgency-badge">Filling Fast!</span>
                             <div class="img-box">
-                                <button type="button" class="slider-arrow prev-arr" data-gallery='${galleryData}' data-direction="prev" aria-label="Previous image">
+                                <button type="button" class="slider-arrow prev-arr prev-btn" data-gallery="${galleryData}" data-direction="prev" onclick="event.stopPropagation(); event.preventDefault(); slideHotelCardImage(this, -1);" aria-label="Previous image">
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
-                                <button type="button" class="slider-arrow next-arr" data-gallery='${galleryData}' data-direction="next" aria-label="Next image">
+                                <button type="button" class="slider-arrow next-arr next-btn" data-gallery="${galleryData}" data-direction="next" onclick="event.stopPropagation(); event.preventDefault(); slideHotelCardImage(this, 1);" aria-label="Next image">
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
-                                <img class="hotel-card-image" src="${uniqueImages[0] || imgUrl}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'" data-index="0">
+                                <img class="hotel-card-image" src="${escapeHTML(imgUrl)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945'" data-index="0">
+                                <div class="slider-stack d-none" aria-hidden="true">${sliderStack}</div>
                             </div>
                             <div class="p-4">
                                 <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -770,10 +783,10 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="h6 fw-bold text-success mb-0">${priceDisplay}</span>
                                     <div class="d-flex gap-2">
-                                        <button class="btn btn-success btn-sm rounded-pill px-2 fw-bold shadow-sm" onclick="event.stopPropagation(); chatOnWhatsApp('${safeName}')">
+                                        <button class="btn btn-success btn-sm rounded-pill px-2 fw-bold shadow-sm" onclick="event.stopPropagation(); event.preventDefault(); chatOnWhatsApp('${safeName}')">
                                             <i class="bi bi-whatsapp"></i>
                                         </button>
-                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); openHotelDetailsPage('${safeId}')">View Room</button>
+                                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="event.stopPropagation(); event.preventDefault(); openHotelDetailsPage('${safeId}')">View Room</button>
                                     </div>
                                 </div>
                             </div>
@@ -816,24 +829,43 @@
         toggleHotelQuickView(trigger);
     });
 
+    function getGalleryFromArrow(arrow) {
+        if (!arrow?.dataset.gallery) return [];
+
+        try {
+            return JSON.parse(decodeURIComponent(arrow.dataset.gallery));
+        } catch (err) {
+            try {
+                return JSON.parse(arrow.dataset.gallery);
+            } catch (parseErr) {
+                console.warn('Invalid hotel gallery data:', parseErr);
+                return [];
+            }
+        }
+    }
+
+    function slideHotelCardImage(arrow, step) {
+        const card = arrow.closest('.hotel-card');
+        const image = card?.querySelector('.hotel-card-image');
+        if (!image) return;
+
+        const gallery = getGalleryFromArrow(arrow);
+        if (!gallery.length) return;
+
+        const currentIndex = Number(image.dataset.index || 0);
+        const nextIndex = (currentIndex + step + gallery.length) % gallery.length;
+        image.src = gallery[nextIndex];
+        image.dataset.index = String(nextIndex);
+    }
+
     document.addEventListener('click', (event) => {
         const arrow = event.target.closest('.slider-arrow');
         if (!arrow) return;
         event.preventDefault();
         event.stopPropagation();
 
-        const card = arrow.closest('.hotel-card');
-        const image = card?.querySelector('.hotel-card-image');
-        if (!image) return;
-
-        const gallery = arrow.dataset.gallery ? JSON.parse(arrow.dataset.gallery) : [];
-        if (!gallery.length) return;
-
-        const currentIndex = Number(image.dataset.index || 0);
         const direction = arrow.dataset.direction === 'prev' ? -1 : 1;
-        const nextIndex = (currentIndex + direction + gallery.length) % gallery.length;
-        image.src = gallery[nextIndex];
-        image.dataset.index = String(nextIndex);
+        slideHotelCardImage(arrow, direction);
     });
 
     function openMitraModal() { new bootstrap.Modal(document.getElementById('mitraModal')).show(); }
