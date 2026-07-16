@@ -140,16 +140,16 @@
 
         .amenity-badge { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; margin-right: 5px; color: #475569; }
 
-        .taxi-card {
+        .stay-assist-card {
             background: #0f172a; color: white; border-radius: 28px; overflow: hidden;
             box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
         }
-        .taxi-card input, .taxi-card select {
+        .stay-assist-card input, .stay-assist-card select {
             border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.08);
             color: white; border-radius: 14px; padding: 12px 14px;
         }
-        .taxi-card input::placeholder { color: transparent; }
-        .taxi-card select option { color: #0f172a; }
+        .stay-assist-card input::placeholder { color: transparent; }
+        .stay-assist-card select option { color: #0f172a; }
         .fare-chip {
             display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1);
             border: 1px solid rgba(255,255,255,0.16); padding: 10px 14px; border-radius: 999px;
@@ -309,8 +309,8 @@
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold text-white fs-4" href="#"><i class="bi bi-compass-fill text-warning me-2"></i>GYAN GARBH</a>
         <div class="d-flex align-items-center gap-3">
-            <a href="hotel.html" class="text-white text-decoration-none fw-bold">Browse Taxis</a>
-            <a href="my-booking.html" class="text-white text-decoration-none fw-bold">Book a Ride</a>
+            <a href="hotel.html" class="text-white text-decoration-none fw-bold mx-3">Browse Stays</a>
+            <a href="my-booking.html" class="text-white text-decoration-none fw-bold mx-3">My Bookings</a>
         </div>
         <div class="dropdown d-inline-block align-middle" id="userSection">
             <button class="btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: white;">
@@ -329,8 +329,8 @@
 
 <div class="hero-premium">
     <div class="container text-center">
-        <h1 class="fw-bold display-4">Discover Bodhgaya Transport</h1>
-        <p class="lead opacity-90">Reliable Taxi Services & Verified Drivers for your Bodhgaya trips</p>
+        <h1 class="fw-bold display-4">Discover Bodhgaya Stays</h1>
+        <p class="lead opacity-90">Verified hotels, trusted rooms, and peaceful stays for your Bodhgaya trip</p>
     </div>
 </div>
 
@@ -341,7 +341,7 @@
                 <div class="col-md-9 border-end">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-search text-primary me-3"></i>
-                        <input type="text" id="hotelSearch" class="form-control border-0 shadow-none py-2" placeholder="Search routes, pickup points, or vehicle types..." onkeyup="filterHotels()">
+                        <input type="text" id="hotelSearch" class="form-control border-0 shadow-none py-2" placeholder="Search hotels, rooms, amenities, or landmarks..." onkeyup="filterHotels()">
                     </div>
                 </div>
                 <div class="col-md-3 text-center">
@@ -353,7 +353,7 @@
 </div>
 
 <div class="container mb-5">
-    <h3 class="fw-bold mb-4">Available <span class="text-primary">Taxis</span></h3>
+    <h3 class="fw-bold mb-4">Available <span class="text-primary">Stays</span></h3>
     <div class="row g-4">
         <div class="col-md-4">
             <div class="card place-card shadow">
@@ -408,46 +408,46 @@
 
 <div class="container mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold mb-0">Top Rated <span class="text-primary">Taxis</span></h3>
+        <h3 class="fw-bold mb-0">Top Rated <span class="text-primary">Hotels</span></h3>
         <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="loadHotels()">Refresh List</button>
     </div>
     <div id="hotelsContainer" class="row g-4"></div>
 </div>
 
 <div class="container mb-5">
-    <div class="taxi-card">
+    <div class="stay-assist-card">
         <div class="row g-0 align-items-stretch">
             <div class="col-lg-5 p-5" style="background: linear-gradient(135deg, rgba(37,99,235,0.45), rgba(255,193,7,0.18));">
-                <p class="text-warning fw-bold text-uppercase small mb-2">Gyan Garbh Taxi</p>
-                <h3 class="fw-bold mb-3">Request a ride across Bodhgaya</h3>
-                <p class="text-white-50 mb-0">Ola-style local pickup, transparent estimates, and live dispatch to available drivers or the operations team.</p>
+                <p class="text-warning fw-bold text-uppercase small mb-2">Gyan Garbh Stay Desk</p>
+                <h3 class="fw-bold mb-3">Find the right stay in Bodhgaya</h3>
+                <p class="text-white-50 mb-0">Compare room preferences, price expectations, and guest needs before choosing a verified hotel.</p>
             </div>
             <div class="col-lg-7 p-5">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="small text-white-50 fw-bold mb-2">Pickup Location</label>
-                        <input id="taxiPickup" class="w-100" autocomplete="off" placeholder="">
+                        <label class="small text-white-50 fw-bold mb-2">Check-In Date</label>
+                        <input id="stayCheckIn" type="date" class="w-100" autocomplete="off" placeholder="">
                     </div>
                     <div class="col-md-6">
-                        <label class="small text-white-50 fw-bold mb-2">Dropoff Location</label>
-                        <input id="taxiDropoff" class="w-100" autocomplete="off" placeholder="">
+                        <label class="small text-white-50 fw-bold mb-2">Check-Out Date</label>
+                        <input id="stayCheckOut" type="date" class="w-100" autocomplete="off" placeholder="">
                     </div>
                     <div class="col-md-6">
-                        <label class="small text-white-50 fw-bold mb-2">Vehicle</label>
-                        <select id="taxiVehicle" class="w-100">
-                            <option value="sedan">Sedan</option>
-                            <option value="auto">Auto</option>
-                            <option value="suv">SUV</option>
-                            <option value="bike">Bike</option>
+                        <label class="small text-white-50 fw-bold mb-2">Room Preference</label>
+                        <select id="stayRoomType" class="w-100">
+                            <option value="ac">AC Room</option>
+                            <option value="non-ac">Non-AC Room</option>
+                            <option value="family">Family Room</option>
+                            <option value="budget">Budget Room</option>
                         </select>
                     </div>
                     <div class="col-md-6 d-flex align-items-end">
-                        <button class="btn btn-warning rounded-pill fw-bold w-100 py-3" onclick="estimateTaxiFare()">Estimate Fare</button>
+                        <button class="btn btn-warning rounded-pill fw-bold w-100 py-3" onclick="estimateStayBudget()">Estimate Stay</button>
                     </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4">
-                    <div id="taxiEstimate" class="fare-chip">Fare estimate will appear here</div>
-                    <button class="btn btn-light rounded-pill fw-bold px-4 py-3" onclick="requestTaxiRide()">Request Ride</button>
+                    <div id="stayEstimate" class="fare-chip">Stay estimate will appear here</div>
+                    <button class="btn btn-light rounded-pill fw-bold px-4 py-3" onclick="requestStayHelp()">Request Booking Help</button>
                 </div>
             </div>
         </div>
@@ -528,7 +528,7 @@
                             </div>
                         </div>
 
-                        <button onclick="confirmQuickBooking()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg mb-2">CONFIRM RIDE NOW</button>
+                        <button onclick="confirmQuickBooking()" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg mb-2">BOOK NOW</button>
                         <a href="bodhi-path.html" class="btn btn-outline-primary w-100 rounded-pill py-3 fw-bold" target="_blank"><i class="bi bi-compass"></i> Explore Bodh Gaya Heritage</a>
                     </div>
                 </div>
@@ -642,7 +642,7 @@
 
         const storedEmail = localStorage.getItem('userEmail');
         const isGuestBrowsing = !storedEmail;
-        // Guests may browse taxis freely; booking and support actions prompt for authentication.
+        // Guests may browse stays freely; booking and support actions prompt for authentication.
 
         const today = new Date().toISOString().split('T')[0];
         if(document.getElementById('bookIn')) {
@@ -967,38 +967,19 @@
         window.open(whatsappUrl, '_blank');
     }
 
-    async function estimateTaxiFare() {
-        const pickup = document.getElementById('taxiPickup').value.trim();
-        const dropoff = document.getElementById('taxiDropoff').value.trim();
-        const vehicleType = document.getElementById('taxiVehicle').value;
-        if (!pickup || !dropoff) return Swal.fire('Route Required', 'Please enter pickup and dropoff locations.', 'warning');
-        
-        const response = await fetch(`${API_URL}/api/taxi/estimate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
-            body: JSON.stringify({ pickup, dropoff, vehicleType })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Estimate Failed', data.message || 'Unable to estimate fare.', 'error');
-        document.getElementById('taxiEstimate').textContent = `${data.estimatedDistanceKm} km • ₹${data.estimatedFare}`;
-        return data;
-    }
+    function estimateStayBudget() {
+        const checkIn = document.getElementById('stayCheckIn').value;
+        const checkOut = document.getElementById('stayCheckOut').value;
+        const roomType = document.getElementById('stayRoomType').value;
+        if (!checkIn || !checkOut) return Swal.fire('Dates Required', 'Please enter check-in and check-out dates.', 'warning');
 
-    async function requestTaxiRide() {
-        const pickup = document.getElementById('taxiPickup').value.trim();
-        const dropoff = document.getElementById('taxiDropoff').value.trim();
-        const vehicleType = document.getElementById('taxiVehicle').value;
-        if (!userEmail) return Swal.fire('Login Required', 'Please login to request a ride. You can continue browsing and login at checkout.', 'warning');
-        if (!pickup || !dropoff) return Swal.fire('Route Required', 'Please enter pickup and dropoff locations.', 'warning');
-        
-        const response = await fetch(`${API_URL}/api/taxi/rides`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
-            body: JSON.stringify({ pickup, dropoff, vehicleType })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Ride Failed', data.message || 'Unable to request ride.', 'error');
-        Swal.fire('Ride Requested', `Estimated fare: ₹${data.ride.estimatedFare}. Operations has been notified.`, 'success');
+        const inDate = new Date(checkIn);
+        const outDate = new Date(checkOut);
+        const nights = Math.max(1, Math.ceil((outDate - inDate) / (1000 * 60 * 60 * 24)));
+        const baseRate = roomType === 'non-ac' || roomType === 'budget' ? 1200 : roomType === 'family' ? 2800 : 2000;
+        const estimate = nights * baseRate;
+        document.getElementById('stayEstimate').textContent = `${nights} night(s) • ₹${estimate.toLocaleString('en-IN')}`;
+        return { nights, estimate };
     }
 
     async function openSupportTicketWidget() {
