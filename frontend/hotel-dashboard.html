@@ -208,6 +208,7 @@
         }
         .upload-card {
             height: 100%;
+            position: relative;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: #fbfcfe;
@@ -252,6 +253,25 @@
             color: var(--brand-blue);
             box-shadow: 0 10px 22px rgba(23,32,51,0.06);
         }
+        .property-gallery-remove {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(15,40,70,0.92);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.86rem;
+            line-height: 1;
+            z-index: 3;
+            box-shadow: 0 10px 20px rgba(15,40,70,0.22);
+        }
+        .property-gallery-remove:hover { background: #b42318; }
         .room-gallery-preview {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
@@ -786,6 +806,7 @@
         col.innerHTML = `
             <input type="hidden" id="${targetId}" class="property-image-url" data-index="${index}" value="${escapeHTML(imageUrl)}">
             <div class="upload-card">
+                ${index >= 3 ? `<button type="button" class="property-gallery-remove" onclick="removePropertyGallerySlot(this)" aria-label="Remove ${escapeHTML(label)}">&times;</button>` : ''}
                 <div class="upload-preview">
                     <img alt="${escapeHTML(label)} preview">
                     <span><i class="bi bi-image me-1"></i>${previewLabel}</span>
@@ -799,6 +820,66 @@
 
         renderPropertyGalleryPreview(col, imageUrl);
         return col;
+    }
+
+    function reindexPropertyGallerySlots() {
+        const slots = Array.from(document.querySelectorAll('#propertyGalleryContainer .property-gallery-slot'));
+        slots.forEach((slot, index) => {
+            slot.dataset.index = String(index);
+
+            const targetId = getPropertyGalleryTargetId(index);
+            const inputId = getPropertyGalleryInputId(index);
+            const labelText = getPropertyGalleryLabel(index);
+            const previewLabel = index === 0 ? 'Main Image' : 'Gallery Image';
+
+            const hiddenInput = slot.querySelector('.property-image-url');
+            if (hiddenInput) {
+                hiddenInput.id = targetId;
+                hiddenInput.dataset.index = String(index);
+            }
+
+            const fileInput = slot.querySelector('.property-image-input');
+            if (fileInput) {
+                fileInput.id = inputId;
+                fileInput.dataset.index = String(index);
+            }
+
+            const label = slot.querySelector('.upload-body label');
+            if (label) {
+                label.setAttribute('for', inputId);
+                label.textContent = labelText;
+            }
+
+            const help = slot.querySelector('.upload-body small');
+            if (help) help.textContent = getPropertyGalleryHelp(index);
+
+            const previewText = slot.querySelector('.upload-preview span');
+            if (previewText) previewText.innerHTML = `<i class="bi bi-image me-1"></i>${previewLabel}`;
+
+            const previewImg = slot.querySelector('.upload-preview img');
+            if (previewImg) previewImg.alt = `${labelText} preview`;
+
+            let removeButton = slot.querySelector('.property-gallery-remove');
+            if (index >= 3 && !removeButton) {
+                removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'property-gallery-remove';
+                removeButton.innerHTML = '&times;';
+                removeButton.onclick = function() { removePropertyGallerySlot(this); };
+                slot.querySelector('.upload-card')?.prepend(removeButton);
+            }
+
+            if (removeButton) {
+                if (index >= 3) {
+                    removeButton.style.display = 'inline-flex';
+                    removeButton.setAttribute('aria-label', `Remove ${labelText}`);
+                } else {
+                    removeButton.remove();
+                }
+            }
+        });
+
+        propertyGallerySlotCount = slots.length;
     }
 
     function renderPropertyGalleryPreview(slot, imageUrl) {
@@ -826,6 +907,7 @@
         for (let index = 0; index < propertyGallerySlotCount; index += 1) {
             container.appendChild(buildPropertyGalleryCard(index, images[index] || ''));
         }
+        reindexPropertyGallerySlots();
     }
 
     function addPropertyGalleryInput() {
@@ -835,6 +917,18 @@
         const index = propertyGallerySlotCount;
         propertyGallerySlotCount += 1;
         container.appendChild(buildPropertyGalleryCard(index));
+        reindexPropertyGallerySlots();
+    }
+
+    function removePropertyGallerySlot(button) {
+        const slot = button.closest('.property-gallery-slot');
+        if (!slot) return;
+
+        const index = Number(slot.dataset.index || 0);
+        if (index < 3) return;
+
+        slot.remove();
+        reindexPropertyGallerySlots();
     }
 
     function handlePropertyGallerySelection(input) {
@@ -862,13 +956,14 @@
     }
 
     function collectPropertyGalleryUrls() {
-        return Array.from(document.querySelectorAll('.property-image-url'))
-            .sort((a, b) => Number(a.dataset.index || 0) - Number(b.dataset.index || 0))
-            .map((input) => input.value.trim())
+        reindexPropertyGallerySlots();
+        return Array.from(document.querySelectorAll('#propertyGalleryContainer .property-gallery-slot'))
+            .map((slot) => slot.querySelector('.property-image-url')?.value.trim() || '')
             .filter(Boolean);
     }
 
     window.addPropertyGalleryInput = addPropertyGalleryInput;
+    window.removePropertyGallerySlot = removePropertyGallerySlot;
     window.handlePropertyGallerySelection = handlePropertyGallerySelection;
 
     window.onload = async function() {
@@ -1069,11 +1164,11 @@
 
     // ⭐ SAVE HOTEL DETAILS
     async function uploadHotelImagesToServer() {
-        const imageInputs = Array.from(document.querySelectorAll('.property-image-input'))
-            .sort((a, b) => Number(a.dataset.index || 0) - Number(b.dataset.index || 0))
-            .map((input) => ({
-                input,
-                targetId: getPropertyGalleryTargetId(Number(input.dataset.index || 0))
+        reindexPropertyGallerySlots();
+        const imageInputs = Array.from(document.querySelectorAll('#propertyGalleryContainer .property-gallery-slot'))
+            .map((slot, index) => ({
+                input: slot.querySelector('.property-image-input'),
+                targetId: getPropertyGalleryTargetId(index)
             }));
 
         const formData = new FormData();
@@ -1479,7 +1574,7 @@
             imageUrl: uploadedImages[0] || '',
             imageUrl2: uploadedImages[1] || '',
             imageUrl3: uploadedImages[2] || '',
-            images: uploadedImages.length ? uploadedImages : getExistingHotelImages(hotel),
+            images: uploadedImages,
             rooms,
             distanceFromLandmark: {
                 value: parseFloat(document.getElementById('distanceFromLandmark').value) || 0,
