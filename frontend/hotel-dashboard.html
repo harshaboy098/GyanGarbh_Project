@@ -29,35 +29,55 @@
             letter-spacing: 0;
         }
         .dashboard-shell { min-height: 100vh; background: var(--bg-gray); }
-        .sidebar {
-            width: 280px;
-            flex: 0 0 280px;
+                .sidebar {
+            width: 260px;
+            flex: 0 0 260px;
             background: var(--brand-dark);
             min-height: 100vh;
             color: white;
-            padding: 26px 18px;
+            padding: 32px 20px;
             position: sticky;
             top: 0;
             border-right: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            flex-direction: column;
         }
         .sidebar h4 {
-            font-size: 1.08rem;
-            letter-spacing: 0;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 40px;
+            padding-left: 12px;
+            color: var(--accent);
         }
         .nav-link {
-            color: rgba(255,255,255,0.76);
-            border-radius: 6px;
-            margin-bottom: 8px;
-            padding: 11px 12px;
-            transition: background-color 0.18s ease, color 0.18s ease;
+            color: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            padding: 12px 16px;
+            transition: all 0.2s ease;
             text-decoration: none;
-            display: block;
-            font-weight: 700;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            gap: 12px;
+        }
+        .nav-link i {
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
         }
         .nav-link:hover,
         .nav-link.active {
             background: rgba(255,255,255,0.1);
-            color: white;
+            color: #fff;
+        }
+        .nav-link.active {
+            background: var(--brand-blue);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .sidebar hr {
+            border-top-color: rgba(255,255,255,0.1);
+            margin: 20px 0;
         }
         .workspace { min-width: 0; }
         .hotel-header {
@@ -73,17 +93,22 @@
             color: var(--ink);
             font-size: 1.26rem;
         }
-        .content-wrap {
-            max-width: 1220px;
-            margin: 0 auto;
-            padding: 26px;
+                .content-wrap {
+            max-width: 100%;
+            padding: 32px 40px;
         }
-        .stat-card {
+                .stat-card {
             background: var(--panel);
-            border-radius: 8px;
-            padding: 24px;
+            border-radius: 12px;
+            padding: 32px;
             border: 1px solid var(--line);
-            box-shadow: 0 14px 34px rgba(23,32,51,0.07);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+        }
+        .stat-card label {
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            display: block;
         }
         .stat-card label,
         .stat-card h5,
@@ -419,13 +444,15 @@
 <body>
 
 <div class="container-fluid p-0 d-flex dashboard-shell">
-    <div class="sidebar d-none d-md-block">
-        <h4 class="fw-bold mb-5"><i class="bi bi-building-fill me-2"></i>GYAN GARBH</h4>
-        <nav class="nav flex-column">
-            <a class="nav-link active" href="#"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-            <a class="nav-link" href="#" onclick="loadMyBookings()"><i class="bi bi-calendar-event me-2"></i> Refresh Bookings</a>
-            <hr>
-            <a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-left me-2"></i> Logout</a>
+        <div class="sidebar d-none d-md-flex">
+        <h4 class="fw-bold"><i class="bi bi-building-fill me-2"></i>GYAN GARBH</h4>
+        <nav class="nav flex-column flex-grow-1">
+            <a class="nav-link active" href="#"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a class="nav-link" href="#" onclick="loadMyBookings()"><i class="bi bi-calendar-event"></i> Refresh Bookings</a>
+            <div class="mt-auto">
+                <hr>
+                <a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-left"></i> Logout</a>
+            </div>
         </nav>
     </div>
 
@@ -500,47 +527,42 @@
                 <div class="tab-pane fade" id="details" role="tabpanel" aria-labelledby="details-tab">
                     <div class="stat-card">
                         <h5 class="fw-bold mb-4"><i class="bi bi-building me-2"></i>Hotel Details & Configuration</h5>
-                        <form onsubmit="event.preventDefault(); saveHotelDetails();">
-                            <div class="row g-3">
-                                <div class="form-group mb-3">
-                                    <label for="hotelNameInput">Hotel Name</label>
+                                                <form onsubmit="event.preventDefault(); saveHotelDetails();">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <label class="small fw-bold text-muted" for="hotelNameInput">Hotel Name</label>
                                     <input type="text" id="hotelNameInput" class="form-control" placeholder="Enter Hotel Name">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Total Rooms</label>
+                                <div class="col-md-6 col-lg-3">
+                                    <label class="small fw-bold text-muted">Total Rooms</label>
                                     <input type="number" id="totalRooms" class="form-control" placeholder="10" min="1" required>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">AC Room Price (₹)</label>
+                                <div class="col-md-6 col-lg-3">
+                                    <label class="small fw-bold text-muted">AC Room Price (₹)</label>
                                     <input type="number" id="acRoomPrice" class="form-control" placeholder="2000" min="100" required>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Non-AC Room Price (₹)</label>
+                                <div class="col-md-6 col-lg-3">
+                                    <label class="small fw-bold text-muted">Non-AC Room Price (₹)</label>
                                     <input type="number" id="nonAcRoomPrice" class="form-control" placeholder="1200" min="100" required>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">Guest Rating</label>
+                                <div class="col-md-6 col-lg-3">
+                                    <label class="small fw-bold text-muted">Guest Rating</label>
                                     <input type="hidden" id="hotelRating" value="4.0">
                                     <div class="rating-preview">
-                                        <div>
-                                            <div class="fw-bold">Customer feedback score</div>
-                                            <small class="text-muted">Ratings are controlled by guest reviews, not hotel owners.</small>
-                                        </div>
-                                        <span class="rating-badge"><i class="bi bi-star-fill"></i> Live</span>
+                                        <span class="rating-badge"><i class="bi bi-star-fill"></i> Live Score: 4.0</span>
                                     </div>
                                 </div>
                                 <div class="col-12">
-                                    <label class="small fw-bold text-muted mb-2">Hotel Description</label>
+                                    <label class="small fw-bold text-muted">Hotel Description</label>
                                     <textarea id="hotelDescription" class="form-control" rows="3" placeholder="Short description for guests"></textarea>
                                 </div>
 
-                                <!-- 🆕 NEW FIELDS -->
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">📍 Distance from Landmark (km)</label>
+                                <div class="col-md-6 col-lg-4">
+                                    <label class="small fw-bold text-muted">📍 Distance from Landmark (km)</label>
                                     <input type="number" id="distanceFromLandmark" class="form-control" placeholder="0.5" step="0.1" min="0">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="small fw-bold text-muted mb-2">🏛️ Landmark Name</label>
+                                <div class="col-md-6 col-lg-8">
+                                    <label class="small fw-bold text-muted">🏛️ Landmark Name</label>
                                     <select id="landmarkName" class="form-select">
                                         <option value="Mahabodhi Temple">Mahabodhi Temple</option>
                                         <option value="Bodh Gaya Temple">Bodh Gaya Temple</option>
@@ -550,9 +572,8 @@
                                     </select>
                                 </div>
                                 <div class="col-12">
-                                    <label class="small fw-bold text-muted mb-2">✨ Gyan Garbh Highlights (Special Features)</label>
-                                    <textarea id="gyanGarbhHighlights" class="form-control" rows="3" placeholder="e.g., Peaceful garden, Vegetarian meals, Meditation room, Near Mahabodhi Temple..."></textarea>
-                                    <small class="text-muted">Describe what makes your hotel special for spiritual seekers</small>
+                                    <label class="small fw-bold text-muted">✨ Gyan Garbh Highlights (Special Features)</label>
+                                    <textarea id="gyanGarbhHighlights" class="form-control" rows="2" placeholder="e.g., Peaceful garden, Meditation room..."></textarea>
                                 </div>
                             </div>
 
@@ -792,9 +813,9 @@
         return `Maps to images[${index}] in the public carousel.`;
     }
 
-    function buildPropertyGalleryCard(index, imageUrl = '') {
+        function buildPropertyGalleryCard(index, imageUrl = '') {
         const col = document.createElement('div');
-        col.className = 'col-md-4 property-gallery-slot';
+        col.className = 'col-md-6 col-lg-4 col-xl-3 property-gallery-slot';
         col.dataset.index = String(index);
 
         const targetId = getPropertyGalleryTargetId(index);
@@ -1004,8 +1025,12 @@
         }
     };
 
-    // Auto refresh on focus
+        // Auto refresh on focus
     window.onfocus = async function() {
+        if (selectedRoomImageFiles.length > 0) return;
+        const inputs = document.querySelectorAll('.property-image-input');
+        const isUploading = Array.from(inputs).some(input => input.files && input.files.length > 0);
+        if (isUploading) return;
         await loadMyBookings();
         await loadHotelDetails();
     };
@@ -1143,26 +1168,28 @@
         }
     }
 
-    function renderRoomList(rooms) {
+        function renderRoomList(rooms) {
         const roomList = document.getElementById('roomList');
         if (!roomList) return;
         if (!rooms || rooms.length === 0) {
             roomList.innerHTML = `<div class="alert alert-info rounded-4">No room inventory has been added to your hotel profile. Please add new room categories and availability.</div>`;
             return;
         }
-        roomList.innerHTML = `<div class="row g-3">${rooms.map(room => `
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm rounded-4 p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+        roomList.innerHTML = `<div class="row g-4">${rooms.map(room => `
+            <div class="col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
                         <div>
-                            <h6 class="fw-bold mb-1">${room.roomType || 'Room'}</h6>
-                            <small class="text-muted">₹${room.price || 'N/A'} / night</small>
+                            <h6 class="fw-bold mb-1 fs-5">${room.roomType || 'Room'}</h6>
+                            <div class="text-primary fw-bold">₹${room.price || 'N/A'} <small class="text-muted fw-normal">/ night</small></div>
                         </div>
-                        <span class="badge bg-success">${room.status || 'Available'}</span>
+                        <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">${room.status || 'Available'}</span>
                     </div>
-                    <div class="mb-2 text-muted small">Amenities: ${room.amenities?.length ? room.amenities.join(', ') : 'Standard'}</div>
-                    <div class="d-flex gap-2 flex-wrap">
-                        ${(room.images || []).slice(0, 3).map(img => `<img src="${img}" alt="Room" class="rounded-3" style="width:60px;height:60px;object-fit:cover;">`).join('')}
+                    <div class="mb-3 text-muted small">
+                        <i class="bi bi-stars me-1"></i> ${room.amenities?.length ? room.amenities.join(', ') : 'Standard Amenities'}
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap mt-auto">
+                        ${(room.images || []).slice(0, 4).map(img => `<img src="${img}" alt="Room" class="rounded-3" style="width:70px;height:70px;object-fit:cover;border: 1px solid var(--line);">`).join('')}
                     </div>
                 </div>
             </div>`).join('')}</div>`;
