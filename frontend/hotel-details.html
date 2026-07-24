@@ -225,7 +225,7 @@
 
         .gallery-strip {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 14px;
         }
 
@@ -236,6 +236,10 @@
             border-radius: 8px;
             cursor: zoom-in;
             transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
+        }
+
+        .gallery-strip img:first-child {
+            grid-column: span 2;
         }
 
         .gallery-strip img:hover {
@@ -626,6 +630,7 @@
             .spec-grid,
             .amenities-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .gallery-strip { grid-template-columns: 1fr; }
+            .gallery-strip img:first-child { grid-column: auto; }
             .gallery-strip img { height: 220px; }
             .room-card { grid-template-columns: 1fr; }
             .room-package { min-height: auto; }
@@ -696,12 +701,13 @@
         }
 
         function getImages(hotel) {
-            const images = [
-                hotel.imageUrl,
-                hotel.imageUrl2,
-                hotel.imageUrl3,
-                ...(Array.isArray(hotel.images) ? hotel.images : [])
-            ].filter(Boolean);
+            const dashboardImages = Array.isArray(hotel.images)
+                ? hotel.images.map((src) => String(src || '').trim()).filter(Boolean)
+                : [];
+            const legacyImages = [hotel.imageUrl, hotel.imageUrl2, hotel.imageUrl3]
+                .map((src) => String(src || '').trim())
+                .filter(Boolean);
+            const images = dashboardImages.length ? dashboardImages : legacyImages;
             return images.length ? [...new Set(images)] : [FALLBACK_IMAGE];
         }
 
@@ -1108,7 +1114,7 @@
                     <div class="container">
                         <h2 class="section-title">Gallery</h2>
                         <div id="gallery-container" class="gallery-strip">
-                            ${images.slice(0, 3).map((src) => `<img src="${escapeHTML(src)}" alt="${escapeHTML(hotel.hotelName || 'Hotel image')}" loading="lazy" onerror="this.src='${FALLBACK_IMAGE}'">`).join('')}
+                            ${images.map((src, index) => `<img src="${escapeHTML(src)}" alt="${escapeHTML(hotel.hotelName || 'Hotel image')} ${index + 1}" loading="lazy" onerror="this.remove()">`).join('')}
                         </div>
                     </div>
                 </section>

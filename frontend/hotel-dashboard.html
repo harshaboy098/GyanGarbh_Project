@@ -752,7 +752,8 @@
         bookings: []
     };
     let selectedRoomImageFiles = [];
-    let propertyGallerySlotCount = 3;
+    const MIN_PROPERTY_GALLERY_SLOTS = 3;
+    let currentGalleryState = [];
 
     function getHotelAuthToken() {
         try {
@@ -803,17 +804,41 @@
     }
 
     function getPropertyGalleryLabel(index) {
-        return index === 0 ? 'Main Property Image' : `Gallery Image ${index + 1}`;
+        return index === 0 ? 'Main Property Image' : `Gallery Image ${index}`;
     }
 
     function getPropertyGalleryHelp(index) {
         if (index === 0) return 'Used as the primary cover image on the website.';
-        if (index === 1) return 'Maps to images[1] in the public carousel.';
-        if (index === 2) return 'Maps to images[2] in the public carousel.';
-        return `Maps to images[${index}] in the public carousel.`;
+        return 'Published in the website gallery when an image is selected.';
     }
 
-        function buildPropertyGalleryCard(index, imageUrl = '') {
+    function createGalleryStateItem(url = '') {
+        return {
+            url: String(url || '').trim(),
+            file: null,
+            previewUrl: String(url || '').trim()
+        };
+    }
+
+    function normalizePropertyGalleryState(images = [], preserveDrafts = false) {
+        const cleanImages = Array.isArray(images)
+            ? images.map((url) => String(url || '').trim()).filter(Boolean)
+            : [];
+
+        if (preserveDrafts && currentGalleryState.some((item) => item.file)) {
+            while (currentGalleryState.length < MIN_PROPERTY_GALLERY_SLOTS) {
+                currentGalleryState.push(createGalleryStateItem());
+            }
+            return;
+        }
+
+        currentGalleryState = cleanImages.slice(0, MIN_PROPERTY_GALLERY_SLOTS).map((url) => createGalleryStateItem(url));
+        while (currentGalleryState.length < MIN_PROPERTY_GALLERY_SLOTS) {
+            currentGalleryState.push(createGalleryStateItem());
+        }
+    }
+
+    function buildPropertyGalleryCard(index, stateItem = createGalleryStateItem()) {
         const col = document.createElement('div');
         col.className = 'col-md-6 col-lg-4 col-xl-3 property-gallery-slot';
         col.dataset.index = String(index);
@@ -825,7 +850,7 @@
         const previewLabel = index === 0 ? 'Main Image' : 'Gallery Image';
 
         col.innerHTML = `
-            <input type="hidden" id="${targetId}" class="property-image-url" data-index="${index}" value="${escapeHTML(imageUrl)}">
+            <input type="hidden" id="${targetId}" class="property-image-url" data-index="${index}" value="${escapeHTML(stateItem.url || stateItem.previewUrl || '')}">
             <div class="upload-card">
                 ${index >= 3 ? `<button type="button" class="property-gallery-remove" onclick="removePropertyGallerySlot(this)" aria-label="Remove ${escapeHTML(label)}">&times;</button>` : ''}
                 <div class="upload-preview">
@@ -839,68 +864,12 @@
                 </div>
             </div>`;
 
-        renderPropertyGalleryPreview(col, imageUrl);
+        renderPropertyGalleryPreview(col, stateItem.previewUrl || stateItem.url || '');
         return col;
     }
 
     function reindexPropertyGallerySlots() {
-        const slots = Array.from(document.querySelectorAll('#propertyGalleryContainer .property-gallery-slot'));
-        slots.forEach((slot, index) => {
-            slot.dataset.index = String(index);
-
-            const targetId = getPropertyGalleryTargetId(index);
-            const inputId = getPropertyGalleryInputId(index);
-            const labelText = getPropertyGalleryLabel(index);
-            const previewLabel = index === 0 ? 'Main Image' : 'Gallery Image';
-
-            const hiddenInput = slot.querySelector('.property-image-url');
-            if (hiddenInput) {
-                hiddenInput.id = targetId;
-                hiddenInput.dataset.index = String(index);
-            }
-
-            const fileInput = slot.querySelector('.property-image-input');
-            if (fileInput) {
-                fileInput.id = inputId;
-                fileInput.dataset.index = String(index);
-            }
-
-            const label = slot.querySelector('.upload-body label');
-            if (label) {
-                label.setAttribute('for', inputId);
-                label.textContent = labelText;
-            }
-
-            const help = slot.querySelector('.upload-body small');
-            if (help) help.textContent = getPropertyGalleryHelp(index);
-
-            const previewText = slot.querySelector('.upload-preview span');
-            if (previewText) previewText.innerHTML = `<i class="bi bi-image me-1"></i>${previewLabel}`;
-
-            const previewImg = slot.querySelector('.upload-preview img');
-            if (previewImg) previewImg.alt = `${labelText} preview`;
-
-            let removeButton = slot.querySelector('.property-gallery-remove');
-            if (index >= 3 && !removeButton) {
-                removeButton = document.createElement('button');
-                removeButton.type = 'button';
-                removeButton.className = 'property-gallery-remove';
-                removeButton.innerHTML = '&times;';
-                removeButton.onclick = function() { removePropertyGallerySlot(this); };
-                slot.querySelector('.upload-card')?.prepend(removeButton);
-            }
-
-            if (removeButton) {
-                if (index >= 3) {
-                    removeButton.style.display = 'inline-flex';
-                    removeButton.setAttribute('aria-label', `Remove ${labelText}`);
-                } else {
-                    removeButton.remove();
-                }
-            }
-        });
-
-        propertyGallerySlotCount = slots.length;
+        renderPropertyGalleryInputs(undefined, true);
     }
 
     function renderPropertyGalleryPreview(slot, imageUrl) {
@@ -919,34 +888,28 @@
         }
     }
 
-    function renderPropertyGalleryInputs(images = []) {
+    function renderPropertyGalleryInputs(images, preserveDrafts = false) {
         const container = document.getElementById('propertyGalleryContainer');
         if (!container) return;
 
-        propertyGallerySlotCount = 3;
-        container.innerHTML = '';
-
-        for (let index = 0; index < propertyGallerySlotCount; index += 1) {
-            container.appendChild(buildPropertyGalleryCard(index, images[index] || ''));
-        }
-
-        if (images.length > 3) {
-            for (let index = 3; index < images.length; index += 1) {
-                container.appendChild(buildPropertyGalleryCard(index, images[index] || ''));
+        if (images !== undefined || !currentGalleryState.length) {
+            normalizePropertyGalleryState(images || [], preserveDrafts);
+        } else {
+            while (currentGalleryState.length < MIN_PROPERTY_GALLERY_SLOTS) {
+                currentGalleryState.push(createGalleryStateItem());
             }
         }
 
-        reindexPropertyGallerySlots();
+        container.innerHTML = '';
+
+        currentGalleryState.forEach((item, index) => {
+            container.appendChild(buildPropertyGalleryCard(index, item));
+        });
     }
 
     function addPropertyGalleryInput() {
-        const container = document.getElementById('propertyGalleryContainer');
-        if (!container) return;
-
-        const index = propertyGallerySlotCount;
-        propertyGallerySlotCount += 1;
-        container.appendChild(buildPropertyGalleryCard(index));
-        reindexPropertyGallerySlots();
+        currentGalleryState.push(createGalleryStateItem());
+        renderPropertyGalleryInputs(undefined, true);
     }
 
     function removePropertyGallerySlot(button) {
@@ -954,10 +917,11 @@
         if (!slot) return;
 
         const index = Number(slot.dataset.index || 0);
-        if (index < 3) return;
+        if (index < MIN_PROPERTY_GALLERY_SLOTS) return;
 
-        slot.remove();
-        reindexPropertyGallerySlots();
+        const removed = currentGalleryState.splice(index, 1)[0];
+        if (removed?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(removed.previewUrl);
+        renderPropertyGalleryInputs(undefined, true);
     }
 
     function handlePropertyGallerySelection(input) {
@@ -965,13 +929,24 @@
         if (!file) return;
 
         const slot = input.closest('.property-gallery-slot');
-        const hiddenInput = slot?.querySelector('.property-image-url');
-        const reader = new FileReader();
-        reader.onload = () => {
-            if (hiddenInput) hiddenInput.value = reader.result;
-            if (slot) renderPropertyGalleryPreview(slot, reader.result);
+        const index = Number(slot?.dataset.index || 0);
+        if (!currentGalleryState[index]) currentGalleryState[index] = createGalleryStateItem();
+
+        if (currentGalleryState[index].previewUrl?.startsWith('blob:')) {
+            URL.revokeObjectURL(currentGalleryState[index].previewUrl);
+        }
+
+        currentGalleryState[index] = {
+            ...currentGalleryState[index],
+            file,
+            previewUrl: URL.createObjectURL(file)
         };
-        reader.readAsDataURL(file);
+
+        if (slot) {
+            const hiddenInput = slot.querySelector('.property-image-url');
+            if (hiddenInput) hiddenInput.value = currentGalleryState[index].url || '';
+            renderPropertyGalleryPreview(slot, currentGalleryState[index].previewUrl);
+        }
     }
 
     function getExistingHotelImages(hotel = {}) {
@@ -979,15 +954,13 @@
         return [
             savedImages[0] || hotel.imageUrl,
             savedImages[1] || hotel.imageUrl2,
-            savedImages[2] || hotel.imageUrl3,
-            ...savedImages.slice(3)
+            savedImages[2] || hotel.imageUrl3
         ].filter(Boolean);
     }
 
     function collectPropertyGalleryUrls() {
-        reindexPropertyGallerySlots();
-        return Array.from(document.querySelectorAll('#propertyGalleryContainer .property-gallery-slot'))
-            .map((slot) => slot.querySelector('.property-image-url')?.value.trim() || '')
+        return currentGalleryState
+            .map((item) => String(item.url || '').trim())
             .filter(Boolean);
     }
 
@@ -1027,10 +1000,8 @@
 
         // Auto refresh on focus
     window.onfocus = async function() {
-        if (selectedRoomImageFiles.length > 0) return;
-        const inputs = document.querySelectorAll('.property-image-input');
-        const isUploading = Array.from(inputs).some(input => input.files && input.files.length > 0);
-        if (isUploading) return;
+        const hasUnsavedPropertyImages = currentGalleryState.some((item) => item.file);
+        if (selectedRoomImageFiles.length > 0 || hasUnsavedPropertyImages) return;
         await loadMyBookings();
         await loadHotelDetails();
     };
@@ -1197,13 +1168,6 @@
 
     // ⭐ SAVE HOTEL DETAILS
     async function uploadHotelImagesToServer() {
-        reindexPropertyGallerySlots();
-        const imageInputs = Array.from(document.querySelectorAll('#propertyGalleryContainer .property-gallery-slot'))
-            .map((slot, index) => ({
-                input: slot.querySelector('.property-image-input'),
-                targetId: getPropertyGalleryTargetId(index)
-            }));
-
         const formData = new FormData();
         const selectedImages = [];
 
@@ -1213,10 +1177,10 @@
             useWebWorker: true
         };
 
-        for (const item of imageInputs) {
-            const fileInput = item.input;
-            if (fileInput && fileInput.files && fileInput.files[0]) {
-                const originalFile = fileInput.files[0];
+        for (let index = 0; index < currentGalleryState.length; index += 1) {
+            const item = currentGalleryState[index];
+            if (item?.file) {
+                const originalFile = item.file;
                 let compressedFile = originalFile;
 
                 if (typeof imageCompression === 'function') {
@@ -1228,7 +1192,7 @@
                 }
 
                 formData.append('hotelImages', compressedFile, originalFile.name);
-                selectedImages.push(item);
+                selectedImages.push({ index });
             }
         }
 
@@ -1257,16 +1221,26 @@
         const cleanUploadedImages = uploadedImages.filter(Boolean);
 
         cleanUploadedImages.forEach((url, index) => {
-            const target = document.getElementById(selectedImages[index]?.targetId);
-            if (target && url) target.value = url;
+            const stateIndex = selectedImages[index]?.index;
+            if (Number.isInteger(stateIndex) && currentGalleryState[stateIndex] && url) {
+                if (currentGalleryState[stateIndex].previewUrl?.startsWith('blob:')) {
+                    URL.revokeObjectURL(currentGalleryState[stateIndex].previewUrl);
+                }
+                currentGalleryState[stateIndex] = {
+                    url,
+                    file: null,
+                    previewUrl: url
+                };
+            }
         });
 
+        renderPropertyGalleryInputs(undefined, true);
         return collectPropertyGalleryUrls();
     }
 
     async function saveHotelDetails() {
         try {
-            const propertyImages = await uploadHotelImagesToServer();
+            const hotelImages = await uploadHotelImagesToServer();
 
             const facilities = {
                 wifi: document.getElementById('wifi').checked,
@@ -1295,10 +1269,11 @@
                     nonAcRoomPrice: document.getElementById('nonAcRoomPrice').value,
                     description: document.getElementById('hotelDescription').value,
                     facilities: facilities,
-                    imageUrl: propertyImages[0] || '',
-                    imageUrl2: propertyImages[1] || '',
-                    imageUrl3: propertyImages[2] || '',
-                    images: propertyImages,
+                    imageUrl: hotelImages[0] || '',
+                    imageUrl2: hotelImages[1] || '',
+                    imageUrl3: hotelImages[2] || '',
+                    images: hotelImages,
+                    hotelImages,
                     distanceFromLandmark: distanceFromLandmark,
                     gyanGarbhHighlights: document.getElementById('gyanGarbhHighlights').value
                 })
@@ -1608,6 +1583,7 @@
             imageUrl2: uploadedImages[1] || '',
             imageUrl3: uploadedImages[2] || '',
             images: uploadedImages,
+            hotelImages: uploadedImages,
             rooms,
             distanceFromLandmark: {
                 value: parseFloat(document.getElementById('distanceFromLandmark').value) || 0,

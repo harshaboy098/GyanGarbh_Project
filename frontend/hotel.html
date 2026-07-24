@@ -711,10 +711,15 @@
     }
 
     function getHotelGalleryImages(hotel) {
-        const dashboardImages = Array.isArray(hotel.images) ? hotel.images : [];
-        const legacyImages = [hotel.imageUrl, hotel.imageUrl2, hotel.imageUrl3];
+        const dashboardImages = Array.isArray(hotel.images)
+            ? hotel.images.map((src) => String(src || '').trim()).filter(Boolean)
+            : [];
+        const legacyImages = [hotel.imageUrl, hotel.imageUrl2, hotel.imageUrl3]
+            .map((src) => String(src || '').trim())
+            .filter(Boolean);
         const fallback = 'https://images.unsplash.com/photo-1566073771259-6a8506099945';
-        return [...new Set([...dashboardImages, ...legacyImages, fallback].filter(Boolean))].slice(0, 8);
+        const images = dashboardImages.length ? dashboardImages : legacyImages;
+        return images.length ? [...new Set(images)].slice(0, 8) : [fallback];
     }
 
     function openHotelDetailsPage(hotelId) {

@@ -3023,7 +3023,7 @@ app.put('/hotel/update-details', requireSession(['hotel']), async (req, res) => 
 
     try {
 
-        const { hotelName, roomRate, totalRooms, acRoomPrice, nonAcRoomPrice, description, facilities, imageUrl, imageUrl2, imageUrl3, images, distanceFromLandmark, gyanGarbhHighlights } = req.body;
+        const { hotelName, roomRate, totalRooms, acRoomPrice, nonAcRoomPrice, description, facilities, imageUrl, imageUrl2, imageUrl3, images, hotelImages, distanceFromLandmark, gyanGarbhHighlights } = req.body;
 
         const ownerEmail = req.session.email;
 
@@ -3051,7 +3051,8 @@ app.put('/hotel/update-details', requireSession(['hotel']), async (req, res) => 
 
         if (imageUrl3 !== undefined) updateData.imageUrl3 = imageUrl3 || "";
 
-        if (images !== undefined) updateData.images = Array.isArray(images) ? images.filter(Boolean).map((url) => String(url).trim()).filter(Boolean) : [];
+        const requestedImages = hotelImages !== undefined ? hotelImages : images;
+        if (requestedImages !== undefined) updateData.images = Array.isArray(requestedImages) ? requestedImages.filter(Boolean).map((url) => String(url).trim()).filter(Boolean) : [];
 
         if (distanceFromLandmark !== undefined) updateData.distanceFromLandmark = distanceFromLandmark || { value: 0, unit: 'km', landmark: 'Mahabodhi Temple' };
 
@@ -3829,6 +3830,7 @@ app.put('/api/hotels/:id', requireSession(['hotel', 'admin', 'assistant']), asyn
             imageUrl2,
             imageUrl3,
             images,
+            hotelImages,
             rooms,
             distanceFromLandmark,
             gyanGarbhHighlights
@@ -3844,7 +3846,8 @@ app.put('/api/hotels/:id', requireSession(['hotel', 'admin', 'assistant']), asyn
         if (imageUrl !== undefined) hotel.imageUrl = String(imageUrl || '').trim();
         if (imageUrl2 !== undefined) hotel.imageUrl2 = String(imageUrl2 || '').trim();
         if (imageUrl3 !== undefined) hotel.imageUrl3 = String(imageUrl3 || '').trim();
-        if (images !== undefined) hotel.images = Array.isArray(images) ? images.map((url) => String(url || '').trim()).filter(Boolean) : [];
+        const requestedImages = hotelImages !== undefined ? hotelImages : images;
+        if (requestedImages !== undefined) hotel.images = Array.isArray(requestedImages) ? requestedImages.map((url) => String(url || '').trim()).filter(Boolean) : [];
         if (Array.isArray(rooms)) {
             hotel.rooms = rooms.map((room) => ({
                 roomType: String(room.roomType || 'Room').trim(),
