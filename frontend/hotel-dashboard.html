@@ -754,6 +754,7 @@
     let selectedRoomImageFiles = [];
     const MIN_PROPERTY_GALLERY_SLOTS = 3;
     let currentGalleryState = [];
+    let propertyGalleryDirty = false;
 
     function getHotelAuthToken() {
         try {
@@ -820,19 +821,45 @@
         };
     }
 
+    function isValidSavedGalleryImage(value) {
+        const src = String(value || '').trim();
+        if (!src || src === 'null' || src === 'undefined') return false;
+        if (/^data:image\//i.test(src) || /^blob:/i.test(src)) return true;
+
+        try {
+            const parsed = new URL(src, window.location.href);
+            const host = parsed.hostname.toLowerCase();
+            if (host.includes('unsplash.com')) return false;
+            return /^https?:$/i.test(parsed.protocol);
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function hasPendingGalleryChanges() {
+        if (propertyGalleryDirty) return true;
+        if (currentGalleryState.some((item) => item?.file || item?.previewUrl?.startsWith('blob:'))) return true;
+        return Array.from(document.querySelectorAll('.property-image-input'))
+            .some((input) => input.files && input.files.length > 0);
+    }
+
+    function markPropertyGalleryDirty() {
+        propertyGalleryDirty = true;
+    }
+
     function normalizePropertyGalleryState(images = [], preserveDrafts = false) {
         const cleanImages = Array.isArray(images)
-            ? images.map((url) => String(url || '').trim()).filter(Boolean)
+            ? images.map((url) => String(url || '').trim()).filter(isValidSavedGalleryImage)
             : [];
 
-        if (preserveDrafts && currentGalleryState.some((item) => item.file)) {
+        if (preserveDrafts && hasPendingGalleryChanges()) {
             while (currentGalleryState.length < MIN_PROPERTY_GALLERY_SLOTS) {
                 currentGalleryState.push(createGalleryStateItem());
             }
             return;
         }
 
-        currentGalleryState = cleanImages.slice(0, MIN_PROPERTY_GALLERY_SLOTS).map((url) => createGalleryStateItem(url));
+        currentGalleryState = cleanImages.map((url) => createGalleryStateItem(url));
         while (currentGalleryState.length < MIN_PROPERTY_GALLERY_SLOTS) {
             currentGalleryState.push(createGalleryStateItem());
         }
@@ -909,6 +936,7 @@
 
     function addPropertyGalleryInput() {
         currentGalleryState.push(createGalleryStateItem());
+        markPropertyGalleryDirty();
         renderPropertyGalleryInputs(undefined, true);
     }
 
@@ -921,6 +949,7 @@
 
         const removed = currentGalleryState.splice(index, 1)[0];
         if (removed?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(removed.previewUrl);
+        markPropertyGalleryDirty();
         renderPropertyGalleryInputs(undefined, true);
     }
 
@@ -941,6 +970,7 @@
             file,
             previewUrl: URL.createObjectURL(file)
         };
+        markPropertyGalleryDirty();
 
         if (slot) {
             const hiddenInput = slot.querySelector('.property-image-url');
@@ -951,11 +981,11 @@
 
     function getExistingHotelImages(hotel = {}) {
         const savedImages = Array.isArray(hotel.images) ? hotel.images : [];
-        return [
-            savedImages[0] || hotel.imageUrl,
-            savedImages[1] || hotel.imageUrl2,
-            savedImages[2] || hotel.imageUrl3
-        ].filter(Boolean);
+        const preferredImages = savedImages.filter(isValidSavedGalleryImage);
+        if (preferredImages.length) return preferredImages;
+
+        return [hotel.imageUrl, hotel.imageUrl2, hotel.imageUrl3]
+            .filter(isValidSavedGalleryImage);
     }
 
     function collectPropertyGalleryUrls() {
@@ -1000,8 +1030,7 @@
 
         // Auto refresh on focus
     window.onfocus = async function() {
-        const hasUnsavedPropertyImages = currentGalleryState.some((item) => item.file);
-        if (selectedRoomImageFiles.length > 0 || hasUnsavedPropertyImages) return;
+        if (selectedRoomImageFiles.length > 0 || hasPendingGalleryChanges()) return;
         await loadMyBookings();
         await loadHotelDetails();
     };
@@ -1015,7 +1044,9 @@
         document.getElementById('acRoomPrice').value = hotel.acRoomPrice || 2000;
         document.getElementById('nonAcRoomPrice').value = hotel.nonAcRoomPrice || 1200;
         document.getElementById('hotelRating').value = hotel.rating || 4.0;
-        renderPropertyGalleryInputs(getExistingHotelImages(hotel));
+        if (!hasPendingGalleryChanges()) {
+            renderPropertyGalleryInputs(getExistingHotelImages(hotel));
+        }
         document.getElementById('hotelDescription').value = hotel.description || '';
 
         if (hotel.distanceFromLandmark) {
@@ -1054,7 +1085,9 @@
                 document.getElementById('acRoomPrice').value = hotel.acRoomPrice || 2000;
                 document.getElementById('nonAcRoomPrice').value = hotel.nonAcRoomPrice || 1200;
                 document.getElementById('hotelRating').value = hotel.rating || 4.0;
-                renderPropertyGalleryInputs(getExistingHotelImages(hotel));
+                if (!hasPendingGalleryChanges()) {
+                    renderPropertyGalleryInputs(getExistingHotelImages(hotel));
+                }
                 document.getElementById('hotelDescription').value = hotel.description || '';
                 
                 // 🆕 LOAD NEW FIELDS
@@ -1086,6 +1119,11 @@
     }
 
     async function refreshHotelProfileFromServer() {
+        if (hasPendingGalleryChanges()) {
+            await loadMyBookings();
+            return true;
+        }
+
         const currentHotel = window.gyanGarbhDashboardData.hotel || {};
         const hotelId = String(currentHotel._id || '').trim();
 
@@ -1168,14 +1206,12 @@
 
     // ⭐ SAVE HOTEL DETAILS
     async function uploadHotelImagesToServer() {
-        const formData = new FormData();
-        const selectedImages = [];
-
         const compressionOptions = {
             maxSizeMB: 1,
             maxWidthOrHeight: 1920,
             useWebWorker: true
         };
+        const hotelImages = [];
 
         for (let index = 0; index < currentGalleryState.length; index += 1) {
             const item = currentGalleryState[index];
@@ -1191,51 +1227,36 @@
                     }
                 }
 
-                formData.append('hotelImages', compressedFile, originalFile.name);
-                selectedImages.push({ index });
-            }
-        }
+                const cloudinaryFormData = new FormData();
+                cloudinaryFormData.append('file', compressedFile);
+                cloudinaryFormData.append('upload_preset', 'gyangarbh_preset');
 
-        if (!selectedImages.length) return collectPropertyGalleryUrls();
+                const cloudinaryUploadResponse = await fetch('https://api.cloudinary.com/v1_1/dvmdynlae/image/upload', {
+                    method: 'POST',
+                    body: cloudinaryFormData
+                });
+                const cloudinaryUploadData = await cloudinaryUploadResponse.json().catch(() => ({ error: { message: 'Invalid Cloudinary upload response.' } }));
 
-        const uploadedImages = [];
-
-        for (const file of formData.getAll('hotelImages')) {
-            const cloudinaryFormData = new FormData();
-            cloudinaryFormData.append('file', file);
-            cloudinaryFormData.append('upload_preset', 'gyangarbh_preset');
-
-            const cloudinaryUploadResponse = await fetch('https://api.cloudinary.com/v1_1/dvmdynlae/image/upload', {
-                method: 'POST',
-                body: cloudinaryFormData
-            });
-            const cloudinaryUploadData = await cloudinaryUploadResponse.json().catch(() => ({ error: { message: 'Invalid Cloudinary upload response.' } }));
-
-            if (!cloudinaryUploadResponse.ok) {
-                throw new Error(cloudinaryUploadData.error?.message || 'Cloudinary image upload failed.');
-            }
-
-            uploadedImages.push(cloudinaryUploadData.secure_url || cloudinaryUploadData.url);
-        }
-
-        const cleanUploadedImages = uploadedImages.filter(Boolean);
-
-        cleanUploadedImages.forEach((url, index) => {
-            const stateIndex = selectedImages[index]?.index;
-            if (Number.isInteger(stateIndex) && currentGalleryState[stateIndex] && url) {
-                if (currentGalleryState[stateIndex].previewUrl?.startsWith('blob:')) {
-                    URL.revokeObjectURL(currentGalleryState[stateIndex].previewUrl);
+                if (!cloudinaryUploadResponse.ok) {
+                    throw new Error(cloudinaryUploadData.error?.message || 'Cloudinary image upload failed.');
                 }
-                currentGalleryState[stateIndex] = {
-                    url,
-                    file: null,
-                    previewUrl: url
-                };
-            }
-        });
 
-        renderPropertyGalleryInputs(undefined, true);
-        return collectPropertyGalleryUrls();
+                const uploadedUrl = cloudinaryUploadData.secure_url || cloudinaryUploadData.url;
+                if (isValidSavedGalleryImage(uploadedUrl)) hotelImages.push(uploadedUrl);
+            } else if (isValidSavedGalleryImage(item?.url)) {
+                hotelImages.push(String(item.url).trim());
+            }
+        }
+
+        return [...new Set(hotelImages)];
+    }
+
+    function commitSavedPropertyGalleryState(hotelImages = []) {
+        currentGalleryState.forEach((item) => {
+            if (item?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
+        });
+        propertyGalleryDirty = false;
+        renderPropertyGalleryInputs(hotelImages, false);
     }
 
     async function saveHotelDetails() {
@@ -1281,6 +1302,7 @@
 
             const data = await res.json();
             if (res.ok) {
+                commitSavedPropertyGalleryState(hotelImages);
                 Swal.fire('Success!', 'Hotel details updated successfully!', 'success');
                 await loadHotelDetails();
             } else {
@@ -1628,6 +1650,7 @@
             }
 
             window.gyanGarbhDashboardData.hotel = data.hotel;
+            commitSavedPropertyGalleryState(uploadedImages);
             resetRoomImageSelection();
             renderRoomList(data.hotel.rooms || []);
             Swal.fire('Setup Complete', 'Your hotel details and room inventory are now live.', 'success');
@@ -1645,7 +1668,9 @@
 
     window.addEventListener('gyangarbh:realtime', () => {
         loadMyBookings();
-        loadHotelDetails();
+        if (!hasPendingGalleryChanges()) {
+            loadHotelDetails();
+        }
     });
 
     function logout() { localStorage.clear(); window.location.href = "hotel-auth.html"; }
