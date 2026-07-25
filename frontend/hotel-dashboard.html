@@ -641,7 +641,7 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="small fw-bold text-muted mb-2">Room Type</label>
-                                        <select id="roomType" class="form-select" required>
+                                        <select id="roomType" class="form-select" onchange="updateRoomFormMode()" required>
                                             <option value="">Select Type</option>
                                             <option value="AC">AC</option>
                                             <option value="Non-AC">Non-AC</option>
@@ -660,7 +660,7 @@
                                         </div>
                                         <div class="upload-body">
                                             <label class="small fw-bold text-muted mb-2">Room Cover Image</label>
-                                            <input type="file" class="form-control" accept="image/*" onchange="{ const file = this.files && this.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => { document.getElementById('roomImageUrl').value = reader.result; const img = this.closest('.upload-card').querySelector('img'); const label = this.closest('.upload-card').querySelector('.upload-preview span'); img.src = reader.result; img.style.display = 'block'; label.style.display = 'none'; }; reader.readAsDataURL(file); } }">
+                                            <input type="file" id="roomCoverInput" class="form-control" accept="image/*" onchange="handleRoomCoverSelection(this)">
                                             <small class="text-muted">Used as the primary room thumbnail.</small>
                                         </div>
                                     </div>
@@ -707,7 +707,10 @@
                             </div>
 
                             <div class="room-form-action-row">
-                                <button type="submit" class="btn room-form-save-btn">
+                                <button type="button" id="cancelRoomEditButton" class="btn btn-outline-secondary d-none me-2" onclick="cancelRoomEdit()">
+                                    Cancel Edit
+                                </button>
+                                <button type="submit" id="roomSubmitButton" class="btn room-form-save-btn">
                                     <i class="fas fa-check-circle" style="margin-right: 8px;"></i>Save Room Details
                                 </button>
                             </div>
@@ -752,6 +755,7 @@
         bookings: []
     };
     let selectedRoomImageFiles = [];
+    let editingRoomIndex = -1;
     const MIN_PROPERTY_GALLERY_SLOTS = 3;
     let currentGalleryState = [];
     let propertyGalleryDirty = false;
@@ -1205,6 +1209,44 @@
     }
 
     // ⭐ SAVE HOTEL DETAILS
+    function renderRoomList(rooms) {
+        const roomList = document.getElementById('roomList');
+        if (!roomList) return;
+        if (!Array.isArray(rooms) || rooms.length === 0) {
+            roomList.innerHTML = `<div class="alert alert-info rounded-4">No room inventory has been added to your hotel profile. Please add new room categories and availability.</div>`;
+            return;
+        }
+
+        roomList.innerHTML = `<div class="row g-4">${rooms.map((room, index) => `
+            <div class="col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                        <div class="min-width-0">
+                            <h6 class="fw-bold mb-1 fs-5">${escapeHTML(room.roomType || 'Room')}</h6>
+                            <div class="text-primary fw-bold">Rs. ${escapeHTML(room.price || 'N/A')} <small class="text-muted fw-normal">/ night</small></div>
+                        </div>
+                        <div class="d-flex align-items-end gap-2 flex-column">
+                            <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">${escapeHTML(room.status || 'Available')}</span>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="editRoom(${index})">
+                                    <i class="bi bi-pencil-square me-1"></i>Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRoom(${index})">
+                                    <i class="bi bi-trash me-1"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3 text-muted small">
+                        <i class="bi bi-stars me-1"></i> ${Array.isArray(room.amenities) && room.amenities.length ? escapeHTML(room.amenities.join(', ')) : 'Standard Amenities'}
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap mt-auto">
+                        ${(Array.isArray(room.images) ? room.images : []).slice(0, 4).filter(Boolean).map((img) => `<img src="${escapeHTML(img)}" alt="Room" class="rounded-3" style="width:70px;height:70px;object-fit:cover;border: 1px solid var(--line);">`).join('')}
+                    </div>
+                </div>
+            </div>`).join('')}</div>`;
+    }
+
     async function uploadHotelImagesToServer() {
         const compressionOptions = {
             maxSizeMB: 1,
@@ -1390,6 +1432,177 @@
     }
 
     // ⭐ SAVE NEW ROOM
+    function getCurrentRooms() {
+        const hotel = window.gyanGarbhDashboardData.hotel || {};
+        return Array.isArray(hotel.rooms) ? hotel.rooms : [];
+    }
+
+    function setRoomCoverPreview(imageUrl = '') {
+        const card = document.getElementById('roomCoverInput')?.closest('.upload-card');
+        const img = card?.querySelector('.upload-preview img');
+        const label = card?.querySelector('.upload-preview span');
+        if (!img || !label) return;
+
+        if (imageUrl) {
+            img.src = imageUrl;
+            img.style.display = 'block';
+            label.style.display = 'none';
+        } else {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+            label.style.display = 'inline';
+        }
+    }
+
+    function handleRoomCoverSelection(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const imageUrl = reader.result || '';
+            document.getElementById('roomImageUrl').value = imageUrl;
+            setRoomCoverPreview(imageUrl);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function updateRoomFormMode() {
+        const submitButton = document.getElementById('roomSubmitButton');
+        const cancelButton = document.getElementById('cancelRoomEditButton');
+        const roomType = document.getElementById('roomType')?.value || 'Room';
+
+        if (submitButton) {
+            submitButton.innerHTML = editingRoomIndex >= 0
+                ? `<i class="fas fa-check-circle" style="margin-right: 8px;"></i>Update ${escapeHTML(roomType)} Room`
+                : '<i class="fas fa-check-circle" style="margin-right: 8px;"></i>Save Room Details';
+        }
+        if (cancelButton) cancelButton.classList.toggle('d-none', editingRoomIndex < 0);
+    }
+
+    function clearRoomForm() {
+        document.getElementById('roomType').value = '';
+        document.getElementById('roomPrice').value = '';
+        document.getElementById('roomImageUrl').value = '';
+        document.getElementById('amenityWifi').checked = false;
+        document.getElementById('amenityTV').checked = false;
+        document.getElementById('amenityGeyser').checked = false;
+        const coverInput = document.getElementById('roomCoverInput');
+        if (coverInput) coverInput.value = '';
+        setRoomCoverPreview('');
+        resetRoomImageSelection();
+        updateRoomFormMode();
+    }
+
+    function collectRoomFormPayload() {
+        const roomType = document.getElementById('roomType').value;
+        const roomPrice = parseFloat(document.getElementById('roomPrice').value);
+        const roomImageUrl = document.getElementById('roomImageUrl').value;
+        const amenities = [];
+
+        if (document.getElementById('amenityWifi').checked) amenities.push('WiFi');
+        if (document.getElementById('amenityTV').checked) amenities.push('TV');
+        if (document.getElementById('amenityGeyser').checked) amenities.push('Geyser');
+
+        const images = selectedRoomImageFiles
+            .map((item) => typeof item === 'string' ? item : item?.name)
+            .filter(Boolean);
+        if (roomImageUrl) images.unshift(roomImageUrl);
+
+        if (!roomType || !Number.isFinite(roomPrice) || roomPrice <= 0) return null;
+
+        return {
+            roomType,
+            price: roomPrice,
+            roomsAvailable: 1,
+            amenities,
+            images,
+            status: 'Available',
+            ownerEmail: hotelOwnerEmail,
+            isAC: roomType === 'AC',
+            acType: roomType
+        };
+    }
+
+        async function persistRoomsArray(rooms) {
+        const res = await fetch(`${API_URL}/hotel/update-details`, {
+            method: 'PUT',
+            headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ ownerEmail: hotelOwnerEmail, rooms })
+        });
+        const data = await res.json().catch(() => ({ success: false, message: 'Invalid server response.' }));
+        if (!res.ok || data.success === false) {
+            throw new Error(data.message || 'Unable to update rooms.');
+        }
+        return data.hotel || null;
+    }
+
+    function editRoom(index) {
+        const rooms = getCurrentRooms();
+        const room = rooms[index];
+        if (!room) return;
+
+        editingRoomIndex = index;
+        document.getElementById('roomType').value = room.roomType || '';
+        document.getElementById('roomPrice').value = Number(room.price) || '';
+
+        const images = Array.isArray(room.images) ? room.images.filter(Boolean) : [];
+        document.getElementById('roomImageUrl').value = images[0] || '';
+        setRoomCoverPreview(images[0] || '');
+        selectedRoomImageFiles = images.slice(1);
+        syncRoomImageInputFiles();
+        renderRoomGalleryPreview();
+
+        const amenities = Array.isArray(room.amenities) ? room.amenities : [];
+        document.getElementById('amenityWifi').checked = amenities.includes('WiFi');
+        document.getElementById('amenityTV').checked = amenities.includes('TV');
+        document.getElementById('amenityGeyser').checked = amenities.includes('Geyser');
+        const coverInput = document.getElementById('roomCoverInput');
+        if (coverInput) coverInput.value = '';
+
+        updateRoomFormMode();
+        document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function cancelRoomEdit() {
+        editingRoomIndex = -1;
+        clearRoomForm();
+    }
+
+    async function deleteRoom(index) {
+        const rooms = getCurrentRooms();
+        const room = rooms[index];
+        if (!room) return;
+
+        const confirmResult = await Swal.fire({
+            title: 'Delete Room?',
+            text: `Remove ${room.roomType || 'this room'} from your saved rooms?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            confirmButtonColor: '#dc3545'
+        });
+        if (!confirmResult.isConfirmed) return;
+
+        try {
+            const updatedRooms = rooms.filter((_, roomIndex) => roomIndex !== index);
+            const updatedHotel = await persistRoomsArray(updatedRooms);
+            window.gyanGarbhDashboardData.hotel = updatedHotel || { ...window.gyanGarbhDashboardData.hotel, rooms: updatedRooms };
+            if (editingRoomIndex === index) cancelRoomEdit();
+            if (editingRoomIndex > index) editingRoomIndex -= 1;
+            renderRoomList(updatedRooms);
+            Swal.fire('Deleted', 'Room removed successfully.', 'success');
+        } catch (err) {
+            console.error('Delete room failed:', err);
+            Swal.fire('Delete Failed', err.message || 'Unable to delete room.', 'error');
+        }
+    }
+
+    window.handleRoomCoverSelection = handleRoomCoverSelection;
+    window.editRoom = editRoom;
+    window.deleteRoom = deleteRoom;
+    window.cancelRoomEdit = cancelRoomEdit;
+
     function triggerRoomImagePicker() {
         const input = document.getElementById('roomImages');
         if (!input) return;
@@ -1398,12 +1611,16 @@
 
     window.triggerRoomImagePicker = triggerRoomImagePicker;
 
-    function syncRoomImageInputFiles() {
+        function syncRoomImageInputFiles() {
         const input = document.getElementById('roomImages');
         if (!input || typeof DataTransfer === 'undefined') return;
 
         const transfer = new DataTransfer();
-        selectedRoomImageFiles.forEach((file) => transfer.items.add(file));
+        selectedRoomImageFiles.forEach((file) => {
+            if (file instanceof File) {
+                transfer.items.add(file);
+            }
+        });
         input.files = transfer.files;
     }
 
@@ -1423,22 +1640,28 @@
 
             const img = document.createElement('img');
             img.className = 'room-gallery-thumb';
-            img.alt = file.name || `Room image ${index + 1}`;
+            
+            const name = document.createElement('div');
+            name.className = 'room-gallery-name';
+
+            if (typeof file === 'string') {
+                img.src = file;
+                img.alt = `Interior ${index + 1}`;
+                name.textContent = `Saved Image ${index + 1}`;
+            } else {
+                img.alt = file.name || `Room image ${index + 1}`;
+                name.textContent = file.name || `Interior ${index + 1}`;
+                const reader = new FileReader();
+                reader.onload = () => { img.src = reader.result; };
+                reader.readAsDataURL(file);
+            }
 
             const removeButton = document.createElement('button');
             removeButton.type = 'button';
             removeButton.className = 'room-gallery-remove';
             removeButton.innerHTML = '&times;';
-            removeButton.setAttribute('aria-label', `Remove ${file.name || 'room image'}`);
+            removeButton.setAttribute('aria-label', `Remove room image`);
             removeButton.onclick = () => removeRoomImage(index);
-
-            const name = document.createElement('div');
-            name.className = 'room-gallery-name';
-            name.textContent = file.name || `Interior ${index + 1}`;
-
-            const reader = new FileReader();
-            reader.onload = () => { img.src = reader.result; };
-            reader.readAsDataURL(file);
 
             item.appendChild(img);
             item.appendChild(removeButton);
@@ -1479,60 +1702,116 @@
         renderRoomGalleryPreview();
     }
 
+        // Helper to upload room cover image
+    async function uploadRoomCoverImage() {
+        const val = document.getElementById('roomImageUrl').value;
+        if (!val || !val.startsWith('data:image/')) return val;
+
+        const formData = new FormData();
+        formData.append('file', val);
+        formData.append('upload_preset', 'gyangarbh_preset');
+
+        const res = await fetch('https://api.cloudinary.com/v1_1/dvmdynlae/image/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json().catch(() => ({}));
+        return data.secure_url || val;
+    }
+
+    // Helper to upload interior images
+    async function uploadSelectedRoomImages() {
+        const uploadedUrls = [];
+        for (const item of selectedRoomImageFiles) {
+            if (typeof item === 'string') {
+                uploadedUrls.push(item);
+                continue;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', item);
+                formData.append('upload_preset', 'gyangarbh_preset');
+
+                const res = await fetch('https://api.cloudinary.com/v1_1/dvmdynlae/image/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json().catch(() => ({}));
+                if (data.secure_url) uploadedUrls.push(data.secure_url);
+            } catch (err) {
+                console.warn('Room gallery image upload failed:', err);
+            }
+        }
+        return uploadedUrls;
+    }
+
     async function saveNewRoom() {
+        const submitButton = document.getElementById('roomSubmitButton');
         const roomType = document.getElementById('roomType').value;
         const roomPrice = parseFloat(document.getElementById('roomPrice').value);
-        const roomImageUrl = document.getElementById('roomImageUrl').value;
-        const amenities = [];
-        if (document.getElementById('amenityWifi').checked) amenities.push('WiFi');
-        if (document.getElementById('amenityTV').checked) amenities.push('TV');
-        if (document.getElementById('amenityGeyser').checked) amenities.push('Geyser');
-
-        const images = selectedRoomImageFiles.map(file => file.name);
-        if (roomImageUrl) images.unshift(roomImageUrl);
-
+        
         if (!roomType || !roomPrice || roomPrice <= 0) {
             Swal.fire('Error', 'Please fill all required fields correctly.', 'error');
             return;
         }
 
-        const roomData = {
-            roomType,
-            price: roomPrice,
-            roomsAvailable: 1,
-            amenities,
-            images,
-            status: 'Available',
-            ownerEmail: hotelOwnerEmail,
-            // Compatibility: include both boolean and string fields for AC mapping
-            isAC: roomType === 'AC',
-            acType: roomType // 'AC' or 'Non-AC'
-        };
-
         try {
-            const res = await fetch(`${API_URL}/admin/add-room`, {
-                method: 'POST',
-                headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify(roomData)
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Swal.fire('Success!', 'Room added successfully!', 'success');
-                document.getElementById('roomType').value = '';
-                document.getElementById('roomPrice').value = '';
-                document.getElementById('roomImageUrl').value = '';
-                document.getElementById('amenityWifi').checked = false;
-                document.getElementById('amenityTV').checked = false;
-                document.getElementById('amenityGeyser').checked = false;
-                resetRoomImageSelection();
-                await loadHotelDetails();
-            } else {
-                Swal.fire('Error', data.message || 'Failed to add room.', 'error');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving...';
             }
+
+            const coverUrl = await uploadRoomCoverImage();
+            const interiorUrls = await uploadSelectedRoomImages();
+            
+            const images = [...interiorUrls];
+            if (coverUrl) images.unshift(coverUrl);
+
+            const amenities = [];
+            if (document.getElementById('amenityWifi').checked) amenities.push('WiFi');
+            if (document.getElementById('amenityTV').checked) amenities.push('TV');
+            if (document.getElementById('amenityGeyser').checked) amenities.push('Geyser');
+
+            const roomData = {
+                roomType,
+                price: roomPrice,
+                roomsAvailable: 1,
+                amenities,
+                images,
+                status: 'Available',
+                ownerEmail: hotelOwnerEmail,
+                isAC: roomType === 'AC',
+                acType: roomType
+            };
+
+            if (editingRoomIndex >= 0) {
+                const rooms = getCurrentRooms();
+                rooms[editingRoomIndex] = roomData;
+                await persistRoomsArray(rooms);
+                Swal.fire('Updated!', 'Room details updated successfully!', 'success');
+                editingRoomIndex = -1;
+            } else {
+                const res = await fetch(`${API_URL}/admin/add-room`, {
+                    method: 'POST',
+                    headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(roomData)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Failed to add room.');
+                Swal.fire('Success!', 'Room added successfully!', 'success');
+            }
+
+            clearRoomForm();
+            await loadHotelDetails();
         } catch (err) {
             console.error('Error saving room:', err);
-            Swal.fire('Error', 'Server connection failed.', 'error');
+            Swal.fire('Error', err.message || 'Server connection failed.', 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                updateRoomFormMode();
+            }
         }
     }
 
