@@ -470,6 +470,34 @@
             box-shadow: 0 14px 28px rgba(30, 60, 114, 0.22);
         }
 
+        .room-book-btn:disabled {
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            background: #94a3b8;
+        }
+
+        .availability-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 900;
+        }
+
+        .availability-badge.available {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .availability-badge.sold-out {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
         .review-panel {
             padding: 30px;
             overflow: hidden;
@@ -675,10 +703,12 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        const API_URL = 'http://localhost:5000';
+        const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
         const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1800&auto=format&fit=crop';
         let currentHotel = null;
+        let currentAvailability = null;
         let selectedReviewRating = 0;
 
         function escapeHTML(value) {
@@ -693,6 +723,94 @@
 
         function getHotelId() {
             return String(new URLSearchParams(window.location.search).get('id') || '').trim();
+        }
+
+        function getBookingSearchParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                checkIn: String(params.get('checkIn') || '').trim(),
+                checkOut: String(params.get('checkOut') || '').trim(),
+                guests: String(params.get('guests') || '2').trim()
+            };
+        }
+
+        function calculateNights(checkIn, checkOut) {
+            const inDate = new Date(`${checkIn}T00:00:00`);
+            const outDate = new Date(`${checkOut}T00:00:00`);
+            const nights = Math.round((outDate - inDate) / 86400000);
+            return Number.isFinite(nights) && nights > 0 ? nights : 0;
+        }
+
+        function hasSelectedStayDates() {
+            const { checkIn, checkOut } = getBookingSearchParams();
+            return !!checkIn && !!checkOut && calculateNights(checkIn, checkOut) > 0;
+        }
+
+        async function fetchAvailability(hotelId) {
+            const { checkIn, checkOut } = getBookingSearchParams();
+            if (!checkIn || !checkOut || !calculateNights(checkIn, checkOut)) return null;
+
+            const response = await fetch(`${API_URL}/api/hotels/${encodeURIComponent(hotelId)}/availability?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}`);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.success === false) {
+                throw new Error(data.message || 'Availability could not be checked.');
+            }
+            return data;
+        }
+
+        async function promptForStayDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrowDate = new Date();
+            tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+            const tomorrow = tomorrowDate.toISOString().split('T')[0];
+            const result = await Swal.fire({
+                title: 'Select Stay Dates',
+                html: `
+                    <div class="text-start">
+                        <label class="small fw-bold mb-1">Check-in</label>
+                        <input type="date" id="swalCheckIn" class="form-control mb-3" min="${today}">
+                        <label class="small fw-bold mb-1">Check-out</label>
+                        <input type="date" id="swalCheckOut" class="form-control" min="${tomorrow}">
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Check Availability',
+                didOpen: () => {
+                    const inInput = document.getElementById('swalCheckIn');
+                    const outInput = document.getElementById('swalCheckOut');
+                    inInput.addEventListener('change', () => {
+                        const minOut = new Date(`${inInput.value}T00:00:00`);
+                        minOut.setDate(minOut.getDate() + 1);
+                        const minOutString = minOut.toISOString().split('T')[0];
+                        outInput.min = minOutString;
+                        if (!outInput.value || outInput.value <= inInput.value) outInput.value = minOutString;
+                    });
+                },
+                preConfirm: () => {
+                    const checkIn = document.getElementById('swalCheckIn').value;
+                    const checkOut = document.getElementById('swalCheckOut').value;
+                    if (!checkIn || !checkOut || !calculateNights(checkIn, checkOut)) {
+                        Swal.showValidationMessage('Please select a valid check-in and check-out date.');
+                        return false;
+                    }
+                    return { checkIn, checkOut };
+                }
+            });
+
+            if (!result.isConfirmed || !result.value) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('checkIn', result.value.checkIn);
+            url.searchParams.set('checkOut', result.value.checkOut);
+            if (!url.searchParams.get('guests')) url.searchParams.set('guests', '2');
+            window.location.href = url.toString();
+        }
+
+        function handleBookRoom(button) {
+            if (!hasSelectedStayDates()) {
+                promptForStayDates();
+                return;
+            }
+            if (button?.disabled) return;
+            Swal.fire('Booking Request Ready', 'Your selected dates are available. Please continue to confirm your booking.', 'success');
         }
 
         function formatPrice(hotel) {
@@ -992,6 +1110,10 @@
             const amenities = getAmenities(hotel);
             const rating = Number(hotel.averageRating || hotel.rating || 4.5).toFixed(1);
             const totalReviews = Number(hotel.totalReviews || (Array.isArray(hotel.reviews) ? hotel.reviews.length : 0));
+            const bookingParams = getBookingSearchParams();
+            const selectedNights = calculateNights(bookingParams.checkIn, bookingParams.checkOut);
+            const hasDates = selectedNights > 0;
+            const isSoldOut = hasDates && currentAvailability && currentAvailability.available === false;
             const distance = hotel.distanceFromLandmark
                 ? `${hotel.distanceFromLandmark.value || 0} ${hotel.distanceFromLandmark.unit || 'km'} from ${hotel.distanceFromLandmark.landmark || 'Mahabodhi Temple'}`
                 : 'Near Mahabodhi Temple';
@@ -1063,10 +1185,17 @@
                                 const roomImages = getRoomImages(room, hotel);
                                 const roomSpecs = getRoomSpecs(room, hotel);
                                 const roomPrice = Number(room.price || hotel.acRoomPrice || hotel.nonAcRoomPrice || 1800);
+                                const totalPrice = selectedNights ? roomPrice * selectedNights : 0;
                                 const breakfastLabel = room.breakfastIncluded || hotel.facilities?.food ? 'Breakfast Included' : 'Breakfast Available';
                                 const roomTypeLabel = room.roomType || 'Signature Room';
                                 const roomBadge = room.roomType?.includes('AC') ? 'Air Conditioned' : (room.roomType?.includes('Deluxe') ? 'Deluxe Comfort' : 'Premier Stay');
                                 const imagesAttr = `data-images='${JSON.stringify(roomImages).replace(/'/g, "\\'")}'`;
+                                const availabilityBadge = hasDates
+                                    ? `<span class="availability-badge ${isSoldOut ? 'sold-out' : 'available'}">${isSoldOut ? 'Sold Out for selected dates' : 'Available for selected dates'}</span>`
+                                    : '<span class="availability-badge available">Select dates to check availability</span>';
+                                const totalMeta = hasDates
+                                    ? `<div class="meta fw-bold text-dark">${selectedNights} night${selectedNights === 1 ? '' : 's'} total: Rs. ${totalPrice.toLocaleString('en-IN')}</div>`
+                                    : '<div class="meta">Pick check-in and check-out dates to see total price.</div>';
                                 return `
                                     <article class="room-card">
                                         <div class="room-gallery-card">
@@ -1086,7 +1215,9 @@
                                             <div class="price">₹${roomPrice.toLocaleString('en-IN')}</div>
                                             <div class="meta">Per night • ${escapeHTML(breakfastLabel)}</div>
                                             <div class="meta">${escapeHTML(room.roomsAvailable ? `${room.roomsAvailable} room available` : 'Flexible booking window')}</div>
-                                            <button type="button" class="room-book-btn">Book Room</button>
+                                            ${availabilityBadge}
+                                            ${totalMeta}
+                                            <button type="button" class="room-book-btn" onclick="handleBookRoom(this)" ${isSoldOut ? 'disabled' : ''}>${isSoldOut ? 'Sold Out' : 'Book Room'}</button>
                                         </div>
                                     </article>
                                 `;
@@ -1173,6 +1304,7 @@
                 if (!response.ok || data.success === false) {
                     throw new Error(data.message || 'Hotel details could not be loaded.');
                 }
+                currentAvailability = await fetchAvailability(id);
                 renderHotel(data.hotel || data);
             } catch (error) {
                 renderError(error.message || 'Server unavailable. Please try again.');

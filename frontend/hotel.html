@@ -337,17 +337,28 @@
 <div class="container search-container mb-5">
     <div class="row justify-content-center">
         <div class="col-md-10 search-box">
-            <div class="row align-items-center">
-                <div class="col-md-9 border-end">
+            <form id="hotelSearchForm" onsubmit="event.preventDefault(); handleHotelSearchSubmit();">
+            <div class="row align-items-center g-3">
+                <div class="col-lg-4 border-end">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-search text-primary me-3"></i>
                         <input type="text" id="hotelSearch" class="form-control border-0 shadow-none py-2" placeholder="Search hotels, rooms, amenities, or landmarks..." onkeyup="filterHotels()">
                     </div>
                 </div>
-                <div class="col-md-3 text-center">
-                    <button class="btn btn-primary w-100 rounded-pill fw-bold">Search Now</button>
+                <div class="col-lg-2">
+                    <input type="date" id="globalCheckIn" class="form-control border-0 shadow-none py-2" aria-label="Check-in Date">
+                </div>
+                <div class="col-lg-2">
+                    <input type="date" id="globalCheckOut" class="form-control border-0 shadow-none py-2" aria-label="Check-out Date">
+                </div>
+                <div class="col-lg-2">
+                    <input type="number" id="globalGuests" class="form-control border-0 shadow-none py-2" min="1" value="2" aria-label="Guests">
+                </div>
+                <div class="col-lg-2 text-center">
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">Search Now</button>
                 </div>
             </div>
+            </form>
         </div>
     </div>
 </div>
@@ -645,6 +656,7 @@
         // Guests may browse stays freely; booking and support actions prompt for authentication.
 
         const today = new Date().toISOString().split('T')[0];
+        setupGlobalHotelSearchDates();
         if(document.getElementById('bookIn')) {
             document.getElementById('bookIn').setAttribute('min', today);
             document.getElementById('bookOut').setAttribute('min', today);
@@ -722,10 +734,77 @@
         return images.length ? [...new Set(images)].slice(0, 8) : [fallback];
     }
 
+    function addDaysToDateString(dateString, days) {
+        const date = new Date(`${dateString}T00:00:00`);
+        date.setDate(date.getDate() + days);
+        return date.toISOString().split('T')[0];
+    }
+
+    function setupGlobalHotelSearchDates() {
+        const checkIn = document.getElementById('globalCheckIn');
+        const checkOut = document.getElementById('globalCheckOut');
+        const guests = document.getElementById('globalGuests');
+        if (!checkIn || !checkOut) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        const params = new URLSearchParams(window.location.search);
+        checkIn.min = today;
+        checkOut.min = addDaysToDateString(today, 1);
+        if (params.get('checkIn')) checkIn.value = params.get('checkIn');
+        if (params.get('checkOut')) checkOut.value = params.get('checkOut');
+        if (guests && params.get('guests')) guests.value = params.get('guests');
+
+        checkIn.addEventListener('change', () => {
+            if (!checkIn.value) return;
+            const minCheckout = addDaysToDateString(checkIn.value, 1);
+            checkOut.min = minCheckout;
+            if (!checkOut.value || checkOut.value <= checkIn.value) checkOut.value = minCheckout;
+        });
+
+        if (checkIn.value) {
+            const minCheckout = addDaysToDateString(checkIn.value, 1);
+            checkOut.min = minCheckout;
+            if (!checkOut.value || checkOut.value <= checkIn.value) checkOut.value = minCheckout;
+        }
+    }
+
+    function getSearchBookingParams() {
+        const checkIn = document.getElementById('globalCheckIn')?.value || '';
+        const checkOut = document.getElementById('globalCheckOut')?.value || '';
+        const guests = document.getElementById('globalGuests')?.value || '2';
+        const params = new URLSearchParams();
+        if (checkIn) params.set('checkIn', checkIn);
+        if (checkOut) params.set('checkOut', checkOut);
+        if (guests) params.set('guests', guests);
+        return params.toString();
+    }
+
+    function hasGlobalStayDates() {
+        const checkIn = document.getElementById('globalCheckIn')?.value || '';
+        const checkOut = document.getElementById('globalCheckOut')?.value || '';
+        return !!checkIn && !!checkOut && checkOut > checkIn;
+    }
+
+    async function getHotelAvailabilityStatus(hotelId) {
+        if (!hasGlobalStayDates()) return null;
+        const checkIn = document.getElementById('globalCheckIn').value;
+        const checkOut = document.getElementById('globalCheckOut').value;
+        try {
+            const res = await fetch(`${API_URL}/api/hotels/${encodeURIComponent(hotelId)}/availability?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}`);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) return null;
+            return data;
+        } catch (err) {
+            console.warn('Availability filter skipped for hotel:', hotelId, err);
+            return null;
+        }
+    }
+
     function openHotelDetailsPage(hotelId) {
         const id = String(hotelId || '').trim();
         if (!id) return;
-        window.location.href = `./hotel-details.html?id=${encodeURIComponent(id)}`;
+        const bookingParams = getSearchBookingParams();
+        window.location.href = `./hotel-details.html?id=${encodeURIComponent(id)}${bookingParams ? `&${bookingParams}` : ''}`;
     }
 
     async function loadHotels() {
@@ -735,7 +814,10 @@
             const hotels = await res.json();
             allHotels = hotels; 
             container.innerHTML = "";
-            hotels.forEach(h => {
+            let renderedHotelCount = 0;
+            for (const h of hotels) {
+                const availability = await getHotelAvailabilityStatus(h._id);
+                if (availability && availability.available === false) continue;
                 const uniqueImages = getHotelGalleryImages(h);
                 const imgUrl = uniqueImages[0];
                 const priceValue = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
@@ -755,6 +837,7 @@
                 const sliderStack = uniqueImages.slice(1).map((src, index) => `
                                     <img src="${escapeHTML(src)}" alt="${escapeHTML(h.hotelName || 'Hotel')} gallery image ${index + 2}" loading="lazy">`).join('');
 
+                renderedHotelCount += 1;
                 container.innerHTML += `
                     <div class="col-md-4 hotel-item">
                         <div class="hotel-card" onclick="openHotelDetailsPage('${safeId}')">
@@ -797,7 +880,10 @@
                             </div>
                         </div>
                     </div>`;
-            });
+            }
+            if (!renderedHotelCount) {
+                container.innerHTML = `<div class="col-12"><div class="alert alert-warning rounded-4 text-center fw-bold">No hotels are available for the selected dates. Please try different dates.</div></div>`;
+            }
             return true;
         } catch (err) {
             console.error(err);
@@ -963,6 +1049,25 @@
             const text = c.innerText.toLowerCase();
             c.style.display = text.includes(val) ? "block" : "none";
         });
+    }
+
+    async function handleHotelSearchSubmit() {
+        const checkIn = document.getElementById('globalCheckIn')?.value || '';
+        const checkOut = document.getElementById('globalCheckOut')?.value || '';
+
+        if ((checkIn && !checkOut) || (!checkIn && checkOut) || (checkIn && checkOut <= checkIn)) {
+            Swal.fire('Invalid Dates', 'Please select a valid check-in and check-out date.', 'warning');
+            return;
+        }
+
+        const url = new URL(window.location.href);
+        ['checkIn', 'checkOut', 'guests'].forEach((key) => url.searchParams.delete(key));
+        const bookingParams = new URLSearchParams(getSearchBookingParams());
+        bookingParams.forEach((value, key) => url.searchParams.set(key, value));
+        window.history.replaceState({}, '', url.toString());
+
+        await loadHotels();
+        filterHotels();
     }
 
     function chatOnWhatsApp(hotelName) {
