@@ -3023,7 +3023,7 @@ app.put('/hotel/update-details', requireSession(['hotel']), async (req, res) => 
 
     try {
 
-        const { hotelName, roomRate, totalRooms, acRoomPrice, nonAcRoomPrice, description, facilities, imageUrl, imageUrl2, imageUrl3, images, hotelImages, distanceFromLandmark, gyanGarbhHighlights } = req.body;
+        const { hotelName, roomRate, totalRooms, acRoomPrice, nonAcRoomPrice, description, facilities, imageUrl, imageUrl2, imageUrl3, images, hotelImages, rooms, distanceFromLandmark, gyanGarbhHighlights } = req.body;
 
         const ownerEmail = req.session.email;
 
@@ -3053,6 +3053,19 @@ app.put('/hotel/update-details', requireSession(['hotel']), async (req, res) => 
 
         const requestedImages = hotelImages !== undefined ? hotelImages : images;
         if (requestedImages !== undefined) updateData.images = Array.isArray(requestedImages) ? requestedImages.filter(Boolean).map((url) => String(url).trim()).filter(Boolean) : [];
+
+        if (Array.isArray(rooms)) {
+            updateData.rooms = rooms.map((room) => ({
+                roomType: String(room.roomType || 'Room').trim(),
+                price: Number(room.price) || 0,
+                roomsAvailable: Number(room.roomsAvailable) || 1,
+                amenities: Array.isArray(room.amenities) ? room.amenities.map((item) => String(item || '').trim()).filter(Boolean) : [],
+                images: Array.isArray(room.images) ? room.images.map((item) => String(item || '').trim()).filter(Boolean) : [],
+                status: room.status || 'Available',
+                isAC: room.isAC === true || room.roomType === 'AC',
+                acType: room.acType || room.roomType || 'Room'
+            })).filter((room) => room.roomType && room.price >= 0);
+        }
 
         if (distanceFromLandmark !== undefined) updateData.distanceFromLandmark = distanceFromLandmark || { value: 0, unit: 'km', landmark: 'Mahabodhi Temple' };
 
