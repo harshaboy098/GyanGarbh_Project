@@ -3805,6 +3805,66 @@ app.get('/api/hotels/:id', async (req, res) => {
 
 });
 
+app.get('/api/hotels/:id/availability', async (req, res) => {
+
+    try {
+
+        const hotelId = String(req.params.id || '').trim();
+        const checkIn = String(req.query.checkIn || '').trim();
+        const checkOut = String(req.query.checkOut || '').trim();
+
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) {
+            return res.status(400).json({ success: false, message: 'Invalid hotel id' });
+        }
+
+        const validationError = validateBookingPayload({
+            userName: 'Availability Check',
+            hotelName: 'Availability Check',
+            roomType: 'Availability Check',
+            price: 1,
+            checkIn,
+            checkOut
+        });
+        if (validationError) return res.status(400).json({ success: false, message: validationError });
+
+        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true } }));
+        if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
+
+        const checkInDate = new Date(`${checkIn}T00:00:00`);
+        const checkOutDate = new Date(`${checkOut}T00:00:00`);
+        const activeBookings = await Booking.find({
+            hotelId,
+            status: { $nin: ['Cancelled', 'Completed'] }
+        }).select('checkIn checkOut roomType status');
+
+        const overlappingBookings = activeBookings.filter((booking) => {
+            const bookedIn = new Date(`${booking.checkIn}T00:00:00`);
+            const bookedOut = new Date(`${booking.checkOut}T00:00:00`);
+            return bookedIn < checkOutDate && bookedOut > checkInDate;
+        });
+
+        const totalRooms = Array.isArray(hotel.rooms) && hotel.rooms.length
+            ? hotel.rooms.reduce((sum, room) => sum + (Number(room.roomsAvailable) || 1), 0)
+            : (Number(hotel.totalRooms) || 1);
+        const availableRooms = Math.max(totalRooms - overlappingBookings.length, 0);
+
+        res.json({
+            success: true,
+            available: availableRooms > 0,
+            status: availableRooms > 0 ? 'Available' : 'Full',
+            totalRooms,
+            bookedRooms: overlappingBookings.length,
+            availableRooms
+        });
+
+    } catch (err) {
+
+        res.status(500).json({ success: false, message: err.message || 'Unable to check availability' });
+
+    }
+
+});
+
 app.put('/api/hotels/:id', requireSession(['hotel', 'admin', 'assistant']), async (req, res) => {
 
     try {
