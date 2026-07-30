@@ -4188,9 +4188,9 @@ app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async 
 
         const hotel = mongoose.Types.ObjectId.isValid(requestedHotelId)
 
-            ? await Hotel.findById(requestedHotelId).select('hotelName')
+            ? await Hotel.findById(requestedHotelId).select('hotelName rooms totalRooms')
 
-            : await Hotel.findOne({ hotelName: String(req.body.hotelName || '').trim() }).select('hotelName');
+            : await Hotel.findOne({ hotelName: String(req.body.hotelName || '').trim() }).select('hotelName rooms totalRooms');
 
         if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
 
@@ -4199,6 +4199,8 @@ app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async 
         const normalizedBookingPayload = {
 
             ...req.body,
+
+            price: Number(req.body.price || req.body.totalPrice || 0),
 
             userId: customer._id,
 
@@ -4218,6 +4220,40 @@ app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async 
 
         if (validationError) return res.status(400).json({ success: false, message: validationError });
 
+        const checkInDate = new Date(`${normalizedBookingPayload.checkIn}T00:00:00`);
+
+        const checkOutDate = new Date(`${normalizedBookingPayload.checkOut}T00:00:00`);
+
+        const activeBookings = await Booking.find({
+
+            hotelId: hotel._id,
+
+            status: { $nin: ['Cancelled', 'Completed'] }
+
+        }).select('checkIn checkOut');
+
+        const overlappingBookings = activeBookings.filter((booking) => {
+
+            const bookedIn = new Date(`${booking.checkIn}T00:00:00`);
+
+            const bookedOut = new Date(`${booking.checkOut}T00:00:00`);
+
+            return bookedIn < checkOutDate && bookedOut > checkInDate;
+
+        });
+
+        const totalRooms = Array.isArray(hotel.rooms) && hotel.rooms.length
+
+            ? hotel.rooms.reduce((sum, room) => sum + (Number(room.roomsAvailable) || 1), 0)
+
+            : (Number(hotel.totalRooms) || 1);
+
+        if (overlappingBookings.length >= totalRooms) {
+
+            return res.status(409).json({ success: false, message: 'This hotel is sold out for the selected dates.' });
+
+        }
+
         const mitras = await User.find(mitraUserFilter);
 
         mitras.sort((a, b) => (b.experience || '').length - (a.experience || '').length);
@@ -4231,6 +4267,14 @@ app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async 
         const bookingData = {
 
             ...normalizedBookingPayload,
+
+            price: Number(req.body.totalPrice || req.body.price || 0),
+
+            nightlyRate: Number(req.body.nightlyRate || req.body.roomPrice || 0),
+
+            totalPrice: Number(req.body.totalPrice || req.body.price || 0),
+
+            guests: Math.max(Number(req.body.guests || 1), 1),
 
             assignedMitra,
 
@@ -4250,7 +4294,65 @@ app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async 
 
 
 
-        res.status(200).json({ success: true, message: "Booking confirmed", assignedMitra });
+        res.status(201).json({ success: true, message: "Booking confirmed", booking: newBooking, assignedMitra });
+
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+
+});
+
+async function getBookingsForCustomerSession(req) {
+
+    const user = await User.findOne({ email: req.session.email }).select('_id email');
+
+    return safeSortQuery(Booking.find(user ? { $or: [{ userId: user._id }, { userEmail: req.session.email }] } : { userEmail: req.session.email }), { createdAt: -1 });
+
+}
+
+async function getBookingsForHotelSession(req) {
+
+    const hotel = await Hotel.findOne({ ownerEmail: req.session.email }).select('_id hotelName');
+
+    if (!hotel) return [];
+
+    return safeSortQuery(Booking.find({ $or: [{ hotelId: hotel._id }, { hotelName: hotel.hotelName }] }), { createdAt: -1 });
+
+}
+
+app.get('/api/bookings/my-bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+
+    try {
+
+        const bookings = await getBookingsForCustomerSession(req);
+
+        res.json({ success: true, bookings });
+
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+
+});
+
+app.get('/api/user/bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+
+    try {
+
+        const bookings = await getBookingsForCustomerSession(req);
+
+        res.json({ success: true, bookings });
+
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+
+});
+
+app.get('/api/hotel/bookings', requireSession(['hotel', 'admin', 'assistant']), async (req, res) => {
+
+    try {
+
+        const bookings = req.session.role === 'hotel'
+
+            ? await getBookingsForHotelSession(req)
+
+            : await safeSortQuery(Booking.find(), { createdAt: -1 });
+
+        res.json({ success: true, bookings });
 
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 
