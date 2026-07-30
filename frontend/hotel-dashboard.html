@@ -1378,16 +1378,16 @@
     async function loadMyBookings() {
         const tableBody = document.getElementById('bookingTableBody');
         try {
-            const res = await fetch(`${API_URL}/all-bookings`, {
+            const res = await fetch(`${API_URL}/api/hotel/bookings`, {
                 headers: getHotelAuthHeaders()
             });
             if (!res.ok) {
                 throw new Error(`Status ${res.status} ${res.statusText}`);
             }
-            const allBookings = await res.json();
+            const data = await res.json();
+            const allBookings = Array.isArray(data) ? data : (Array.isArray(data.bookings) ? data.bookings : []);
             
-            // The API already scopes results to this hotel.
-            const myBookings = allBookings.filter(b => b.hotelName === hotelName);
+            const myBookings = allBookings;
             window.gyanGarbhDashboardData.bookings = myBookings;
             
             tableBody.innerHTML = "";

@@ -951,17 +951,18 @@
         try {
             const authToken = getAuthToken();
             const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-            const res = await fetch(`${API_URL}/all-bookings`, { headers });
-            const allBookings = await res.json();
+            const res = await fetch(`${API_URL}/api/bookings/my-bookings`, { headers });
+            const data = await res.json();
             if (res.status === 401 || res.status === 403) {
                 showAuthExpiredState();
                 return;
             }
+            const allBookings = Array.isArray(data) ? data : (Array.isArray(data.bookings) ? data.bookings : []);
             if (!Array.isArray(allBookings)) {
-                throw new Error(allBookings.message || 'Invalid booking response');
+                throw new Error(data.message || 'Invalid booking response');
             }
 
-            const myBookings = allBookings.filter((booking) => String(booking.userEmail || '').toLowerCase() === String(uEmail || '').toLowerCase());
+            const myBookings = allBookings;
             document.getElementById('totalBookings').innerText = myBookings.length;
             container.innerHTML = '';
 

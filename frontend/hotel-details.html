@@ -725,6 +725,25 @@
             return String(new URLSearchParams(window.location.search).get('id') || '').trim();
         }
 
+        function getAuthToken() {
+            try {
+                if (window.GyanGarbhApi && typeof window.GyanGarbhApi.getToken === 'function') {
+                    const apiToken = String(window.GyanGarbhApi.getToken() || '').trim();
+                    if (apiToken && apiToken !== 'null' && apiToken !== 'undefined') return apiToken;
+                }
+            } catch (error) {
+                console.warn('Unable to read API helper token', error);
+            }
+
+            return String(
+                localStorage.getItem('authToken') ||
+                localStorage.getItem('token') ||
+                sessionStorage.getItem('authToken') ||
+                sessionStorage.getItem('token') ||
+                ''
+            ).trim();
+        }
+
         function getBookingSearchParams() {
             const params = new URLSearchParams(window.location.search);
             return {
@@ -804,13 +823,96 @@
             window.location.href = url.toString();
         }
 
-        function handleBookRoom(button) {
+        async function handleBookRoom(button) {
             if (!hasSelectedStayDates()) {
                 promptForStayDates();
                 return;
             }
             if (button?.disabled) return;
-            Swal.fire('Booking Request Ready', 'Your selected dates are available. Please continue to confirm your booking.', 'success');
+
+            const token = getAuthToken();
+            if (!token) {
+                const loginResult = await Swal.fire({
+                    icon: 'warning',
+                    title: 'Login Required',
+                    text: 'Please login to confirm your room booking.',
+                    confirmButtonText: 'Go to Login',
+                    showCancelButton: true
+                });
+                if (loginResult.isConfirmed) window.location.href = 'login.html';
+                return;
+            }
+
+            const { checkIn, checkOut, guests } = getBookingSearchParams();
+            const nights = calculateNights(checkIn, checkOut);
+            const roomIndex = Number(button.dataset.roomIndex || 0);
+            const roomType = button.dataset.roomType || 'Signature Room';
+            const roomId = button.dataset.roomId || '';
+            const nightlyRate = Number(button.dataset.roomPrice || 0);
+            const totalPrice = Number(button.dataset.totalPrice || (nightlyRate * nights) || 0);
+
+            const confirmResult = await Swal.fire({
+                icon: 'question',
+                title: 'Confirm Room Booking',
+                html: `
+                    <div class="text-start">
+                        <p class="mb-2"><strong>${escapeHTML(currentHotel?.hotelName || 'Gyan Garbh Stay')}</strong></p>
+                        <p class="mb-1">Room: ${escapeHTML(roomType)}</p>
+                        <p class="mb-1">Dates: ${escapeHTML(checkIn)} to ${escapeHTML(checkOut)}</p>
+                        <p class="mb-1">Guests: ${escapeHTML(guests || '1')}</p>
+                        <p class="mb-0 fw-bold">Total: Rs. ${totalPrice.toLocaleString('en-IN')}</p>
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Confirm Booking',
+                confirmButtonColor: '#1e3c72'
+            });
+
+            if (!confirmResult.isConfirmed) return;
+
+            try {
+                button.disabled = true;
+                button.textContent = 'Booking...';
+
+                const response = await fetch(`${API_URL}/api/bookings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        hotelId: getHotelId(),
+                        hotelName: currentHotel?.hotelName || '',
+                        roomId,
+                        roomIndex,
+                        roomType,
+                        checkIn,
+                        checkOut,
+                        guests: Number(guests || 1),
+                        nightlyRate,
+                        totalPrice,
+                        price: totalPrice,
+                        status: 'Pending'
+                    })
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok || data.success === false) {
+                    throw new Error(data.message || 'Booking could not be created.');
+                }
+
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Booking Created',
+                    text: 'Your stay request is now visible in My Bookings.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                window.location.href = 'my-booking.html';
+            } catch (error) {
+                button.disabled = false;
+                button.textContent = 'Book Room';
+                Swal.fire('Booking Failed', error.message || 'Please try again in a moment.', 'error');
+            }
         }
 
         function formatPrice(hotel) {
@@ -1188,6 +1290,7 @@
                                 const totalPrice = selectedNights ? roomPrice * selectedNights : 0;
                                 const breakfastLabel = room.breakfastIncluded || hotel.facilities?.food ? 'Breakfast Included' : 'Breakfast Available';
                                 const roomTypeLabel = room.roomType || 'Signature Room';
+                                const roomId = String(room._id || room.id || index);
                                 const roomBadge = room.roomType?.includes('AC') ? 'Air Conditioned' : (room.roomType?.includes('Deluxe') ? 'Deluxe Comfort' : 'Premier Stay');
                                 const imagesAttr = `data-images='${JSON.stringify(roomImages).replace(/'/g, "\\'")}'`;
                                 const availabilityBadge = hasDates
@@ -1217,7 +1320,7 @@
                                             <div class="meta">${escapeHTML(room.roomsAvailable ? `${room.roomsAvailable} room available` : 'Flexible booking window')}</div>
                                             ${availabilityBadge}
                                             ${totalMeta}
-                                            <button type="button" class="room-book-btn" onclick="handleBookRoom(this)" ${isSoldOut ? 'disabled' : ''}>${isSoldOut ? 'Sold Out' : 'Book Room'}</button>
+                                            <button type="button" class="room-book-btn" onclick="handleBookRoom(this)" data-room-index="${index}" data-room-id="${escapeHTML(roomId)}" data-room-type="${escapeHTML(roomTypeLabel)}" data-room-price="${roomPrice}" data-total-price="${totalPrice}" ${isSoldOut ? 'disabled' : ''}>${isSoldOut ? 'Sold Out' : 'Book Room'}</button>
                                         </div>
                                     </article>
                                 `;
