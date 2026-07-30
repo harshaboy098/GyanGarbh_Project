@@ -53,13 +53,13 @@
             overflow: hidden;
             background: var(--panel);
             border: 1px solid var(--line);
-            border-radius: 8px;
-            box-shadow: 0 14px 34px rgba(23,32,51,0.07);
+            border-radius: 12px;
+            box-shadow: 0 18px 44px rgba(23,32,51,0.08);
         }
         .sidebar-profile {
-            padding: 24px;
+            padding: 26px 24px 22px;
             border-bottom: 1px solid var(--line);
-            background: #fbfcfe;
+            background: linear-gradient(180deg, #fbfcfe 0%, #f5f8fc 100%);
         }
         .avatar-bubble {
             width: 76px;
@@ -94,22 +94,22 @@
             overflow-wrap: anywhere;
         }
         .sidebar-stats {
-            display: grid;
+            display: flex;
             gap: 10px;
-            padding: 18px 24px;
+            padding: 14px 16px;
             border-bottom: 1px solid var(--line);
         }
         .stat-badge {
-            display: flex;
+            flex: 1;
+            display: grid;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            min-height: 48px;
+            gap: 2px;
+            min-height: 58px;
             margin: 0;
             padding: 10px 12px;
-            background: var(--soft);
+            background: #fbfcfe;
             border: 1px solid #dfe7f1;
-            border-radius: 6px;
+            border-radius: 10px;
             box-shadow: none;
             transition: none;
         }
@@ -121,23 +121,25 @@
             text-transform: uppercase;
             font-size: 0.72rem;
         }
-        .profile-nav { padding: 12px; }
+        .profile-nav { padding: 12px; display: grid; gap: 6px; }
         .profile-nav a {
             display: flex;
             align-items: center;
             gap: 10px;
-            min-height: 42px;
-            padding: 10px 12px;
+            min-height: 48px;
+            padding: 11px 13px;
             color: #334155;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-weight: 700;
             font-size: 0.94rem;
+            border: 1px solid transparent;
         }
         .profile-nav a.active,
         .profile-nav a:hover {
             color: var(--brand);
             background: #edf4fb;
+            border-color: #d9e6f5;
         }
 
         .workspace { min-width: 0; }
@@ -164,8 +166,41 @@
         .orders-panel {
             background: var(--panel);
             border: 1px solid var(--line);
-            border-radius: 8px;
+            border-radius: 12px;
             box-shadow: 0 14px 34px rgba(23,32,51,0.07);
+        }
+        .sacred-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            border: 1px solid #ead9a8;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #fffaf0 0%, #f7fbff 100%);
+            box-shadow: 0 14px 32px rgba(23,32,51,0.06);
+        }
+        .sacred-banner strong {
+            display: block;
+            color: var(--brand-dark);
+            font-size: 1.02rem;
+        }
+        .sacred-banner span {
+            color: #6b5b2b;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .sacred-banner .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 999px;
+            background: #17345c;
+            color: #fff;
+            font-weight: 800;
+            white-space: nowrap;
         }
         .profile-editor {
             padding: 24px;
@@ -242,6 +277,38 @@
             box-shadow: 0 8px 22px rgba(23,32,51,0.06) !important;
             transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
+        .empty-travel-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: center;
+            padding: 28px;
+            background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 14px 34px rgba(23,32,51,0.08);
+        }
+        .empty-travel-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff3c4;
+            color: #9a6a00;
+            font-size: 2rem;
+        }
+        .empty-travel-card h4 {
+            margin: 0 0 8px;
+            color: var(--brand-dark);
+            font-weight: 850;
+        }
+        .empty-travel-card p {
+            margin: 0;
+            color: var(--muted);
+            font-weight: 500;
+        }
         .order-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 14px 30px rgba(23,32,51,0.1) !important;
@@ -304,6 +371,8 @@
             .account-shell { grid-template-columns: 1fr; }
             .account-sidebar { position: static; }
             .workspace-header { display: block; }
+            .sacred-banner,
+            .empty-travel-card { grid-template-columns: 1fr; }
         }
         @media (max-width: 575px) {
             .account-page { padding: 18px 12px 36px; }
@@ -322,7 +391,6 @@
 <nav class="navbar navbar-dark nav-custom sticky-top">
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold" href="hotel.html"><i class="bi bi-houses-fill"></i> GYAN GARBH</a>
-            <a href="hotel.html" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold">Back to Taxis</a>
     </div>
 </nav>
 
@@ -338,14 +406,13 @@
                 <p class="profile-email mb-0"><i class="bi bi-envelope-at"></i> <span id="profileEmail"></span></p>
             </div>
             <div class="sidebar-stats">
-                <div class="stat-badge"><small>Ride Orders</small><b id="totalBookings">0</b></div>
-                <div class="stat-badge"><small>Plan</small><b class="text-success text-uppercase">Member</b></div>
-                <div class="stat-badge"><small>Status</small><b>Verified</b></div>
+                <div class="stat-badge"><small>Bookings</small><b id="totalBookings">0</b></div>
+                <div class="stat-badge"><small>Member</small><b class="text-success text-uppercase">Active</b></div>
             </div>
             <nav class="profile-nav" aria-label="Profile navigation">
-                <a class="active" href="#profileSection"><i class="bi bi-person-badge"></i> Profile Details</a>
-                <a href="#orderHistorySection"><i class="bi bi-suitcase2"></i> Stay Orders</a>
-                <a href="hotel.html"><i class="bi bi-building-check"></i> Browse Taxis</a>
+                <a class="active" href="#orderHistorySection" data-account-tab="bookings"><i class="bi bi-suitcase2"></i> My Bookings & Trips</a>
+                <a href="#profileSection" data-account-tab="profile"><i class="bi bi-person-badge"></i> Profile & Identity</a>
+                <a href="hotel.html"><i class="bi bi-compass"></i> Explore Taxis / Services</a>
             </nav>
         </aside>
 
@@ -355,10 +422,28 @@
                     <h1>My Account</h1>
                     <p>Manage your guest profile and review your Gyan Garbh stay history.</p>
                 </div>
-                <a href="hotel.html" class="btn btn-outline-primary fw-bold"><i class="bi bi-plus-circle"></i> New Ride</a>
             </div>
 
-            <section class="profile-editor" id="profileSection">
+            <div class="sacred-banner">
+                <div>
+                    <strong>Gyan Garbh Sacred Experience & Bodhgaya Spiritual Tours</strong>
+                    <span>Curated stays, local guidance, and peaceful routes around the Mahabodhi heritage circuit.</span>
+                </div>
+                <a class="badge-pill text-decoration-none" href="hotel.html"><i class="bi bi-stars"></i> Explore</a>
+            </div>
+
+            <section class="profile-editor d-none" id="profileSection">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="stat-badge"><small>Account ID</small><b id="profileAccountId">GG Member</b></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-badge"><small>Contact</small><b id="profileContactInfo">Signed in</b></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-badge"><small>Identity</small><b>Verified</b></div>
+                    </div>
+                </div>
                 <div class="row g-4 align-items-start">
                     <div class="col-lg-3 col-md-4">
                         <div class="photo-actions text-center">
@@ -382,7 +467,7 @@
 
             <section class="orders-panel" id="orderHistorySection">
                 <div class="section-title">
-                    <h5><i class="bi bi-bag-check-fill text-primary"></i> Your Order History</h5>
+                    <h5><i class="bi bi-bag-check-fill text-primary"></i> My Bookings</h5>
                     <span class="section-kicker">Bookings and stay updates</span>
                 </div>
                 <div id="bookingsContainer">
@@ -427,10 +512,62 @@
         return null;
     }
 
-    const uName = safeStorageGet('userName') || window.userName || '';
-    const uEmail = safeStorageGet('userEmail') || window.userEmail || '';
-    const storedRole = String(safeStorageGet('userRole') || window.userRole || '').trim().toLowerCase();
-    const token = safeStorageGet('token') || safeStorageGet('authToken') || window.userToken || getCookieValue('authToken') || getCookieValue('token') || getUrlParameter('authToken') || getUrlParameter('token') || '';
+    function escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
+
+    const LOGIN_URL = 'login.html';
+
+    function parseStoredUser() {
+        const rawUser = safeStorageGet('user') || safeStorageGet('currentUser') || '';
+        if (!rawUser) return {};
+        try {
+            return JSON.parse(rawUser) || {};
+        } catch (err) {
+            console.warn('Stored user object is not valid JSON:', err);
+            return {};
+        }
+    }
+
+    function resolveSession() {
+        const storedUser = parseStoredUser();
+        const authToken = normalizeToken(
+            safeStorageGet('token') ||
+            safeStorageGet('authToken') ||
+            storedUser.token ||
+            storedUser.authToken ||
+            storedUser.sessionToken ||
+            window.userToken ||
+            getCookieValue('authToken') ||
+            getCookieValue('token') ||
+            getUrlParameter('authToken') ||
+            getUrlParameter('token')
+        );
+
+        const name = safeStorageGet('userName') || storedUser.fullName || storedUser.name || window.userName || '';
+        const email = safeStorageGet('userEmail') || storedUser.email || window.userEmail || '';
+        const role = String(safeStorageGet('userRole') || storedUser.role || window.userRole || '').trim().toLowerCase();
+
+        return {
+            token: authToken,
+            name: String(name || '').trim(),
+            email: String(email || '').trim(),
+            role,
+            hasStoredUser: Object.keys(storedUser).length > 0
+        };
+    }
+
+    const currentSession = resolveSession();
+    const uName = currentSession.name;
+    const uEmail = currentSession.email;
+    const storedRole = currentSession.role;
+    const token = currentSession.token || '';
 
     function normalizeToken(value) {
         if (!value) return null;
@@ -441,7 +578,7 @@
 
     function getAuthToken() {
         try {
-            return normalizeToken(
+            return currentSession.token || normalizeToken(
                 safeStorageGet('authToken') ||
                 safeStorageGet('token') ||
                 window.userToken ||
@@ -498,17 +635,9 @@
     }
 
     function showAuthExpiredState() {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('authToken');
-        sessionStorage.removeItem('token');
-        document.getElementById('bookingsContainer').innerHTML = `
-            <div class="text-center py-5 bg-white rounded-4 shadow-sm">
-                <i class="bi bi-shield-lock display-1 text-warning"></i>
-                <h5 class="mt-3 mb-2">Please login again</h5>
-                <p class="text-muted mb-3">Your secure session expired. Your account is safe; login again to view profile and orders.</p>
-                <a href="index.html" class="btn btn-primary rounded-pill px-4 fw-bold">Login</a>
-            </div>`;
+        try { localStorage.clear(); } catch (e) {}
+        try { sessionStorage.clear(); } catch (e) {}
+        window.location.replace(LOGIN_URL);
     }
 
     function showCustomerOnlyBlockedState() {
@@ -524,10 +653,13 @@
     }
 
     function isCustomerOnlySession() {
-        return ['admin', 'assistant', 'support', 'specialist', 'driver', 'hotel', 'mitra'].includes(storedRole);
+        if (!storedRole || storedRole === 'null' || storedRole === 'undefined' || storedRole === 'customer' || storedRole === 'guest') {
+            return false;
+        }
+        return ['partner', 'hotel_owner', 'driver'].includes(storedRole);
     }
 
-    // ⭐ Unique logic for Greeting based on time
+    // Greeting based on local time.
     function setGreeting() {
         const hour = new Date().getHours();
         let greetText = "Good Day";
@@ -535,12 +667,32 @@
         else if (hour >= 12 && hour < 17) greetText = "Good Afternoon";
         else if (hour >= 17) greetText = "Good Evening";
         
-        document.getElementById('greetings').innerText = `${greetText}, ${uName}! 👋`;
+        document.getElementById('greetings').innerText = `${greetText}, ${uName}!`;
+    }
+
+    function showAccountTab(tabName) {
+        const showProfile = tabName === 'profile';
+        document.getElementById('profileSection')?.classList.toggle('d-none', !showProfile);
+        document.getElementById('orderHistorySection')?.classList.toggle('d-none', showProfile);
+        document.querySelectorAll('.profile-nav a[data-account-tab]').forEach((link) => {
+            link.classList.toggle('active', link.dataset.accountTab === tabName);
+        });
+    }
+
+    function initAccountTabs() {
+        document.querySelectorAll('.profile-nav a[data-account-tab]').forEach((link) => {
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
+                showAccountTab(link.dataset.accountTab || 'bookings');
+            });
+        });
+        showAccountTab('bookings');
     }
 
     window.onload = function() {
+        initAccountTabs();
         const authToken = getAuthToken();
-        if(!uName || !uEmail || !authToken) {
+        if(!authToken && !currentSession.hasStoredUser) {
             resetProfileForm();
             showAuthExpiredState();
             return;
@@ -559,8 +711,11 @@
         updateSidebarAvatar(cachedPhoto, uName);
 
         setGreeting();
-        document.getElementById('profileEmail').innerText = uEmail;
-        document.getElementById('userInitial').innerText = uName.charAt(0).toUpperCase();
+        document.getElementById('profileEmail').innerText = uEmail || 'Signed in';
+        document.getElementById('userInitial').innerText = (uName || 'G').charAt(0).toUpperCase();
+        const accountId = uEmail ? `GG-${uEmail.split('@')[0].slice(0, 8).toUpperCase()}` : 'GG Member';
+        document.getElementById('profileAccountId').innerText = accountId;
+        document.getElementById('profileContactInfo').innerText = uEmail || 'Signed in';
         
         loadProfile();
         fetchMyOrders();
@@ -580,8 +735,7 @@
             const uploadToken = getAuthToken();
             if (!uploadToken) {
                 console.error("Blocking request: Profile token is null or invalid.");
-                alert("Your session has expired. Please log in again.");
-                window.location.href = 'index.html';
+                showAuthExpiredState();
                 return;
             }
             const cleanApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
@@ -631,24 +785,30 @@
             });
             const data = await response.json();
             if (response.status === 401 || response.status === 403) {
-                showAuthExpiredState();
+                console.warn('Profile details are unavailable for this session; keeping bookings visible.');
                 return;
             }
             if (!data.success) return;
             const profile = data.profile;
-            document.getElementById('profileFullName').value = profile.fullName || profile.name || '';
+            const profileName = profile.fullName || profile.name || uName || 'Gyan Garbh Guest';
+            const profileEmail = profile.email || profile.userEmail || uEmail || '';
+            const profileContact = profile.phone || profile.mobile || profileEmail || 'Signed in';
+            document.getElementById('profileFullName').value = profileName;
             document.getElementById('profileDob').value = profile.dob ? String(profile.dob).slice(0, 10) : '';
             document.getElementById('profileVillageCity').value = profile.villageCity || profile.address || '';
             document.getElementById('profilePinCode').value = profile.pinCode || '';
             document.getElementById('profileBio').value = profile.bio || profile.experience || '';
-            const photoUrl = profile.profilePic || profile.photoURL || getDefaultAvatar(profile.fullName || profile.name || 'GG');
+            document.getElementById('profileEmail').innerText = profileEmail || 'Signed in';
+            document.getElementById('profileContactInfo').innerText = profileContact;
+            document.getElementById('profileAccountId').innerText = profile._id ? `GG-${String(profile._id).slice(-6).toUpperCase()}` : (profileEmail ? `GG-${profileEmail.split('@')[0].slice(0, 8).toUpperCase()}` : 'GG Member');
+            const photoUrl = profile.profilePic || profile.photoURL || getDefaultAvatar(profileName || 'GG');
             if (profile.profilePic || profile.photoURL) {
                 localStorage.setItem('profilePic', profile.profilePic || profile.photoURL);
                 localStorage.setItem('userProfilePic', profile.profilePic || profile.photoURL);
                 window.userProfilePic = profile.profilePic || profile.photoURL;
             }
             document.getElementById('profilePreview').src = photoUrl;
-            updateSidebarAvatar(profile.profilePic || profile.photoURL, profile.fullName || profile.name || uName);
+            updateSidebarAvatar(profile.profilePic || profile.photoURL, profileName);
         } catch (error) {
             console.error('Profile load failed', error);
         }
@@ -695,8 +855,7 @@
             console.log("Current Profile Token:", profileToken);
             if (!profileToken) {
                 console.error("Blocking request: Profile token is null or invalid.");
-                alert("Your session has expired. Please log in again.");
-                window.location.href = 'index.html';
+                showAuthExpiredState();
                 return;
             }
 
@@ -738,90 +897,7 @@
         }
     }
 
-    async function fetchMyOrders() {
-        const container = document.getElementById('bookingsContainer');
-        try {
-            const res = await fetch(`${API_URL}/all-bookings`);
-            const allBookings = await res.json();
-            if (res.status === 401 || res.status === 403) {
-                showAuthExpiredState();
-                return;
-            }
-            if (!Array.isArray(allBookings)) {
-                throw new Error(allBookings.message || 'Invalid booking response');
-            }
-            
-            // Smart Filter: raja vs Raja check (Case-insensitive)
-            const myBookings = allBookings.filter(b => String(b.userEmail || '').toLowerCase() === String(uEmail || '').toLowerCase());
-            
-            // ⭐ Unique Update: Stats Counter
-            document.getElementById('totalBookings').innerText = myBookings.length;
-            
-            container.innerHTML = "";
 
-            if(myBookings.length === 0) {
-                container.innerHTML = `<div class="text-center py-5 bg-white rounded-4 shadow-sm"><i class="bi bi-bag-plus display-1 text-light"></i><h5 class="text-muted mt-3 mb-1">No orders yet</h5><p class="text-muted small mb-0">Amazon-style new accounts start with a clean profile and empty order history.</p><a href="hotel.html" class="btn btn-primary rounded-pill mt-3 px-4">Book Your First Ride</a></div>`;
-                return;
-            }
-
-            myBookings.reverse().forEach(book => {
-                const isConfirmed = book.status === "Confirmed";
-                const badgeClass = isConfirmed ? "bg-success text-white" : "bg-warning text-dark";
-                const progressWidth = isConfirmed ? "100%" : "40%";
-                
-                // ⭐ Unique logic: Amazon style ID generator
-                const orderID = "GG-" + Math.floor(1000 + Math.random() * 9000);
-
-                container.innerHTML += `
-                    <div class="order-card p-4 shadow-sm border-0">
-                        <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
-                            <div>
-                                <h5 class="fw-bold text-primary mb-1 text-capitalize">${book.hotelName}</h5>
-                                <p class="text-muted small mb-0"><i class="bi bi-geo-alt-fill text-danger"></i> Bodhgaya, Bihar</p>
-                            </div>
-                            <div class="text-md-end text-start mt-2 mt-md-0">
-                                <span class="status-badge ${badgeClass} shadow-sm">${book.status}</span>
-                                <div class="mt-1 small" style="font-size: 11px; color: #999;">Gyan Garbh Order ID: ${orderID}</div>
-                            </div>
-                        </div>
-
-                        <div class="progress-track">
-                            <div class="progress-fill" style="width: ${progressWidth}"></div>
-                            <div class="track-point point-active" style="left: 0%" title="Request Sent"></div>
-                            <div class="track-point ${isConfirmed ? 'point-active' : ''}" style="left: 50%" title="Hotel Processing"></div>
-                            <div class="track-point ${isConfirmed ? 'point-active' : ''}" style="left: 100%" title="Stay Ready"></div>
-                        </div>
-                        <div class="d-flex justify-content-between text-muted mb-4 px-2" style="font-size: 10px; font-weight: bold;">
-                             <span>REQUEST SENT</span>
-                             <span>HOTEL PROCESSING</span>
-                             <span class="${isConfirmed ? 'text-primary' : 'text-muted'}">${isConfirmed ? 'STAY READY' : 'AWAITING'}</span>
-                        </div>
-
-                        <div class="row bg-light rounded-4 p-4 g-2 mb-3 mx-1">
-                            <div class="col-6 border-end pe-3"><small class="text-muted d-block">CHECK-IN</small><b class="small text-primary">${book.checkIn}</b></div>
-                            <div class="col-6 ps-4"><small class="text-muted d-block">CHECK-OUT</small><b class="small text-primary">${book.checkOut}</b></div>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top gap-2 flex-wrap">
-                            <div class="small">
-                                <span class="text-muted">Guest:</span> <b class="text-capitalize">${book.userName}</b>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="https://wa.me/91XXXXXXXXXX" class="btn btn-sm btn-outline-success rounded-pill px-3">
-                                    <i class="bi bi-whatsapp"></i> Help
-                                </a>
-                                <button onclick="showReceipt('${book.hotelName}', '${book.checkIn}', '${book.userName}')" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
-                                    <i class="bi bi-printer me-1"></i> Receipt
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        } catch (err) {
-            container.innerHTML = `<div class="alert alert-danger">Unable to connect to the booking service. Please try again shortly.</div>`;
-        }
-    }
 </script>
 <div class="modal fade" id="receiptModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -868,6 +944,95 @@
         
         const myModal = new bootstrap.Modal(document.getElementById('receiptModal'));
         myModal.show();
+    }
+
+    async function fetchMyOrders() {
+        const container = document.getElementById('bookingsContainer');
+        try {
+            const authToken = getAuthToken();
+            const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+            const res = await fetch(`${API_URL}/all-bookings`, { headers });
+            const allBookings = await res.json();
+            if (res.status === 401 || res.status === 403) {
+                showAuthExpiredState();
+                return;
+            }
+            if (!Array.isArray(allBookings)) {
+                throw new Error(allBookings.message || 'Invalid booking response');
+            }
+
+            const myBookings = allBookings.filter((booking) => String(booking.userEmail || '').toLowerCase() === String(uEmail || '').toLowerCase());
+            document.getElementById('totalBookings').innerText = myBookings.length;
+            container.innerHTML = '';
+
+            if (!myBookings.length) {
+                container.innerHTML = `
+                    <div class="empty-travel-card">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="empty-travel-icon"><i class="bi bi-flower1"></i></div>
+                            <div>
+                                <h4>No active bookings yet.</h4>
+                                <p>Discover Bodhgaya's Peaceful Stays and plan your sacred travel experience with Gyan Garbh.</p>
+                            </div>
+                        </div>
+                        <a href="hotel.html" class="btn btn-primary fw-bold px-4 py-2">Discover Bodhgaya Stays</a>
+                    </div>`;
+                return;
+            }
+
+            myBookings.reverse().forEach((booking) => {
+                const isConfirmed = booking.status === 'Confirmed';
+                const badgeClass = isConfirmed ? 'bg-success text-white' : 'bg-warning text-dark';
+                const progressWidth = isConfirmed ? '100%' : '40%';
+                const bookingTitle = booking.hotelName || booking.serviceName || booking.taxiName || 'Gyan Garbh Booking';
+                const bookingType = booking.roomType || booking.vehicleType || booking.serviceType || 'Stay Booking';
+                const checkIn = booking.checkIn || booking.pickupDate || booking.date || '--';
+                const checkOut = booking.checkOut || booking.dropDate || booking.returnDate || '--';
+                const guestName = booking.userName || uName || 'Guest';
+                const orderID = booking._id ? `GG-${String(booking._id).slice(-6).toUpperCase()}` : `GG-${Math.floor(1000 + Math.random() * 9000)}`;
+                const receiptTitle = escapeHTML(bookingTitle).replace(/'/g, "\\'");
+                const receiptDate = escapeHTML(checkIn).replace(/'/g, "\\'");
+                const receiptGuest = escapeHTML(guestName).replace(/'/g, "\\'");
+
+                container.innerHTML += `
+                    <article class="order-card p-4">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
+                            <div>
+                                <h5 class="fw-bold text-primary mb-1 text-capitalize">${escapeHTML(bookingTitle)}</h5>
+                                <p class="text-muted small mb-0"><i class="bi bi-geo-alt-fill text-danger"></i> Bodhgaya, Bihar - ${escapeHTML(bookingType)}</p>
+                            </div>
+                            <div class="text-md-end text-start mt-2 mt-md-0">
+                                <span class="status-badge ${badgeClass} shadow-sm">${escapeHTML(booking.status || 'Pending')}</span>
+                                <div class="mt-1 small" style="font-size: 11px; color: #999;">Gyan Garbh Booking ID: ${escapeHTML(orderID)}</div>
+                            </div>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: ${progressWidth}"></div>
+                            <div class="track-point point-active" style="left: 0%" title="Request Sent"></div>
+                            <div class="track-point ${isConfirmed ? 'point-active' : ''}" style="left: 50%" title="Hotel Processing"></div>
+                            <div class="track-point ${isConfirmed ? 'point-active' : ''}" style="left: 100%" title="Stay Ready"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted mb-4 px-2" style="font-size: 10px; font-weight: bold;">
+                            <span>REQUEST SENT</span>
+                            <span>HOTEL PROCESSING</span>
+                            <span class="${isConfirmed ? 'text-primary' : 'text-muted'}">${isConfirmed ? 'STAY READY' : 'AWAITING'}</span>
+                        </div>
+                        <div class="row bg-light rounded-4 p-4 g-2 mb-3 mx-1">
+                            <div class="col-6 border-end pe-3"><small class="text-muted d-block">CHECK-IN / START</small><b class="small text-primary">${escapeHTML(checkIn)}</b></div>
+                            <div class="col-6 ps-4"><small class="text-muted d-block">CHECK-OUT / END</small><b class="small text-primary">${escapeHTML(checkOut)}</b></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top gap-2 flex-wrap">
+                            <div class="small"><span class="text-muted">Guest:</span> <b class="text-capitalize">${escapeHTML(guestName)}</b></div>
+                            <div class="d-flex gap-2">
+                                <a href="https://wa.me/91XXXXXXXXXX" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-whatsapp"></i> Help</a>
+                                <button onclick="showReceipt('${receiptTitle}', '${receiptDate}', '${receiptGuest}')" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold"><i class="bi bi-printer me-1"></i> Receipt</button>
+                            </div>
+                        </div>
+                    </article>`;
+            });
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Unable to connect to the booking service. Please try again shortly.</div>`;
+        }
     }
 
     window.addEventListener('gyangarbh:realtime', fetchMyOrders);
