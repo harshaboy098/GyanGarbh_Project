@@ -452,30 +452,57 @@
                     <form id="createBodhiPathForm" style="margin-top: 20px;">
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Title</label>
+                                <label>Name</label>
                                 <input type="text" id="bodhiTitle" placeholder="e.g., Mahabodhi Temple" required>
                             </div>
                             <div class="form-group">
-                                <label>Category</label>
-                                <select id="bodhiCategory" required>
-                                    <option value="">Select Category</option>
-                                    <option value="temple">Temple</option>
-                                    <option value="history">History</option>
-                                    <option value="monument">Monument</option>
-                                    <option value="festival">Festival</option>
-                                    <option value="tradition">Tradition</option>
-                                </select>
+                                <label>Subtitle</label>
+                                <input type="text" id="bodhiSubtitle" placeholder="Sacred site subtitle">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Location</label>
+                                <input type="text" id="bodhiLocation" placeholder="Bodh Gaya, Bihar">
+                            </div>
+                            <div class="form-group">
+                                <label>Timings</label>
+                                <input type="text" id="bodhiTimings" placeholder="5:00 AM - 9:00 PM">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Entry Fee</label>
+                                <input type="text" id="bodhiEntryFee" placeholder="Free">
+                            </div>
+                            <div class="form-group">
+                                <label>Main Image URL</label>
+                                <input type="url" id="bodhiMainImage" placeholder="https://...">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Short Description</label>
-                            <textarea id="bodhiShortDesc" placeholder="Brief description" required></textarea>
+                            <label>Gallery Image URLs</label>
+                            <textarea id="bodhiGalleryImages" placeholder="Comma-separated image URLs"></textarea>
                         </div>
                         <div class="form-group">
-                            <label>Full Description</label>
-                            <textarea id="bodhiFullDesc" placeholder="Detailed description" required></textarea>
+                            <label>Description</label>
+                            <textarea id="bodhiShortDesc" placeholder="Temple description" required></textarea>
                         </div>
-                        <button type="submit" class="submit-btn">✅ Add Heritage Entry</button>
+                        <div class="form-group">
+                            <label>History</label>
+                            <textarea id="bodhiHistory" placeholder="Historical background"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Rules and Guidelines</label>
+                            <textarea id="bodhiRules" placeholder="Comma-separated rules"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="bodhiFeatured" style="width: auto;">
+                                Featured temple
+                            </label>
+                        </div>
+                        <button type="submit" class="submit-btn">Add Temple</button>
                     </form>
                 </div>
 
@@ -484,10 +511,10 @@
                     <table id="bodhiPathTable">
                         <thead>
                             <tr>
-                                <th>Title</th>
-                                <th>Category</th>
+                                <th>Name</th>
+                                <th>Location</th>
                                 <th>Description</th>
-                                <th>Updated By</th>
+                                <th>Featured</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -673,7 +700,7 @@
             const hotelsRes = await fetch(`${API_URL}/admin/all-hotels`);
             const customersRes = await fetch(`${API_URL}/admin/all-customers`);
             const mitrasRes = await fetch(`${API_URL}/admin/all-mitras`);
-            const bodhiRes = await fetch(`${API_URL}/bodhi-path/all`);
+            const bodhiRes = await fetch(`${API_URL}/api/temples/all`);
 
             const hotels = await hotelsRes.json();
             const customers = await customersRes.json();
@@ -683,7 +710,7 @@
             document.getElementById('hotelCount').textContent = hotels.hotels?.length || 0;
             document.getElementById('customerCount').textContent = customers.customers?.length || 0;
             document.getElementById('mitraCount').textContent = mitras.mitras?.length || 0;
-            document.getElementById('bodhiCount').textContent = bodhi.bodhiPaths?.length || 0;
+            document.getElementById('bodhiCount').textContent = bodhi.temples?.length || 0;
         } catch (error) {
             console.error('Dashboard load error:', error);
         }
@@ -759,19 +786,18 @@
 
     async function loadBodhiPath() {
         try {
-            const response = await fetch(`${API_URL}/bodhi-path/all`);
+            const response = await fetch(`${API_URL}/api/temples/all`);
             const data = await response.json();
 
             const tbody = document.querySelector('#bodhiPathTable tbody');
-            tbody.innerHTML = data.bodhiPaths.map(entry => `
+            tbody.innerHTML = (data.temples || []).map(entry => `
                 <tr>
-                    <td>${entry.title}</td>
-                    <td><span class="badge badge-success">${entry.category}</span></td>
-                    <td>${entry.shortDescription.substring(0, 50)}...</td>
-                    <td>${entry.updatedBy ? `<span class="badge badge-assistant">${entry.updatedBy}</span>` : '-'}</td>
+                    <td>${entry.name || 'N/A'}</td>
+                    <td>${entry.location || '-'}</td>
+                    <td>${(entry.description || '').substring(0, 50)}${(entry.description || '').length > 50 ? '...' : ''}</td>
+                    <td>${entry.isFeatured ? '<span class="badge badge-success">Featured</span>' : '-'}</td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="openEditBodhiPathModal('${entry._id}', '${entry.title}', '${entry.category}', '${entry.shortDescription.replace(/'/g, "\\'")}', '${entry.fullDescription.replace(/'/g, "\\'")}')">✏️ Edit</button>
-                        <button class="action-btn delete-btn" disabled title="Delete disabled for assistants">🗑️ Delete</button>
+                        <button class="action-btn delete-btn" disabled title="Delete disabled for assistants">Delete</button>
                     </td>
                 </tr>
             `).join('');
@@ -886,28 +912,34 @@
     document.getElementById('createBodhiPathForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_URL}/admin/bodhi-path/create`, {
+            const response = await fetch(`${API_URL}/api/temples/add`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title: document.getElementById('bodhiTitle').value,
-                    category: document.getElementById('bodhiCategory').value,
-                    shortDescription: document.getElementById('bodhiShortDesc').value,
-                    fullDescription: document.getElementById('bodhiFullDesc').value,
-                    createdBy: assistantEmail
+                    name: document.getElementById('bodhiTitle').value,
+                    subtitle: document.getElementById('bodhiSubtitle').value,
+                    location: document.getElementById('bodhiLocation').value,
+                    timings: document.getElementById('bodhiTimings').value,
+                    entryFee: document.getElementById('bodhiEntryFee').value,
+                    mainImage: document.getElementById('bodhiMainImage').value,
+                    galleryImages: document.getElementById('bodhiGalleryImages').value,
+                    description: document.getElementById('bodhiShortDesc').value,
+                    history: document.getElementById('bodhiHistory').value,
+                    rulesAndGuidelines: document.getElementById('bodhiRules').value,
+                    isFeatured: document.getElementById('bodhiFeatured').checked
                 })
             });
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ Heritage entry created successfully!');
+                alert('Temple created successfully!');
                 e.target.reset();
                 loadBodhiPath();
             } else {
-                alert('❌ Error: ' + data.message);
+                alert('Error: ' + data.message);
             }
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            alert('Error: ' + error.message);
         }
     });
 
@@ -927,4 +959,3 @@
 
 </body>
 </html>
-

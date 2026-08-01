@@ -448,11 +448,11 @@
 
     async function loadHeritageData() {
         try {
-            const response = await fetch(`${API_URL}/bodhi-path/all`);
+            const response = await fetch(`${API_URL}/api/temples/all`);
             const data = await response.json();
 
-            if (data.success && data.bodhiPaths) {
-                allHeritageData = data.bodhiPaths;
+            if (data.success && data.temples) {
+                allHeritageData = data.temples.map(normalizeTemple);
                 displayHeritage(allHeritageData);
             } else {
                 showEmptyState();
@@ -461,6 +461,25 @@
             console.error('Error loading heritage data:', error);
             showEmptyState();
         }
+    }
+
+    function normalizeTemple(temple) {
+        return {
+            ...temple,
+            title: temple.name,
+            category: 'temple',
+            shortDescription: temple.subtitle || temple.description || '',
+            fullDescription: temple.description || temple.subtitle || '',
+            significance: temple.history,
+            historicalFacts: temple.history ? [temple.history] : [],
+            location: { address: temple.location || 'Bodh Gaya, Bihar' },
+            imageUrl: temple.mainImage,
+            images: temple.galleryImages || [],
+            visitingHours: temple.timings,
+            relatedTemples: [],
+            estimatedVisitTime: temple.timings || 'Visit at your pace',
+            rulesAndGuidelines: temple.rulesAndGuidelines || []
+        };
     }
 
     function displayHeritage(heritageList) {
@@ -577,6 +596,15 @@
                     <div class="modal-section">
                         <h3><i class="bi bi-link"></i> Related Sites</h3>
                         <p>${item.relatedTemples.join(', ')}</p>
+                    </div>
+                ` : ''}
+
+                ${item.rulesAndGuidelines && item.rulesAndGuidelines.length > 0 ? `
+                    <div class="modal-section">
+                        <h3><i class="bi bi-check2-square"></i> Rules and Guidelines</h3>
+                        <ul class="facts-list">
+                            ${item.rulesAndGuidelines.map(rule => `<li>${rule}</li>`).join('')}
+                        </ul>
                     </div>
                 ` : ''}
             </div>
