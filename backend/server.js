@@ -24,6 +24,10 @@ const mongoose = require('mongoose');
 
 const cors = require('cors');
 
+const helmet = require('helmet');
+
+const rateLimit = require('express-rate-limit');
+
 const mongoSanitize = require('express-mongo-sanitize');
 
 const crypto = require('crypto');
@@ -35,8 +39,6 @@ const nodemailer = require('nodemailer');
 const cloudinary = require('cloudinary').v2;
 
 const multer = require('multer');
-
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const { Server } = require('socket.io');
 
@@ -63,6 +65,7 @@ const SupportTicket = require('./models/SupportTicket');
 const Taxi = require('./models/Taxi');
 
 const RideRequest = require('./models/RideRequest');
+const templeRoutes = require('./routes/templeRoutes');
 
 
 
@@ -77,8 +80,6 @@ const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const RESET_TTL_MS = 10 * 60 * 1000;
 
 const realtimeClients = new Set();
-
-const ephemeralSessionSecret = crypto.randomBytes(32).toString('hex');
 
 
 
@@ -224,17 +225,19 @@ const app = express();
 
 const server = http.createServer(app);
 
-const PORT = Number(process.env.PORT) || 5000;
+const PORT = Number.parseInt(process.env.PORT, 10) || 5000;
+const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '47696856369-b8pck7a7n94fsp303ltmmh5qpk4a55dh.apps.googleusercontent.com';
 
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-const MONGO_URI = process.env.MONGODB_URI || '';
+const MONGO_URI = String(process.env.MONGODB_URI || '').trim().replace(/^['"]|['"]$/g, '');
+const JWT_SECRET = String(process.env.JWT_SECRET || process.env.SESSION_SECRET || '').trim();
 
 const EMAIL_PASS = process.env.EMAIL_PASS || '';
 
@@ -268,20 +271,36 @@ if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
 
 
 
-const hotelImageStorage = new CloudinaryStorage({
+const createCloudinaryStorage = (params) => ({
+    _handleFile(req, file, callback) {
+        const uploadOptions = {
+            ...params,
+            resource_type: 'image'
+        };
 
-    cloudinary,
+        const upload = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+            if (error) return callback(error);
 
-    params: {
+            return callback(null, {
+                path: result.secure_url,
+                filename: result.public_id,
+                size: result.bytes
+            });
+        });
 
-        folder: 'GyanGarbh/Hotels',
+        file.stream.pipe(upload);
+    },
+    _removeFile(req, file, callback) {
+        if (!file.filename) return callback(null);
 
-        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-
-        transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
-
+        cloudinary.uploader.destroy(file.filename, { resource_type: 'image' }, callback);
     }
+});
 
+const hotelImageStorage = createCloudinaryStorage({
+    folder: 'GyanGarbh/Hotels',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
 });
 
 
@@ -292,61 +311,23 @@ const uploadProfilePic = multer({ storage: hotelImageStorage });
 
 
 
-const allowedCorsOrigins = new Set([
-
-    'http://localhost:5000',
-
-    'http://localhost:3000',
-
-    'http://localhost:5500',
-
-    'http://127.0.0.1:5500',
-
-    'http://localhost:5173',
-
-    'http://127.0.0.1:5173',
-
-    'null',
-
-    'https://gyangarbh-project.vercel.app',
-
-    'https://gyan-garbh-project.vercel.app',
-
-    'https://gyan-garbh-project-9dbzmsr4q-gyan-grabh-s-projects.vercel.app'
-
-]);
-
-
-
-const isAllowedVercelOrigin = (origin) => {
-
-    try {
-
-        const { protocol, hostname } = new URL(origin);
-
-        return protocol === 'https:' && hostname.endsWith('.vercel.app');
-
-    } catch {
-
-        return false;
-
-    }
-
-};
-
-
-
 const corsOptions = {
 
     origin(origin, callback) {
 
-        if (!origin || allowedCorsOrigins.has(origin) || isAllowedVercelOrigin(origin)) {
+        if (!origin) {
+
+            return callback(null, false);
+
+        }
+
+        if (origin === FRONTEND_URL) {
 
             return callback(null, true);
 
         }
 
-        return callback(new Error(`CORS blocked for origin: ${origin}`));
+        return callback(new Error('CORS origin not allowed'));
 
     },
 
@@ -360,6 +341,14 @@ const corsOptions = {
 
 };
 
+const loginRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
+});
+
 
 
 const io = new Server(server, {
@@ -370,9 +359,17 @@ const io = new Server(server, {
 
 
 
+app.use(helmet());
+
 app.use(cors(corsOptions));
 
 app.options(/.*/, cors(corsOptions));
+
+app.use(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'], loginRateLimiter);
+
+app.use(['/login', '/api/login', '/api/auth/login'], loginRateLimiter);
+
+app.use(['/assistant-login', '/api/assistant-login', '/api/auth/assistant-login'], loginRateLimiter);
 
 app.use(express.json());
 
@@ -390,13 +387,15 @@ app.use((req, res, next) => {
 
 });
 
+app.use('/api/temples', templeRoutes);
+
 
 
 const encodeTokenPart = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
 
 const decodeTokenPart = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
 
-const getSessionSecret = () => process.env.SESSION_SECRET || ADMIN_PASSWORD || ephemeralSessionSecret;
+const getSessionSecret = () => JWT_SECRET;
 
 const normalizeEnterpriseRole = (role) => {
 
@@ -472,13 +471,17 @@ const readSessionToken = (req) => {
     return token;
 };
 
+const ensureVerifiedSession = (req) => {
+    const session = verifySessionToken(readSessionToken(req));
+    if (session) req.session = session;
+    return session;
+};
+
 const requireSession = (allowedRoles = []) => (req, res, next) => {
 
-    const session = verifySessionToken(readSessionToken(req));
+    const session = ensureVerifiedSession(req);
 
-    const allowedEnterpriseRoles = allowedRoles.map(normalizeEnterpriseRole);
-
-    if (!session || (allowedRoles.length && !allowedRoles.includes(session.role) && !allowedEnterpriseRoles.includes(session.enterpriseRole))) {
+    if (!session || (allowedRoles.length && !allowedRoles.includes(session.role))) {
 
         return res.status(401).json({ success: false, message: 'Authentication required' });
 
@@ -640,9 +643,15 @@ const getRequestActor = async (req) => {
 
     if (!email) return null;
 
-    if (requestedRole === 'admin' && email === ADMIN_EMAIL) {
+    if (requestedRole === 'admin') {
 
-        return { email, role: 'admin', permissions: {} };
+        const admin = await User.findOne({ email, role: 'admin', isLocked: { $ne: true } }).select('email role');
+
+        if (admin) {
+
+            return { email: admin.email, role: 'admin', permissions: {} };
+
+        }
 
     }
 
@@ -680,6 +689,14 @@ const verifyAdmin = async (req, res, next) => {
 
     try {
 
+        const session = ensureVerifiedSession(req);
+
+        if (!session || session.role !== 'admin') {
+
+            return res.status(403).json({ success: false, message: 'Admin access required' });
+
+        }
+
         const actor = await getRequestActor(req);
 
         if (!actor || actor.role !== 'admin') {
@@ -705,6 +722,14 @@ const verifyAdmin = async (req, res, next) => {
 const verifyAssistant = (permission = null) => async (req, res, next) => {
 
     try {
+
+        const session = ensureVerifiedSession(req);
+
+        if (!session || session.role !== 'assistant') {
+
+            return res.status(403).json({ success: false, message: 'Assistant access required' });
+
+        }
 
         const actor = await getRequestActor(req);
 
@@ -739,13 +764,18 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
     try {
 
         // Populate session from token if present so owners with valid tokens get recognized
-        const session = verifySessionToken(readSessionToken(req));
-        if (session) req.session = session;
+        const session = ensureVerifiedSession(req);
 
         // Allow hotel owners (role 'hotel') to proceed when they present a valid session token
-        if (req.session && req.session.role === 'hotel') {
+        if (session && session.role === 'hotel') {
             req.actor = { email: req.session.email, role: 'hotel' };
             return next();
+        }
+
+        if (!session || !['admin', 'assistant'].includes(session.role)) {
+
+            return res.status(403).json({ success: false, message: 'Admin or assistant access required' });
+
         }
 
         const actor = await getRequestActor(req);
@@ -784,9 +814,13 @@ const verifySupportActor = (allowedRoles = ['support', 'specialist', 'assistant'
 
     try {
 
-        const session = verifySessionToken(readSessionToken(req));
+        const session = ensureVerifiedSession(req);
 
-        if (session) req.session = session;
+        if (!session || !allowedRoles.includes(session.role)) {
+
+            return res.status(403).json({ success: false, message: 'Support access required' });
+
+        }
 
         const actor = await getRequestActor(req);
 
@@ -812,7 +846,7 @@ const verifySupportActor = (allowedRoles = ['support', 'specialist', 'assistant'
 
 const verifyProfileUploadActor = (permission = null) => async (req, res, next) => {
 
-    const session = verifySessionToken(readSessionToken(req));
+    const session = ensureVerifiedSession(req);
 
     if (session) {
 
@@ -916,7 +950,7 @@ const safeSortQuery = (query, sortArg) => {
 
 
 
-const verifyAdminOnly = (email, role) => role === 'admin' && email === ADMIN_EMAIL;
+const verifyAdminOnly = (email, role) => role === 'admin' && shouldTreatAsAdmin(email);
 
 
 
@@ -1172,6 +1206,22 @@ if (!MONGO_URI) {
 
 }
 
+if (!JWT_SECRET) {
+
+    console.error('Missing JWT_SECRET environment variable. Please set it in .env or deployment settings.');
+
+    process.exit(1);
+
+}
+
+if (!FRONTEND_URL) {
+
+    console.error('Missing FRONTEND_URL environment variable. CORS must be pinned to a trusted frontend origin.');
+
+    process.exit(1);
+
+}
+
 const mongooseMajorVersion = Number((mongoose.version || '0').split('.')[0]);
 
 const mongooseOptions = {
@@ -1192,10 +1242,14 @@ const ADMIN_EMAIL = normalizeEmail(process.env.ADMIN_EMAIL);
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
+const configuredMasterAdminEmails = String(process.env.MASTER_ADMIN_EMAILS || process.env.MASTER_ADMIN_EMAIL || '')
+    .split(',')
+    .map(normalizeEmail)
+    .filter(Boolean);
+
 const MASTER_ADMIN_EMAILS = Array.from(new Set([
     ADMIN_EMAIL,
-    normalizeEmail(process.env.MASTER_ADMIN_EMAIL),
-    'yesmukeshhere@gmail.com'
+    ...configuredMasterAdminEmails
 ].filter(Boolean)));
 
 const shouldTreatAsAdmin = (email) => {
@@ -1357,7 +1411,7 @@ app.get('/health', (req, res) => {
 
 
 
-app.post(['/admin-login', '/api/admin-login'], async (req, res) => {
+app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'], async (req, res) => {
 
     try {
 
@@ -1883,7 +1937,7 @@ app.post('/api/admin/ensure-admin-role', async (req, res) => {
     }
 });
 
-app.post(['/login', '/api/login'], async (req, res) => {
+app.post(['/login', '/api/login', '/api/auth/login'], async (req, res) => {
 
     try {
 
@@ -4770,7 +4824,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
     try {
 
-        const { email, password, name, role, permissions, createdBy, createdByRole } = req.body;
+        const { email, password, name, role, permissions } = req.body;
 
         const cleanEmail = String(email || '').trim().toLowerCase();
 
@@ -4784,7 +4838,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
         // ⭐ ADMIN ONLY - Assistants cannot create assistants
 
-        if (createdByRole !== 'admin' || createdBy !== ADMIN_EMAIL) {
+        if (req.actor?.role !== 'admin') {
 
             return res.status(403).json({ success: false, message: 'Only Admin can create assistants' });
 
@@ -4844,7 +4898,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
             },
 
-            createdBy
+            createdBy: req.actor.email
 
         });
 
@@ -4856,9 +4910,9 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
         // Log activity
 
-        await logActivity('CREATE', 'Assistant', newAssistant._id, cleanName, createdBy, 'admin');
+        await logActivity('CREATE', 'Assistant', newAssistant._id, cleanName, req.actor.email, 'admin');
 
-        emitRealtime('assistant-created', { assistantId: newAssistant._id, name: newAssistant.name, email: newAssistant.email, createdBy });
+        emitRealtime('assistant-created', { assistantId: newAssistant._id, name: newAssistant.name, email: newAssistant.email, createdBy: req.actor.email });
 
 
 
@@ -4896,7 +4950,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
 // Assistant Login
 
-app.post('/assistant-login', async (req, res) => {
+app.post(['/assistant-login', '/api/assistant-login', '/api/auth/assistant-login'], async (req, res) => {
 
     try {
 
