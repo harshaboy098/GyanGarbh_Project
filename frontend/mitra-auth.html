@@ -131,7 +131,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script>
-    const API_URL = window.GYAN_GARBH_API_URL || (['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname) ? 'http://localhost:5000' : 'https://gyangarbh-project.onrender.com');
+    const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
 
     function switchMitraTab(tab) {
         document.getElementById('login-pane').style.display = tab === 'login' ? 'block' : 'none';
