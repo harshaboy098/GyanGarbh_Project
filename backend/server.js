@@ -1162,13 +1162,11 @@ if ((!process.env.EMAIL_USER || !EMAIL_PASS) && !isProduction) {
 
 const transporter = nodemailer.createTransport({
 
-    service: 'gmail',
-
     host: 'smtp.gmail.com',
 
-    port: 465,
+    port: 587,
 
-    secure: true,
+    secure: false,
 
     auth: {
 
