@@ -1194,7 +1194,7 @@ transporter.verify((error) => {
 
     if (error) {
 
-        console.error('Gmail SMTP connection failed:', error.message);
+        console.error('Gmail SMTP connection failed:', error);
 
         return;
 
@@ -1675,6 +1675,16 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
             delete otpStore[normalizedEmail];
 
             console.error('OTP email send failed:', mailError);
+            console.error({
+                message: mailError.message,
+                code: mailError.code,
+                command: mailError.command,
+                response: mailError.response,
+                responseCode: mailError.responseCode,
+                rejected: mailError.rejected,
+                accepted: mailError.accepted,
+                envelope: mailError.envelope
+            });
 
             return res.status(502).json({
 
