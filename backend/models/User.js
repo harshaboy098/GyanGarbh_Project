@@ -98,7 +98,6 @@ const userSchema = new mongoose.Schema({
     isLocked: { type: Boolean, default: false }
 });
 
-userSchema.index({ phone: 1 });
 userSchema.index({ name: 1, dob: 1, phone: 1 });
 
 userSchema.pre('validate', function() {

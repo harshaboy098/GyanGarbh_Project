@@ -1164,17 +1164,11 @@ const transporter = nodemailer.createTransport({
 
     service: 'gmail',
 
-    host: 'smtp.gmail.com',
-
-    port: 465,
-
-    secure: true,
-
     auth: {
 
         user: process.env.EMAIL_USER,
 
-        pass: EMAIL_PASS
+        pass: process.env.EMAIL_PASS
 
     }
 
@@ -1634,7 +1628,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
         const mailOptions = {
 
-            from: `"Gyan Garbh Security" <${process.env.EMAIL_USER}>`,
+            from: `"GyanGarbh Security" <${process.env.EMAIL_USER}>`,
 
             to: normalizedEmail,
 
