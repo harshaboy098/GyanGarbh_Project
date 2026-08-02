@@ -1172,6 +1172,8 @@ const transporter = nodemailer.createTransport({
 
     secure: false,
 
+    requireTLS: true,
+
     auth: {
 
         user: process.env.EMAIL_USER,
