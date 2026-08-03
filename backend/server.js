@@ -243,7 +243,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 const MONGO_URI = String(process.env.MONGODB_URI || '').trim().replace(/^['"]|['"]$/g, '');
 const JWT_SECRET = String(process.env.JWT_SECRET || process.env.SESSION_SECRET || '').trim();
 
-const EMAIL_PASS = process.env.EMAIL_PASS || '';
+const SMTP_USER = String(process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
+const SMTP_PASS = String(process.env.SMTP_PASS || process.env.EMAIL_PASS || '').trim();
 
 const cloudinaryCloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim().replace(/^['"]|['"]$/g, '');
 
@@ -1156,9 +1157,9 @@ app.get('/api/events', requireSession(), (req, res) => {
 
 // Email Setup
 
-if ((!process.env.EMAIL_USER || !EMAIL_PASS) && !isProduction) {
+if ((!SMTP_USER || !SMTP_PASS) && !isProduction) {
 
-    console.warn('EMAIL_USER or EMAIL_PASS is not set. Add them to backend/.env for local email delivery.');
+    console.warn('SMTP_USER or SMTP_PASS is not set. Add Brevo SMTP credentials to backend/.env for local email delivery.');
 
 }
 
@@ -1166,19 +1167,21 @@ if ((!process.env.EMAIL_USER || !EMAIL_PASS) && !isProduction) {
 
 const transporter = nodemailer.createTransport({
 
-    host: 'smtp.gmail.com',
+    host: 'smtp-relay.brevo.com',
 
     port: 587,
 
     secure: false,
 
-    requireTLS: true,
+    connectionTimeout: 10000,
+
+    greetingTimeout: 10000,
 
     auth: {
 
-        user: process.env.EMAIL_USER,
+        user: SMTP_USER,
 
-        pass: process.env.EMAIL_PASS
+        pass: SMTP_PASS
 
     },
 
@@ -1192,17 +1195,69 @@ const transporter = nodemailer.createTransport({
 
 
 
+async function sendOtpEmail({ to, otp, isReset }) {
+
+    if (!SMTP_USER || !SMTP_PASS) {
+
+        const error = new Error('Brevo SMTP credentials are missing.');
+
+        error.code = 'SMTP_CONFIG_MISSING';
+
+        throw error;
+
+    }
+
+    const mailOptions = {
+
+        from: `"GyanGarbh Security" <${SMTP_USER}>`,
+
+        to,
+
+        subject: isReset ? 'Reset Password OTP' : 'Verification Code',
+
+        html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+
+                <h2 style="color: #1e3c72;">Gyan Garbh</h2>
+
+                <p>Your 6-digit verification code is:</p>
+
+                <h1 style="color: #ffc107; letter-spacing: 5px;">${otp}</h1>
+
+                <p>This code is valid for 5 minutes.</p>
+
+               </div>`
+
+    };
+
+    return transporter.sendMail(mailOptions);
+
+}
+
+
+
 transporter.verify((error) => {
 
     if (error) {
 
-        console.error('Gmail SMTP connection failed:', error);
+        console.error('Brevo SMTP connection failed:', {
+
+            message: error.message,
+
+            code: error.code,
+
+            command: error.command,
+
+            response: error.response,
+
+            responseCode: error.responseCode
+
+        });
 
         return;
 
     }
 
-    console.log('Gmail SMTP transporter ready.');
+    console.log('Brevo SMTP transporter ready.');
 
 });
 
@@ -1642,33 +1697,9 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
 
 
-        const mailOptions = {
-
-            from: `"GyanGarbh Security" <${process.env.EMAIL_USER}>`,
-
-            to: normalizedEmail,
-
-            subject: isReset ? 'Reset Password OTP' : 'Verification Code',
-
-            html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-
-                    <h2 style="color: #1e3c72;">Gyan Garbh</h2>
-
-                    <p>Your 6-digit verification code is:</p>
-
-                    <h1 style="color: #ffc107; letter-spacing: 5px;">${otp}</h1>
-
-                    <p>This code is valid for 5 minutes.</p>
-
-                   </div>`
-
-        };
-
-
-
         try {
 
-            await transporter.sendMail(mailOptions);
+            await sendOtpEmail({ to: normalizedEmail, otp, isReset });
 
         } catch (mailError) {
 
@@ -1676,8 +1707,8 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
             delete otpStore[normalizedEmail];
 
-            console.error('OTP email send failed:', mailError);
             console.error({
+                context: 'OTP email send failed',
                 message: mailError.message,
                 code: mailError.code,
                 command: mailError.command,
@@ -1692,7 +1723,9 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
                 success: false,
 
-                message: 'OTP email could not be sent. Please check the email configuration and try again.'
+                message: 'OTP email could not be sent. Please try again shortly.',
+
+                error: 'EMAIL_DELIVERY_FAILED'
 
             });
 
