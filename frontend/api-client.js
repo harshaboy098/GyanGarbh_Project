@@ -3,16 +3,13 @@
     let reconnectTimer = null;
     let pollTimer = null;
 
-    // 🌐 Local Testing Ke Liye Base URL
-    const LOCAL_API_URL = 'https://gyangarbh-project-1.onrender.com';
-    const PRODUCTION_API_URL = 'https://gyangarbh-project-1.onrender.com';
-    const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
-    const KNOWN_API_ORIGINS = new Set([LOCAL_API_URL, PRODUCTION_API_URL]);
+    // Backend base URL
+    const API_BASE_URL = 'https://gyangarbh-project-1.onrender.com';
+    const KNOWN_API_ORIGINS = new Set([API_BASE_URL]);
 
     function resolveApiBaseUrl() {
         if (window.GYAN_GARBH_API_URL) return window.GYAN_GARBH_API_URL.replace(/\/$/, '');
-        if (window.location.protocol === 'file:') return PRODUCTION_API_URL;
-        return LOCAL_HOSTS.has(window.location.hostname) ? LOCAL_API_URL : PRODUCTION_API_URL;
+        return API_BASE_URL;
     }
 
     function rewriteApiUrl(input) {
