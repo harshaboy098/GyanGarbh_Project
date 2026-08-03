@@ -244,7 +244,6 @@ const MONGO_URI = String(process.env.MONGODB_URI || '').trim().replace(/^['"]|['
 const JWT_SECRET = String(process.env.JWT_SECRET || process.env.SESSION_SECRET || '').trim();
 
 const SMTP_USER = String(process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
-const BREVO_API_KEY = String(process.env.BREVO_API_KEY || '').trim();
 
 const cloudinaryCloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim().replace(/^['"]|['"]$/g, '');
 
@@ -1155,19 +1154,9 @@ app.get('/api/events', requireSession(), (req, res) => {
 
 
 
-// Email Setup
+async function sendOtpEmail({ to, otp, isReset, brevoApiKey }) {
 
-if ((!SMTP_USER || !BREVO_API_KEY) && !isProduction) {
-
-    console.warn('SMTP_USER or BREVO_API_KEY is not set. Add Brevo API credentials to backend/.env for local email delivery.');
-
-}
-
-
-
-async function sendOtpEmail({ to, otp, isReset }) {
-
-    if (!SMTP_USER || !BREVO_API_KEY) {
+    if (!SMTP_USER || !brevoApiKey) {
 
         const error = new Error('Brevo API credentials are missing.');
 
@@ -1211,7 +1200,7 @@ async function sendOtpEmail({ to, otp, isReset }) {
 
             accept: 'application/json',
 
-            'api-key': BREVO_API_KEY,
+            'api-key': brevoApiKey,
 
             'content-type': 'application/json'
 
@@ -1539,6 +1528,14 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
         }
 
+        const brevoApiKey = String(process.env.BREVO_API_KEY || '').trim();
+
+        if (!brevoApiKey) {
+
+            return res.status(500).json({ success: false, message: "Brevo API key is missing." });
+
+        }
+
 
 
         const userExists = await User.findOne({ email: normalizedEmail });
@@ -1661,7 +1658,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
 
 
-        const brevoResponse = await sendOtpEmail({ to: normalizedEmail, otp, isReset });
+        const brevoResponse = await sendOtpEmail({ to: normalizedEmail, otp, isReset, brevoApiKey });
 
         console.log("Brevo Success:", brevoResponse);
 
