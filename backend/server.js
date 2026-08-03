@@ -1528,11 +1528,19 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
         }
 
+        console.log("Checking Env Brevo Key Exists:", !!process.env.BREVO_API_KEY);
+        console.log("Env Key Length:", process.env.BREVO_API_KEY ? process.env.BREVO_API_KEY.trim().length : 0);
+
         const brevoApiKey = String(process.env.BREVO_API_KEY || '').trim();
 
         if (!brevoApiKey) {
 
-            return res.status(500).json({ success: false, message: "Brevo API key is missing." });
+            console.error("BREVO_API_KEY is undefined or empty in process.env!");
+
+            return res.status(500).json({
+                success: false,
+                message: "Brevo API key is missing in environment variables."
+            });
 
         }
 
