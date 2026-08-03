@@ -34,8 +34,6 @@ const crypto = require('crypto');
 
 const bcrypt = require('bcryptjs');
 
-const nodemailer = require('nodemailer');
-
 const cloudinary = require('cloudinary').v2;
 
 const multer = require('multer');
@@ -244,7 +242,7 @@ const MONGO_URI = String(process.env.MONGODB_URI || '').trim().replace(/^['"]|['
 const JWT_SECRET = String(process.env.JWT_SECRET || process.env.SESSION_SECRET || '').trim();
 
 const SMTP_USER = String(process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
-const SMTP_PASS = String(process.env.SMTP_PASS || process.env.EMAIL_PASS || '').trim();
+const BREVO_API_KEY = String(process.env.BREVO_API_KEY || '').trim();
 
 const cloudinaryCloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim().replace(/^['"]|['"]$/g, '');
 
@@ -981,7 +979,7 @@ const resolveActorRole = async (email, requestedRole) => {
 
 const sendBookingCancellationAlert = async (booking, reason) => {
 
-    // Placeholder: replace with WhatsApp provider and transporter.sendMail calls.
+    // Placeholder: replace with WhatsApp and email provider calls.
 
     console.info(`[MOCK ALERT] WhatsApp/Email to hotel owner: booking ${booking._id} at ${booking.hotelName} was cancelled. Reason: ${reason}`);
 
@@ -1157,65 +1155,41 @@ app.get('/api/events', requireSession(), (req, res) => {
 
 // Email Setup
 
-if ((!SMTP_USER || !SMTP_PASS) && !isProduction) {
+if ((!SMTP_USER || !BREVO_API_KEY) && !isProduction) {
 
-    console.warn('SMTP_USER or SMTP_PASS is not set. Add Brevo SMTP credentials to backend/.env for local email delivery.');
+    console.warn('SMTP_USER or BREVO_API_KEY is not set. Add Brevo API credentials to backend/.env for local email delivery.');
 
 }
 
 
 
-const transporter = nodemailer.createTransport({
-
-    host: 'smtp-relay.brevo.com',
-
-    port: 587,
-
-    secure: false,
-
-    connectionTimeout: 10000,
-
-    greetingTimeout: 10000,
-
-    auth: {
-
-        user: SMTP_USER,
-
-        pass: SMTP_PASS
-
-    },
-
-    tls: {
-
-        rejectUnauthorized: false
-
-    }
-
-});
-
-
-
 async function sendOtpEmail({ to, otp, isReset }) {
 
-    if (!SMTP_USER || !SMTP_PASS) {
+    if (!SMTP_USER || !BREVO_API_KEY) {
 
-        const error = new Error('Brevo SMTP credentials are missing.');
+        const error = new Error('Brevo API credentials are missing.');
 
-        error.code = 'SMTP_CONFIG_MISSING';
+        error.code = 'BREVO_CONFIG_MISSING';
 
         throw error;
 
     }
 
-    const mailOptions = {
+    const payload = {
 
-        from: `"GyanGarbh Security" <${SMTP_USER}>`,
+        sender: {
 
-        to,
+            name: 'Gyan Garbh',
+
+            email: SMTP_USER
+
+        },
+
+        to: [{ email: to }],
 
         subject: isReset ? 'Reset Password OTP' : 'Verification Code',
 
-        html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        htmlContent: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
 
                 <h2 style="color: #1e3c72;">Gyan Garbh</h2>
 
@@ -1229,37 +1203,54 @@ async function sendOtpEmail({ to, otp, isReset }) {
 
     };
 
-    return transporter.sendMail(mailOptions);
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
 
-}
+        method: 'POST',
 
+        headers: {
 
+            accept: 'application/json',
 
-transporter.verify((error) => {
+            'api-key': BREVO_API_KEY,
 
-    if (error) {
+            'content-type': 'application/json'
 
-        console.error('Brevo SMTP connection failed:', {
+        },
 
-            message: error.message,
+        body: JSON.stringify(payload)
 
-            code: error.code,
+    });
 
-            command: error.command,
+    const responseText = await response.text();
+    let responseBody = responseText;
 
-            response: error.response,
+    try {
 
-            responseCode: error.responseCode
+        responseBody = responseText ? JSON.parse(responseText) : null;
 
-        });
+    } catch {
 
-        return;
+        responseBody = responseText;
 
     }
 
-    console.log('Brevo SMTP transporter ready.');
+    if (!response.ok) {
 
-});
+        const error = new Error('Brevo API email send failed.');
+
+        error.code = 'BREVO_API_ERROR';
+
+        error.status = response.status;
+
+        error.response = responseBody;
+
+        throw error;
+
+    }
+
+    return responseBody;
+
+}
 
 
 
@@ -1711,6 +1702,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
                 context: 'OTP email send failed',
                 message: mailError.message,
                 code: mailError.code,
+                status: mailError.status,
                 command: mailError.command,
                 response: mailError.response,
                 responseCode: mailError.responseCode,
