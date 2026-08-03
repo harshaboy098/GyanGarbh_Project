@@ -1661,7 +1661,9 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
 
 
-        await sendOtpEmail({ to: normalizedEmail, otp, isReset });
+        const brevoResponse = await sendOtpEmail({ to: normalizedEmail, otp, isReset });
+
+        console.log("Brevo Success:", brevoResponse);
 
         res.json({ success: true, message: "OTP Sent" });
 
@@ -1671,9 +1673,12 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
         if (normalizedEmail) delete otpStore[normalizedEmail];
 
-        console.log(error.response?.data || error.message);
+        console.error("Brevo API Error Data:", error.response ? error.response.data : error.message);
 
-        res.status(500).json({ error: "Failed to send OTP", details: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.response ? error.response.data.message : error.message
+        });
 
     }
 
