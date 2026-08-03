@@ -34,6 +34,8 @@ const crypto = require('crypto');
 
 const bcrypt = require('bcryptjs');
 
+const axios = require('axios');
+
 const cloudinary = require('cloudinary').v2;
 
 const multer = require('multer');
@@ -1203,9 +1205,7 @@ async function sendOtpEmail({ to, otp, isReset }) {
 
     };
 
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-
-        method: 'POST',
+    const response = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
 
         headers: {
 
@@ -1215,40 +1215,11 @@ async function sendOtpEmail({ to, otp, isReset }) {
 
             'content-type': 'application/json'
 
-        },
-
-        body: JSON.stringify(payload)
+        }
 
     });
 
-    const responseText = await response.text();
-    let responseBody = responseText;
-
-    try {
-
-        responseBody = responseText ? JSON.parse(responseText) : null;
-
-    } catch {
-
-        responseBody = responseText;
-
-    }
-
-    if (!response.ok) {
-
-        const error = new Error('Brevo API email send failed.');
-
-        error.code = 'BREVO_API_ERROR';
-
-        error.status = response.status;
-
-        error.response = responseBody;
-
-        throw error;
-
-    }
-
-    return responseBody;
+    return response.data;
 
 }
 
@@ -1548,11 +1519,13 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 
 app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
-    const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, village, villageCity, city, pinCode, pincode, pin, address, hotelName } = req.body;
+    let normalizedEmail = '';
 
     try {
 
-        const normalizedEmail = String(email || '').trim().toLowerCase();
+        const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, village, villageCity, city, pinCode, pincode, pin, address, hotelName } = req.body;
+
+        normalizedEmail = String(email || '').trim().toLowerCase();
 
         const requestedRole = ['guest', 'mitra', 'customer', 'hotel'].includes(role) ? role : 'customer';
 
@@ -1688,48 +1661,19 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
 
 
-        try {
-
-            await sendOtpEmail({ to: normalizedEmail, otp, isReset });
-
-        } catch (mailError) {
-
-            if (otpStore[normalizedEmail]?.timeoutId) clearTimeout(otpStore[normalizedEmail].timeoutId);
-
-            delete otpStore[normalizedEmail];
-
-            console.error({
-                context: 'OTP email send failed',
-                message: mailError.message,
-                code: mailError.code,
-                status: mailError.status,
-                command: mailError.command,
-                response: mailError.response,
-                responseCode: mailError.responseCode,
-                rejected: mailError.rejected,
-                accepted: mailError.accepted,
-                envelope: mailError.envelope
-            });
-
-            return res.status(502).json({
-
-                success: false,
-
-                message: 'OTP email could not be sent. Please try again shortly.',
-
-                error: 'EMAIL_DELIVERY_FAILED'
-
-            });
-
-        }
+        await sendOtpEmail({ to: normalizedEmail, otp, isReset });
 
         res.json({ success: true, message: "OTP Sent" });
 
     } catch (error) {
 
-        console.error('Send OTP error:', error);
+        if (normalizedEmail && otpStore[normalizedEmail]?.timeoutId) clearTimeout(otpStore[normalizedEmail].timeoutId);
 
-        res.status(500).json({ success: false, message: "Unable to process OTP request. Please try again." });
+        if (normalizedEmail) delete otpStore[normalizedEmail];
+
+        console.log(error.response?.data || error.message);
+
+        res.status(500).json({ error: "Failed to send OTP", details: error.message });
 
     }
 
