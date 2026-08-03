@@ -42,6 +42,52 @@
         );
     }
 
+    function decodeTokenPayload(token) {
+        const parts = String(token || '').split('.');
+        if (parts.length !== 2 && parts.length !== 3) return null;
+
+        try {
+            const payloadPart = parts.length === 3 ? parts[1] : parts[0];
+            const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+            const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+            return JSON.parse(atob(padded));
+        } catch {
+            return null;
+        }
+    }
+
+    function isUsableStoredToken(token) {
+        if (!token || token === 'null' || token === 'undefined') return false;
+
+        const payload = decodeTokenPayload(token);
+        if (!payload) return false;
+
+        if (payload.exp) {
+            const expiresAt = payload.exp > 9999999999 ? payload.exp : payload.exp * 1000;
+            if (expiresAt <= Date.now()) return false;
+        }
+
+        return true;
+    }
+
+    function getLocalStorageJwtToken() {
+        const tokenKeys = ['authToken', 'hotelToken', 'token', 'adminToken'];
+        for (const key of tokenKeys) {
+            const token = localStorage.getItem(key);
+            if (isUsableStoredToken(token)) return token;
+        }
+
+        return '';
+    }
+
+    function removeInvalidLocalStorageToken(token) {
+        ['authToken', 'hotelToken', 'token', 'adminToken'].forEach((key) => {
+            if (!token || localStorage.getItem(key) === token) {
+                localStorage.removeItem(key);
+            }
+        });
+    }
+
     function notify(detail) {
         window.dispatchEvent(new CustomEvent('gyangarbh:realtime', { detail }));
     }
@@ -52,9 +98,9 @@
     }
 
     function connect() {
-        const token = getToken();
+        const token = getLocalStorageJwtToken();
         if (!token || typeof EventSource === 'undefined') {
-            startPollingFallback();
+            if (typeof EventSource === 'undefined') startPollingFallback();
             return;
         }
 
@@ -71,12 +117,13 @@
                 notify({ type: 'update' });
             }
         });
-        eventSource.onerror = function () {
-            eventSource.close();
+        eventSource.onerror = function (err) {
+            console.warn('SSE connection error/unauthorized. Closing stream.', err);
+            removeInvalidLocalStorageToken(token);
+            if (eventSource) eventSource.close();
             eventSource = null;
-            startPollingFallback();
             window.clearTimeout(reconnectTimer);
-            reconnectTimer = window.setTimeout(connect, 5000);
+            reconnectTimer = null;
         };
     }
 
