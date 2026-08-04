@@ -1,5 +1,23 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "frontend",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/x9f2-k8qm-z7p1-v4tw-9821.html",
+      "destination": "/x9f2-k8qm-z7p1-v4tw-9821.html"
+    },
+    {
+      "source": "/x9f2-k8qm-z7p1-v4tw-9821",
+      "destination": "/x9f2-k8qm-z7p1-v4tw-9821.html"
+    },
+    { "source": "/admin", "destination": "/404.html" },
+    { "source": "/admin.html", "destination": "/404.html" },
+    { "source": "/admin-fixed.html", "destination": "/404.html" },
+    { "source": "/admin-secret-panel.html", "destination": "/404.html" },
+    { "source": "/admin-control.html", "destination": "/404.html" },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
