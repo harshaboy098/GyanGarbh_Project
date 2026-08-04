@@ -228,13 +228,38 @@ const server = http.createServer(app);
 
 const PORT = Number.parseInt(process.env.PORT, 10) || 5000;
 const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
-const ALLOWED_ORIGINS = new Set([
+const allowedOrigins = [
     FRONTEND_URL,
     'https://gyan-garbh-project-ten.vercel.app',
-    'https://gyan-garbh-project.vercel.app',
     'http://localhost:3000',
     'http://localhost:5173'
-].filter(Boolean));
+].filter(Boolean);
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Accept',
+        'Origin',
+        'x-gyangarbh-admin-shield'
+    ],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '47696856369-b8pck7a7n94fsp303ltmmh5qpk4a55dh.apps.googleusercontent.com';
 
@@ -318,37 +343,6 @@ const uploadHotelImages = multer({ storage: hotelImageStorage });
 const uploadProfilePic = multer({ storage: hotelImageStorage });
 
 
-
-const corsOptions = {
-
-    origin(origin, callback) {
-
-        if (!origin) {
-
-            return callback(null, true);
-
-        }
-
-        if (ALLOWED_ORIGINS.has(origin)) {
-
-            return callback(null, true);
-
-        }
-
-        return callback(new Error('CORS origin not allowed'));
-
-    },
-
-    credentials: true,
-
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-gyangarbh-admin-shield'],
-
-    optionsSuccessStatus: 204
-
-};
-
 const loginRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
@@ -378,10 +372,6 @@ const io = new Server(server, {
 
 
 app.use(helmet());
-
-app.use(cors(corsOptions));
-
-app.options(/.*/, cors(corsOptions));
 
 app.use(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'], adminAuthRateLimiter);
 
