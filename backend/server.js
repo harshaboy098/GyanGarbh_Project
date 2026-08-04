@@ -13,6 +13,7 @@ if (dns.setDefaultResultOrder) {
 
 
 const path = require('path');
+const fs = require('fs');
 
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -339,7 +340,7 @@ const corsOptions = {
 
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-gyangarbh-admin-shield'],
 
     optionsSuccessStatus: 204
 
@@ -351,6 +352,16 @@ const loginRateLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
+});
+
+const adminAuthRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    message: { success: false, message: 'Not Found' },
+    statusCode: 404
 });
 
 
@@ -369,7 +380,7 @@ app.use(cors(corsOptions));
 
 app.options(/.*/, cors(corsOptions));
 
-app.use(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'], loginRateLimiter);
+app.use(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'], adminAuthRateLimiter);
 
 app.use(['/login', '/api/login', '/api/auth/login'], loginRateLimiter);
 
@@ -419,7 +430,13 @@ const signTokenPayload = (payload) => crypto
 
     .digest('base64url');
 
-const createSessionToken = (role, email) => {
+const createSessionToken = (role, email, expiresIn = '8h') => {
+
+    return signJwt({ role, enterpriseRole: normalizeEnterpriseRole(role), email: normalizeEmail(email) }, expiresIn);
+
+};
+
+const createLegacySessionToken = (role, email) => {
 
     const encodedPayload = encodeTokenPart({ role, enterpriseRole: normalizeEnterpriseRole(role), email: normalizeEmail(email), exp: Date.now() + SESSION_TTL_MS });
 
@@ -431,7 +448,11 @@ const verifySessionToken = (token) => {
 
     try {
 
-        const [encodedPayload, signature] = String(token || '').split('.');
+        const parts = String(token || '').split('.');
+
+        if (parts.length === 3) return verifyJwtToken(token);
+
+        const [encodedPayload, signature] = parts;
 
         if (!encodedPayload || !signature) return null;
 
@@ -473,6 +494,128 @@ const readSessionToken = (req) => {
     }
 
     return token;
+};
+
+const ADMIN_PANEL_ENTRY = 'x9f2-k8qm-z7p1-v4tw-9821.html';
+const ADMIN_SHIELD_HEADER = 'x-gyangarbh-admin-shield';
+const ADMIN_SHIELD_SECRET = String(process.env.ADMIN_SHIELD_SECRET || process.env.ADMIN_SHIELD_TOKEN || 'gg-admin-shield-v1-9821').trim();
+const ADMIN_MASTER_PIN = String(process.env.ADMIN_MASTER_PIN || '').trim();
+const ADMIN_JWT_EXPIRES_IN = '20m';
+const ADMIN_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+const AUDIT_LOG_PATH = path.join(__dirname, 'server.out.log');
+
+const fakeNotFound = (res) => res.status(404).type('text/plain').send('404 Not Found');
+
+const appendAuditLog = (req, action, actor = 'unknown', status = 'info', details = {}) => {
+    const entry = {
+        timestamp: new Date().toISOString(),
+        ip: req.ip || req.socket?.remoteAddress || '',
+        userAgent: req.get?.('user-agent') || '',
+        method: req.method,
+        path: req.originalUrl || req.url,
+        action,
+        actor,
+        status,
+        details
+    };
+
+    fs.appendFile(AUDIT_LOG_PATH, `${JSON.stringify(entry)}\n`, (err) => {
+        if (err) console.error('Audit append error:', err.message);
+    });
+};
+
+const timingSafeEquals = (a, b) => {
+    const left = Buffer.from(String(a || ''));
+    const right = Buffer.from(String(b || ''));
+    return left.length === right.length && crypto.timingSafeEqual(left, right);
+};
+
+const requireAdminShield = (req, res, next) => {
+    const provided = req.get(ADMIN_SHIELD_HEADER);
+    if (!provided || !ADMIN_SHIELD_SECRET || !timingSafeEquals(provided, ADMIN_SHIELD_SECRET)) {
+        appendAuditLog(req, 'ADMIN_SHIELD_REJECTED', 'unknown', 'failed');
+        return fakeNotFound(res);
+    }
+    return next();
+};
+
+const auditAdminMutation = (req, res, next) => {
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+
+    res.on('finish', () => {
+        appendAuditLog(
+            req,
+            `ADMIN_DATA_${req.method}`,
+            req.actor?.email || req.session?.email || req.body?.userEmail || req.body?.updatedBy || req.body?.createdBy || req.body?.deletedBy || 'unknown',
+            res.statusCode >= 200 && res.statusCode < 400 ? 'success' : 'failed',
+            {
+                statusCode: res.statusCode,
+                entityId: req.params?.id || req.body?.hotelId || req.body?.mitraId || req.body?.customerId || req.body?.assistantId || req.body?.bodhiPathId || req.body?.entityId || null
+            }
+        );
+    });
+
+    return next();
+};
+
+app.get([
+    '/admin',
+    '/admin/',
+    '/admin.html',
+    '/admin-fixed.html',
+    '/admin-secret-panel.html',
+    '/admin-control.html'
+], (req, res) => fakeNotFound(res));
+
+app.use('/api/admin', requireAdminShield);
+app.use('/api/admin', auditAdminMutation);
+app.use('/admin-login', requireAdminShield);
+app.use('/admin/login', requireAdminShield);
+app.use('/api/admin-login', requireAdminShield);
+app.use('/api/admin/login', requireAdminShield);
+app.use('/admin', requireAdminShield);
+app.use('/admin', auditAdminMutation);
+
+const parseDurationMs = (value, fallbackMs = SESSION_TTL_MS) => {
+    const match = String(value || '').trim().match(/^(\d+)(ms|s|m|h|d)?$/i);
+    if (!match) return fallbackMs;
+    const amount = Number(match[1]);
+    const unit = (match[2] || 'ms').toLowerCase();
+    const multipliers = { ms: 1, s: 1000, m: 60 * 1000, h: 60 * 60 * 1000, d: 24 * 60 * 60 * 1000 };
+    return amount * (multipliers[unit] || 1);
+};
+
+const signJwt = (payload, expiresIn = '8h') => {
+    const secret = getSessionSecret();
+    if (!secret) throw new Error('JWT_SECRET or SESSION_SECRET is required for signed sessions');
+
+    const now = Math.floor(Date.now() / 1000);
+    const ttlMs = parseDurationMs(expiresIn, SESSION_TTL_MS);
+    const header = encodeTokenPart({ alg: 'HS256', typ: 'JWT' });
+    const body = encodeTokenPart({
+        ...payload,
+        iat: now,
+        exp: Math.floor((Date.now() + ttlMs) / 1000)
+    });
+    const signingInput = `${header}.${body}`;
+    const signature = crypto.createHmac('sha256', secret).update(signingInput).digest('base64url');
+    return `${signingInput}.${signature}`;
+};
+
+const verifyJwtToken = (token) => {
+    const [header, body, signature] = String(token || '').split('.');
+    if (!header || !body || !signature) return null;
+
+    const expected = crypto.createHmac('sha256', getSessionSecret()).update(`${header}.${body}`).digest('base64url');
+    if (!timingSafeEquals(signature, expected)) return null;
+
+    const decodedHeader = decodeTokenPart(header);
+    if (decodedHeader.alg !== 'HS256' || decodedHeader.typ !== 'JWT') return null;
+
+    const payload = decodeTokenPart(body);
+    if (!payload.email || !payload.role || !payload.exp || payload.exp * 1000 < Date.now()) return null;
+    payload.enterpriseRole = payload.enterpriseRole || normalizeEnterpriseRole(payload.role);
+    return payload;
 };
 
 const ensureVerifiedSession = (req) => {
@@ -1431,13 +1574,23 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 
     try {
 
-        const { email, password } = req.body;
+        const { email, password, otp, adminPin } = req.body;
 
         const normalizedEmail = normalizeEmail(email);
 
         if (!isValidEmail(normalizedEmail) || !password) {
 
+            appendAuditLog(req, 'ADMIN_LOGIN_BAD_REQUEST', normalizedEmail || 'unknown', 'failed');
+
             return res.status(400).json({ success: false, message: 'Valid email and password are required' });
+
+        }
+
+        if (!ADMIN_MASTER_PIN) {
+
+            appendAuditLog(req, 'ADMIN_LOGIN_PIN_NOT_CONFIGURED', normalizedEmail, 'failed');
+
+            return res.status(500).json({ success: false, message: 'Admin security PIN is not configured.' });
 
         }
 
@@ -1448,6 +1601,7 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
         if (!adminUser) {
 
             await logSecurityEvent('Failed Login', email || 'unknown', email || 'unknown', 'admin', 'Admin login attempted with invalid email');
+            appendAuditLog(req, 'ADMIN_LOGIN_FAILED_INVALID_EMAIL', normalizedEmail || 'unknown', 'failed');
 
             return res.status(401).json({ success: false, message: 'Invalid admin credentials' });
 
@@ -1463,10 +1617,92 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
         if (!passwordMatch) {
 
             await logSecurityEvent('Failed Login', activeAdminUser.name || 'Admin', email, 'admin', 'Admin login attempted with invalid password');
+            appendAuditLog(req, 'ADMIN_LOGIN_FAILED_INVALID_PASSWORD', normalizedEmail, 'failed');
 
             return res.status(401).json({ success: false, message: 'Invalid admin credentials' });
 
         }
+
+        if (!otp || !adminPin) {
+
+            const brevoApiKey = String(process.env.BREVO_API_KEY || '').trim();
+
+            if (!brevoApiKey) {
+
+                appendAuditLog(req, 'ADMIN_OTP_SEND_FAILED_CONFIG', normalizedEmail, 'failed');
+
+                return res.status(500).json({ success: false, message: 'OTP email service is not configured.' });
+
+            }
+
+            const code = Math.floor(100000 + Math.random() * 900000);
+            const expiresAt = Date.now() + 5 * 60 * 1000;
+
+            if (otpStore[normalizedEmail]?.timeoutId) clearTimeout(otpStore[normalizedEmail].timeoutId);
+
+            const timeoutId = setTimeout(() => {
+                delete otpStore[normalizedEmail];
+            }, 5 * 60 * 1000);
+
+            otpStore[normalizedEmail] = { code, expiresAt, timeoutId, purpose: 'admin-login' };
+
+            await sendOtpEmail({ to: normalizedEmail, otp: code, isReset: false, brevoApiKey });
+            appendAuditLog(req, 'ADMIN_OTP_SENT', normalizedEmail, 'success');
+
+            return res.status(200).json({
+                success: true,
+                otpRequired: true,
+                pinRequired: true,
+                message: 'Admin OTP sent. Enter OTP and Master PIN to continue.'
+            });
+
+        }
+
+        const record = otpStore[normalizedEmail];
+
+        if (!record || record.purpose !== 'admin-login' || record.code != String(otp).trim()) {
+
+            await logSecurityEvent('Failed Login', activeAdminUser.name || 'Admin', email, 'admin', 'Admin login attempted with invalid OTP');
+            appendAuditLog(req, 'ADMIN_LOGIN_FAILED_INVALID_OTP', normalizedEmail, 'failed');
+
+            return res.status(401).json({ success: false, message: 'Invalid admin OTP or credentials' });
+
+        }
+
+        if (record.expiresAt < Date.now()) {
+
+            if (record.timeoutId) clearTimeout(record.timeoutId);
+            delete otpStore[normalizedEmail];
+            appendAuditLog(req, 'ADMIN_LOGIN_FAILED_EXPIRED_OTP', normalizedEmail, 'failed');
+
+            return res.status(401).json({ success: false, message: 'Admin OTP expired. Please login again.' });
+
+        }
+
+        if (!timingSafeEquals(adminPin, ADMIN_MASTER_PIN)) {
+
+            await logSecurityEvent('Failed Login', activeAdminUser.name || 'Admin', email, 'admin', 'Admin login attempted with invalid master PIN');
+            appendAuditLog(req, 'ADMIN_LOGIN_FAILED_INVALID_PIN', normalizedEmail, 'failed');
+
+            return res.status(401).json({ success: false, message: 'Invalid admin OTP or credentials' });
+
+        }
+
+        if (record.timeoutId) clearTimeout(record.timeoutId);
+        delete otpStore[normalizedEmail];
+
+        const sessionToken = createSessionToken('admin', activeAdminUser.email, ADMIN_JWT_EXPIRES_IN);
+
+        res.cookie('authToken', sessionToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'strict',
+            maxAge: parseDurationMs(ADMIN_JWT_EXPIRES_IN, 20 * 60 * 1000),
+            path: '/'
+        });
+
+        await logSecurityEvent('Successful Login', activeAdminUser.name || 'Admin', activeAdminUser.email, 'admin', 'Admin completed OTP and PIN authentication');
+        appendAuditLog(req, 'ADMIN_LOGIN_SUCCESS', activeAdminUser.email, 'success');
 
 
 
@@ -1484,7 +1720,11 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 
             email: activeAdminUser.email,
 
-            sessionToken: createSessionToken('admin', activeAdminUser.email)
+            sessionToken,
+
+            expiresIn: ADMIN_JWT_EXPIRES_IN,
+
+            idleTimeoutMs: ADMIN_IDLE_TIMEOUT_MS
 
         });
 
