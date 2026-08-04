@@ -230,7 +230,10 @@ const PORT = Number.parseInt(process.env.PORT, 10) || 5000;
 const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
 const ALLOWED_ORIGINS = new Set([
     FRONTEND_URL,
-    'https://gyan-garbh-project.vercel.app'
+    'https://gyan-garbh-project-ten.vercel.app',
+    'https://gyan-garbh-project.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173'
 ].filter(Boolean));
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '47696856369-b8pck7a7n94fsp303ltmmh5qpk4a55dh.apps.googleusercontent.com';
@@ -322,7 +325,7 @@ const corsOptions = {
 
         if (!origin) {
 
-            return callback(null, false);
+            return callback(null, true);
 
         }
 
@@ -338,7 +341,7 @@ const corsOptions = {
 
     credentials: true,
 
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-gyangarbh-admin-shield'],
 
