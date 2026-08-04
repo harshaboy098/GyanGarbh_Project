@@ -229,20 +229,19 @@ const server = http.createServer(app);
 const PORT = Number.parseInt(process.env.PORT, 10) || 5000;
 const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
 const allowedOrigins = [
-    FRONTEND_URL,
-    'https://gyan-garbh-project-ten.vercel.app',
+    'http://localhost:5173',
     'http://localhost:3000',
-    'http://localhost:5173'
+    'https://gyan-garbh-project-ten.vercel.app',
+    FRONTEND_URL
 ].filter(Boolean);
 
 const corsOptions = {
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.indexOf(origin) !== -1) {
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
             return callback(null, true);
         }
 
+        console.log('Blocked Origin:', origin);
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
