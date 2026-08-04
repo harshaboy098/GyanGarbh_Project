@@ -126,8 +126,9 @@
         .user-menu-item:last-child { border-bottom: none; }
         .user-menu-item:hover { background: #f8fafc; }
     </style>
+    <link rel="stylesheet" href="mobile-responsive.css">
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 min-h-screen flex items-center justify-center p-4">
+<body class="auth-page bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 min-h-screen flex items-center justify-center p-4">
 
 <!-- Hidden userSection dropdown for navbar consistency across pages (shown when needed) -->
 <div id="userSection" style="display:none; position:fixed; top:12px; right:12px; z-index:1200;">
@@ -145,7 +146,7 @@
     </div>
 </div>
 
-<div class="max-w-[460px] w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
+<div class="auth-shell max-w-[460px] w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
     <div class="flex bg-slate-50 p-2 gap-1 border-b border-slate-100">
         <button class="flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 bg-amber-500 text-slate-900 shadow-sm" id="btnLoginTab" onclick="showForm('login')">Login</button>
         <button class="flex-1 py-3 text-center text-sm font-bold rounded-2xl transition-all duration-300 text-slate-500 hover:text-slate-800" id="btnSignupTab" onclick="showForm('signup')">Sign Up</button>
@@ -649,5 +650,6 @@
     }
 </script>
 
+    <script src="mobile-responsive.js"></script>
 </body>
 </html>
