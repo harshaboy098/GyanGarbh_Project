@@ -1586,11 +1586,17 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 
         }
 
-        const adminUser = await User.findOne({ email: normalizedEmail });
+        const assistantAdmin = await Assistant.findOne({
+            email: normalizedEmail,
+            role: 'admin',
+            isActive: true
+        });
+
+        const adminUser = assistantAdmin ? null : await User.findOne({ email: normalizedEmail });
 
 
 
-        if (!adminUser) {
+        if (!assistantAdmin && !adminUser) {
 
             await logSecurityEvent('Failed Login', email || 'unknown', email || 'unknown', 'admin', 'Admin login attempted with invalid email');
             appendAuditLog(req, 'ADMIN_LOGIN_FAILED_INVALID_EMAIL', normalizedEmail || 'unknown', 'failed');
@@ -1601,8 +1607,8 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 
 
 
-        const promotedAdminUser = await ensureAdminRoleForEmail(normalizedEmail);
-        const activeAdminUser = promotedAdminUser || adminUser;
+        const promotedAdminUser = assistantAdmin ? null : await ensureAdminRoleForEmail(normalizedEmail);
+        const activeAdminUser = assistantAdmin || promotedAdminUser || adminUser;
 
         const passwordMatch = await bcrypt.compare(password, activeAdminUser.password);
 
