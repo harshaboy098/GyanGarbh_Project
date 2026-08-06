@@ -3,901 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔐 Assistant Dashboard | Gyan Garbh</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Gyan Garbh Assistant Operations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; min-height: 100vh; }
-
-        .navbar-custom {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        :root {
+            --bg: #0f172a;
+            --panel: rgba(15, 23, 42, 0.72);
+            --panel-strong: rgba(30, 41, 59, 0.9);
+            --card: rgba(255, 255, 255, 0.92);
+            --muted: #64748b;
+            --text: #0f172a;
+            --line: rgba(148, 163, 184, 0.28);
+            --indigo: #4f46e5;
+            --cyan: #06b6d4;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+            --radius: 8px;
         }
-
-        .navbar-custom h4 { margin: 0; font-weight: bold; }
-        .navbar-custom .user-info { text-align: right; font-size: 0.9rem; }
-        .navbar-custom .user-info p { margin: 0; }
-
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 12% 12%, rgba(6, 182, 212, 0.22), transparent 30%),
+                radial-gradient(circle at 88% 4%, rgba(79, 70, 229, 0.28), transparent 34%),
+                linear-gradient(135deg, #0f172a 0%, #111827 48%, #1e1b4b 100%);
+        }
+        button, input { font: inherit; }
+        .app-shell { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
         .sidebar {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            height: 100%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            position: sticky; top: 0; height: 100vh; padding: 22px;
+            background: rgba(15, 23, 42, 0.78); color: white;
+            border-right: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(20px);
         }
-
-        .sidebar h5 { color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #667eea; }
-        .sidebar a { display: block; padding: 10px 15px; color: #666; text-decoration: none; border-radius: 8px; margin-bottom: 8px; transition: 0.3s; }
-        .sidebar a:hover, .sidebar a.active { background: #f0f4ff; color: #667eea; font-weight: 600; }
-
-        .main-content { padding: 30px 20px; }
-
-        .section { display: none; }
-        .section.active { display: block; animation: fadeIn 0.3s; }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        .card-header-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            border-radius: 10px 10px 0 0;
-            font-weight: bold;
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+        .brand-mark { width: 42px; height: 42px; display:grid; place-items:center; border-radius: var(--radius); background: linear-gradient(135deg, var(--indigo), var(--cyan)); box-shadow: 0 12px 30px rgba(6, 182, 212, .24); }
+        .brand-title { font-weight: 800; line-height: 1.1; }
+        .brand-subtitle { color: #94a3b8; font-size: 12px; margin-top: 3px; }
+        .nav { display: grid; gap: 8px; }
+        .nav button {
+            width: 100%; display:flex; align-items:center; gap: 12px; padding: 11px 12px;
+            border: 1px solid transparent; border-radius: var(--radius); color: #cbd5e1;
+            background: transparent; cursor: pointer; text-align: left; transition: .2s ease;
         }
-
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            text-align: center;
-            margin-bottom: 20px;
+        .nav button:hover, .nav button.active { color: white; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.1); }
+        .sidebar-footer { position: absolute; left: 22px; right: 22px; bottom: 22px; display: grid; gap: 10px; }
+        .permission-pill { display:inline-flex; align-items:center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: rgba(16,185,129,.14); color: #a7f3d0; font-size: 12px; }
+        .main { padding: 24px; min-width: 0; }
+        .topbar { display:flex; align-items:center; justify-content:space-between; gap: 16px; margin-bottom: 22px; }
+        .title h1 { margin: 0; color: white; font-size: clamp(24px, 3vw, 36px); letter-spacing: 0; }
+        .title p { margin: 7px 0 0; color: #cbd5e1; }
+        .user-strip { display:flex; align-items:center; gap: 10px; flex-wrap: wrap; justify-content:flex-end; }
+        .user-badge { display:flex; align-items:center; gap:10px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius); color:white; background: rgba(255,255,255,.1); backdrop-filter: blur(16px); }
+        .avatar { width:32px; height:32px; display:grid; place-items:center; border-radius: 50%; background: linear-gradient(135deg, var(--cyan), var(--indigo)); font-weight: 800; }
+        .btn { border:0; border-radius: var(--radius); padding: 10px 12px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap: 8px; font-weight: 700; transition:.2s ease; }
+        .btn-primary { color:white; background: linear-gradient(135deg, var(--indigo), var(--cyan)); }
+        .btn-ghost { color:white; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); }
+        .btn-soft { color:#1e293b; background:#eef2ff; }
+        .btn-danger { color:white; background: var(--rose); }
+        .btn:disabled { opacity:.55; cursor:not-allowed; }
+        .mobile-menu { display:none; }
+        .grid { display:grid; gap: 16px; }
+        .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .card { background: var(--card); border: 1px solid rgba(255,255,255,.62); border-radius: var(--radius); box-shadow: 0 20px 70px rgba(15,23,42,.18); backdrop-filter: blur(18px); }
+        .kpi { padding: 18px; display:flex; justify-content:space-between; gap: 12px; min-height: 116px; }
+        .kpi-label { color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; }
+        .kpi-value { font-size: 34px; font-weight: 800; margin-top: 8px; }
+        .kpi-icon { width:44px; height:44px; border-radius: var(--radius); display:grid; place-items:center; color:white; }
+        .section { display:none; animation: rise .22s ease; }
+        .section.active { display:block; }
+        @keyframes rise { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+        .section-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 18px; border-bottom:1px solid #e2e8f0; }
+        .section-header h2 { margin:0; font-size: 18px; }
+        .search { min-width: 240px; max-width: 360px; width: 100%; position: relative; }
+        .search i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); }
+        .search input { width:100%; border:1px solid #cbd5e1; border-radius: var(--radius); padding: 10px 12px 10px 36px; outline:none; }
+        .search input:focus { border-color: var(--indigo); box-shadow:0 0 0 3px rgba(79,70,229,.15); }
+        .table-wrap { overflow:auto; }
+        table { width:100%; border-collapse: collapse; min-width: 760px; }
+        th, td { padding: 14px 18px; text-align:left; border-bottom:1px solid #e2e8f0; vertical-align: middle; }
+        th { color:#475569; font-size:12px; text-transform:uppercase; letter-spacing:.04em; background:#f8fafc; }
+        tr:hover td { background:#f8fafc; }
+        .badge { display:inline-flex; align-items:center; gap:6px; padding: 5px 9px; border-radius:999px; font-size:12px; font-weight:800; }
+        .badge-active { color:#047857; background:#d1fae5; }
+        .badge-pending { color:#92400e; background:#fef3c7; }
+        .badge-locked { color:#be123c; background:#ffe4e6; }
+        .badge-muted { color:#475569; background:#e2e8f0; }
+        .actions { display:flex; flex-wrap:wrap; gap: 8px; }
+        .empty { padding: 34px; color: var(--muted); text-align:center; }
+        .notice { padding: 16px 18px; margin: 16px 0; color:#cbd5e1; background: rgba(15,23,42,.56); border:1px solid rgba(255,255,255,.1); border-radius: var(--radius); }
+        .drawer-backdrop { display:none; }
+        @media (max-width: 1000px) {
+            .app-shell { grid-template-columns: 1fr; }
+            .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; width: 280px; transform: translateX(-102%); transition: .24s ease; }
+            body.drawer-open .sidebar { transform: translateX(0); }
+            .drawer-backdrop { display:block; position:fixed; inset:0; z-index:20; background:rgba(2,6,23,.55); opacity:0; pointer-events:none; transition:.24s ease; }
+            body.drawer-open .drawer-backdrop { opacity:1; pointer-events:auto; }
+            .mobile-menu { display:inline-flex; }
+            .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-
-        .stat-card h6 { color: #999; margin-bottom: 10px; }
-        .stat-card h3 { color: #667eea; margin: 0; }
-
-        .permission-badge {
-            display: inline-block;
-            padding: 5px 12px;
-            background: #e0ffe0;
-            color: #2b8a2b;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin: 5px;
-        }
-
-        .restriction-badge {
-            display: inline-block;
-            padding: 5px 12px;
-            background: #ffe0e0;
-            color: #c92a2a;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin: 5px;
-        }
-
-        .form-control { border-radius: 8px; border: 1px solid #ddd; }
-        .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); }
-
-        .btn-custom { background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-        .btn-custom:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); color: white; }
-
-        .btn-danger-custom { background: #ff6b6b; }
-        .btn-danger-custom:hover { background: #ee5a52; color: white; }
-
-        .table-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: 20px; }
-        .table { margin: 0; }
-        .table thead { background: #f8f9fa; }
-        .table td { vertical-align: middle; }
-
-        .logout-btn { background: #ff6b6b; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-        .logout-btn:hover { background: #ee5a52; }
-
-        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
-        .empty-state i { font-size: 3rem; margin-bottom: 15px; color: #ccc; }
-
-        .live-indicator {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            font-size: 0.85rem;
-            z-index: 1000;
-        }
-
-        .live-indicator span {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            animation: pulse 2s infinite;
-        }
-
-        .live-indicator.syncing span {
-            background: #f59e0b;
-            animation: pulse 0.5s infinite;
-        }
-
-        .live-indicator.error span {
-            background: #ef4444;
-            animation: none;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        @media (max-width: 640px) {
+            .main { padding: 16px; }
+            .topbar, .section-header { align-items: stretch; flex-direction: column; }
+            .user-strip { justify-content: flex-start; }
+            .kpis { grid-template-columns: 1fr; }
+            .search { min-width: 0; max-width: none; }
         }
     </style>
-    <link rel="stylesheet" href="mobile-responsive.css">
 </head>
 <body>
-
-<!-- NAVBAR -->
-<div class="navbar-custom d-flex justify-content-between align-items-center">
-    <div>
-        <h4><i class="bi bi-person-check"></i> Assistant Dashboard</h4>
-        <small>Gyan Garbh Management System</small>
-    </div>
-    <div class="user-info">
-        <p><strong id="displayName">Assistant</strong></p>
-        <small id="displayEmail">user@email.com</small>
-        <br>
-        <button class="ai-navbar-btn mt-2" onclick="openRoleAIAssistant('assistant')"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
-        <button class="logout-btn mt-2" onclick="logout()">Logout</button>
-    </div>
-</div>
-
-<!-- LIVE INDICATOR -->
-<div class="live-indicator" id="live-indicator">
-    <span></span>
-    <div id="sync-text">Live & Syncing</div>
-</div>
-
-<!-- MAIN LAYOUT -->
-<div class="container-fluid mt-4">
-    <div class="row">
-        <!-- SIDEBAR -->
-        <div class="col-md-3">
-            <div class="sidebar">
-                <h5><i class="bi bi-list"></i> Menu</h5>
-                <a href="#" onclick="showSection('dashboard', event)" class="active"><i class="bi bi-speedometer2"></i> Dashboard</a>
-                <a href="#" onclick="showSection('hotels', event)"><i class="bi bi-building"></i> Hotels</a>
-                <a href="#" onclick="showSection('customers', event)"><i class="bi bi-people"></i> Customers</a>
-                <a href="#" onclick="showSection('mitras', event)"><i class="bi bi-person-check"></i> Mitras</a>
-                <a href="#" onclick="showSection('bodhi', event)"><i class="bi bi-compass"></i> Bodhi Path</a>
-                <a href="#" onclick="showSection('permissions', event)"><i class="bi bi-shield-check"></i> My Permissions</a>
-            </div>
+<div class="drawer-backdrop" onclick="closeDrawer()"></div>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark"><i class="bi bi-shield-check"></i></div>
+            <div><div class="brand-title">Gyan Garbh</div><div class="brand-subtitle">Assistant Operations</div></div>
         </div>
-
-        <!-- MAIN CONTENT -->
-        <div class="col-md-9">
-            <!-- DASHBOARD -->
-            <div id="dashboard" class="section active">
-                <h3 class="mb-4"><i class="bi bi-speedometer2"></i> Dashboard Overview</h3>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="stat-card">
-                            <h6>Total Hotels</h6>
-                            <h3 id="hotelCount">0</h3>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="stat-card">
-                            <h6>Total Customers</h6>
-                            <h3 id="customerCount">0</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- HOTELS -->
-            <div id="hotels" class="section">
-                <h3 class="mb-4"><i class="bi bi-building"></i> Hotel Management</h3>
-                <div class="card mb-3">
-                    <div class="card-header-custom">Create New Hotel</div>
-                    <div class="card-body" style="padding: 25px;">
-                        <form id="assistantHotelForm">
-                            <div class="row g-3">
-                                <div class="col-md-6"><input class="form-control" id="hotelName" placeholder="Hotel Name" required></div>
-                                <div class="col-md-6"><input class="form-control" id="hotelOwnerEmail" placeholder="Owner Email (optional)" type="email"></div>
-                                <div class="col-md-6"><input class="form-control" id="hotelPhone" placeholder="Phone" required></div>
-                                <div class="col-md-6"><input class="form-control" id="hotelLocation" placeholder="Location" required></div>
-                                <div class="col-md-4"><input class="form-control" id="hotelRate" placeholder="Rate" type="number" required></div>
-                                <div class="col-md-4"><input class="form-control" id="hotelRating" placeholder="Rating" type="number" step="0.1" value="4.0" required></div>
-                                <div class="col-md-4"><input class="form-control" id="hotelImageUrl" placeholder="Image URL"></div>
-                                <div class="col-12"><input class="form-control" id="hotelImageUpload" type="file" accept="image/*" required></div>
-                                <div class="col-12"><textarea class="form-control" id="hotelDescription" rows="3" placeholder="Description" required></textarea></div>
-                                <div class="col-12"><button class="btn btn-custom" type="submit"><i class="bi bi-plus-circle"></i> Add Hotel</button></div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header-custom">Hotels List</div>
-                    <div id="hotelsTable" class="table-container"></div>
-                </div>
-            </div>
-
-            <!-- CUSTOMERS -->
-            <div id="customers" class="section">
-                <h3 class="mb-4"><i class="bi bi-people"></i> Customer Management</h3>
-                <div class="card">
-                    <div class="card-header-custom">Customers List</div>
-                    <div id="customersTable" class="table-container"></div>
-                </div>
-            </div>
-
-            <!-- MITRAS -->
-            <div id="mitras" class="section">
-                <h3 class="mb-4"><i class="bi bi-person-check"></i> Mitra Management</h3>
-                <div class="card mb-3">
-                    <div class="card-header-custom">Create New Mitra</div>
-                    <div class="card-body" style="padding: 25px;">
-                        <form id="assistantMitraForm">
-                            <div class="row g-3">
-                                <div class="col-md-6"><input class="form-control" id="mitraName" placeholder="Name" required></div>
-                                <div class="col-md-6"><input class="form-control" id="mitraEmail" placeholder="Email" type="email" required></div>
-                                <div class="col-md-6"><input class="form-control" id="mitraPhone" placeholder="Phone" required></div>
-                                <div class="col-md-6"><input class="form-control" id="mitraExperience" placeholder="Experience" required></div>
-                                <div class="col-12"><input class="form-control" id="mitraAddress" placeholder="Address" required></div>
-                                <div class="col-md-6"><input class="form-control" id="mitraImageUrl" placeholder="Image URL"></div>
-                                <div class="col-md-6"><input class="form-control" id="mitraImageUpload" type="file" accept="image/*" required></div>
-                                <div class="col-12"><button class="btn btn-custom" type="submit"><i class="bi bi-plus-circle"></i> Add Mitra</button></div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header-custom">Mitras List</div>
-                    <div id="mitrasTable" class="table-container"></div>
-                </div>
-            </div>
-
-            <!-- BODHI PATH -->
-            <div id="bodhi" class="section">
-                <h3 class="mb-4"><i class="bi bi-compass"></i> Bodhi Path Management</h3>
-                <div class="card mb-3">
-                    <div class="card-header-custom">Add Heritage Entry</div>
-                    <div class="card-body" style="padding: 25px;">
-                        <form id="assistantBodhiForm">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <input class="form-control" id="bodhiTitle" placeholder="Title" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <select class="form-select" id="bodhiCategory" required>
-                                        <option value="temple">Temple</option>
-                                        <option value="history">History</option>
-                                        <option value="monument">Monument</option>
-                                        <option value="festival">Festival</option>
-                                        <option value="tradition">Tradition</option>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <input class="form-control" id="bodhiShortDescription" placeholder="Short description" required>
-                                </div>
-                                <div class="col-12">
-                                    <textarea class="form-control" id="bodhiFullDescription" rows="3" placeholder="Full description" required></textarea>
-                                </div>
-                                <div class="col-md-6">
-                                    <input class="form-control" id="bodhiImageUrl" placeholder="Image URL" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <input class="form-control" id="bodhiImageUpload" type="file" accept="image/*" required>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-primary" type="submit"><i class="bi bi-plus-circle"></i> Add Entry</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header-custom">Bodhi Path Entries</div>
-                    <div id="bodhiTable" class="table-container"></div>
-                </div>
-            </div>
-
-            <!-- PERMISSIONS -->
-            <div id="permissions" class="section">
-                <h3 class="mb-4"><i class="bi bi-shield-check"></i> My Permissions</h3>
-                <div class="card">
-                    <div class="card-header-custom">Access Rights</div>
-                    <div class="card-body" style="padding: 25px;">
-                        <h6 class="mb-3">Allowed Actions:</h6>
-                        <div id="permissionsList" style="margin-bottom: 20px;"></div>
-                        <hr>
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle-fill"></i> <strong>Note:</strong> As an assistant, you have limited edit permissions. Delete operations are restricted to maintain data integrity.
-                        </div>
-                        <h6 class="mt-4 mb-3">Restrictions:</h6>
-                        <div>
-                            <span class="restriction-badge"><i class="bi bi-x-circle"></i> No Delete Access</span>
-                            <span class="restriction-badge"><i class="bi bi-x-circle"></i> No User Creation</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <nav id="sidebarNav" class="nav"></nav>
+        <div class="sidebar-footer">
+            <span class="permission-pill"><i class="bi bi-check2-circle"></i><span id="permissionCount">0 permissions active</span></span>
+            <button class="btn btn-ghost" onclick="logout()"><i class="bi bi-box-arrow-left"></i>Logout</button>
         </div>
-    </div>
+    </aside>
+    <main class="main">
+        <header class="topbar">
+            <button class="btn btn-ghost mobile-menu" onclick="openDrawer()"><i class="bi bi-list"></i>Menu</button>
+            <div class="title"><h1>Gyan Garbh Assistant Operations</h1><p>Secure daily operations for hotels, customers, mitras, and reports.</p></div>
+            <div class="user-strip">
+                <div class="user-badge"><div class="avatar" id="avatarInitial">M</div><div><strong id="assistantName">Mukesh Assistant</strong><br><small id="assistantEmail">assistant@gyangarbh.com</small></div></div>
+                <button class="btn btn-primary" onclick="logout()"><i class="bi bi-power"></i>Logout</button>
+            </div>
+        </header>
+        <section id="dashboard" class="section active">
+            <div class="grid kpis">
+                <div class="card kpi"><div><div class="kpi-label">Managed Hotels</div><div id="hotelCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--indigo)"><i class="bi bi-buildings"></i></div></div>
+                <div class="card kpi"><div><div class="kpi-label">Total Customers</div><div id="customerCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--cyan)"><i class="bi bi-people"></i></div></div>
+                <div class="card kpi"><div><div class="kpi-label">Active Mitras</div><div id="mitraCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--emerald)"><i class="bi bi-person-check"></i></div></div>
+                <div class="card kpi"><div><div class="kpi-label">Pending Tasks</div><div id="pendingCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--amber)"><i class="bi bi-hourglass-split"></i></div></div>
+            </div>
+            <div class="notice"><strong>Security rules:</strong> assistant accounts cannot access super-admin management, permanent delete actions, or admin control endpoints. All write actions use your verified JWT identity.</div>
+        </section>
+        <section id="hotels" class="section"><div class="card"><div class="section-header"><h2>Managed Hotels</h2><label class="search"><i class="bi bi-search"></i><input id="hotelSearch" placeholder="Search hotels" oninput="renderHotels()"></label></div><div id="hotelsTable" class="table-wrap"></div></div></section>
+        <section id="customers" class="section"><div class="card"><div class="section-header"><h2>Total Customers</h2><label class="search"><i class="bi bi-search"></i><input id="customerSearch" placeholder="Search customers" oninput="renderCustomers()"></label></div><div id="customersTable" class="table-wrap"></div></div></section>
+        <section id="mitras" class="section"><div class="card"><div class="section-header"><h2>Active Mitras</h2><label class="search"><i class="bi bi-search"></i><input id="mitraSearch" placeholder="Search mitras" oninput="renderMitras()"></label></div><div id="mitrasTable" class="table-wrap"></div></div></section>
+        <section id="reports" class="section"><div class="card"><div class="section-header"><h2>Reports</h2><button class="btn btn-soft" onclick="loadAll()"><i class="bi bi-arrow-clockwise"></i>Refresh</button></div><div id="reportsPanel" class="empty">Reports load when viewReports permission is active.</div></div></section>
+        <section id="permissions" class="section"><div class="card"><div class="section-header"><h2>My Permissions</h2></div><div id="permissionsPanel" style="padding:18px"></div></div></section>
+    </main>
 </div>
-
-<script src="ai-navbar.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
-    let hotelsCache = [];
-    let customersCache = [];
-    let mitrasCache = [];
-    let bodhiCache = [];
-
-    function assistantEmail() {
-        return localStorage.getItem('assistantEmail');
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '').replace(/[&<>"]'/g, (char) => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[char]));
-    }
-
-    function toBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function generateDefaultPassword() {
-        return `Gyan@${Math.random().toString(36).slice(2,10)}${Math.floor(10 + Math.random() * 90)}`;
-    }
-
-    async function getImageInputValue(urlId, fileId) {
-        const urlValue = document.getElementById(urlId)?.value?.trim();
-        const fileInput = document.getElementById(fileId);
-        if (fileInput?.files?.length > 0) {
-            return await toBase64(fileInput.files[0]);
-        }
-        return urlValue;
-    }
-
-    function lockBadge(item) {
-        return `<span class="badge ${item.isLocked ? 'bg-danger' : 'bg-success'}">${item.isLocked ? 'Locked' : 'Active'}</span>`;
-    }
-
-    function setSyncStatus(status) {
-        const indicator = document.getElementById('live-indicator');
-        const text = document.getElementById('sync-text');
-        
-        indicator.classList.remove('syncing', 'error');
-        
-        if (status === 'syncing') {
-            indicator.classList.add('syncing');
-            text.textContent = 'Syncing...';
-        } else if (status === 'error') {
-            indicator.classList.add('error');
-            text.textContent = 'Sync Error';
-        } else {
-            text.textContent = 'Live & Syncing';
-        }
-    }
-
-    // CHECK AUTHENTICATION
-    function checkAssistantAuth() {
-        const email = localStorage.getItem('assistantEmail');
-        const name = localStorage.getItem('assistantName');
-        
-        if (!email || !name) {
-            window.location.href = 'assistant-login.html';
-            return;
-        }
-
-        document.getElementById('displayName').textContent = name;
-        document.getElementById('displayEmail').textContent = email;
-        loadDashboard();
-    }
-
-    // LOAD DASHBOARD DATA
-    async function loadDashboard() {
-        try {
-            setSyncStatus('syncing');
-            const response = await fetch(`${API_URL}/admin/dashboard`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('assistantEmail')}` }
-            });
-            const data = await response.json();
-
-            if (data.success) {
-                document.getElementById('hotelCount').textContent = data.hotelCount || 0;
-                document.getElementById('customerCount').textContent = data.customerCount || 0;
-                setSyncStatus('success');
-            } else {
-                setSyncStatus('error');
-            }
-        } catch (error) {
-            console.error('Dashboard load error:', error);
-            setSyncStatus('error');
-        }
-    }
-
-    // SHOW SECTION
-    function showSection(section, event) {
-        event?.preventDefault();
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.getElementById(section).classList.add('active');
-
-        document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-        const targetLink = event?.target?.closest('a');
-        if (targetLink) targetLink.classList.add('active');
-
-        if (section === 'hotels') loadHotels();
-        if (section === 'customers') loadCustomers();
-        if (section === 'mitras') loadMitras();
-        if (section === 'bodhi') loadBodhiPath();
-        if (section === 'permissions') loadPermissions();
-    }
-
-    // LOAD HOTELS
-    async function loadHotels() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-hotels`);
-            const data = await response.json();
-
-            let html = '<table class="table table-hover"><thead><tr><th>Hotel Name</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead><tbody>';
-
-            if (data.success && data.hotels.length > 0) {
-                data.hotels.forEach(hotel => {
-                    html += `<tr>
-                        <td><strong>${hotel.hotelName}</strong></td>
-                        <td>${hotel.email}</td>
-                        <td>${hotel.phone}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editHotel('${hotel._id}')"><i class="bi bi-pencil"></i> Edit</button>
-                            <button class="btn btn-sm btn-secondary" disabled title="Delete disabled for assistants"><i class="bi bi-trash"></i> Delete</button>
-                        </td>
-                    </tr>`;
-                });
-            } else {
-                html += '<tr><td colspan="4" class="text-center text-muted">No hotels found</td></tr>';
-            }
-
-            html += '</tbody></table>';
-            document.getElementById('hotelsTable').innerHTML = html;
-        } catch (error) {
-            console.error('Load hotels error:', error);
-            document.getElementById('hotelsTable').innerHTML = '<p class="text-danger">Error loading hotels</p>';
-        }
-    }
-
-    // LOAD CUSTOMERS
-    async function loadCustomers() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-customers`);
-            const data = await response.json();
-
-            let html = '<table class="table table-hover"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead><tbody>';
-
-            if (data.success && data.customers.length > 0) {
-                data.customers.forEach(customer => {
-                    html += `<tr>
-                        <td><strong>${customer.name}</strong></td>
-                        <td>${customer.email}</td>
-                        <td>${customer.phone}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editCustomer('${customer._id}')"><i class="bi bi-pencil"></i> Edit</button>
-                            <button class="btn btn-sm btn-secondary" disabled title="Delete disabled for assistants"><i class="bi bi-trash"></i> Delete</button>
-                        </td>
-                    </tr>`;
-                });
-            } else {
-                html += '<tr><td colspan="4" class="text-center text-muted">No customers found</td></tr>';
-            }
-
-            html += '</tbody></table>';
-            document.getElementById('customersTable').innerHTML = html;
-        } catch (error) {
-            console.error('Load customers error:', error);
-            document.getElementById('customersTable').innerHTML = '<p class="text-danger">Error loading customers</p>';
-        }
-    }
-
-    // LOAD PERMISSIONS
-    function loadPermissions() {
-        const permissions = JSON.parse(localStorage.getItem('assistantPermissions') || '{}');
-        let html = '';
-
-        const permissionLabels = {
-            manageHotels: 'Manage Hotels',
-            manageCustomers: 'Manage Customers',
-            manageMitra: 'Manage Mitras',
-            manageBookings: 'Manage Bookings',
-            viewReports: 'View Reports'
-        };
-
-        for (let key in permissionLabels) {
-            if (permissions[key]) {
-                html += `<span class="permission-badge"><i class="bi bi-check-circle-fill"></i> ${permissionLabels[key]}</span>`;
-            }
-        }
-
-        document.getElementById('permissionsList').innerHTML = html || '<p class="text-muted">No specific permissions assigned</p>';
-    }
-
-    // EDIT FUNCTIONS
-    function editHotel(hotelId) {
-        Swal.fire('Edit Hotel', 'Feature coming soon!', 'info');
-    }
-
-    function editCustomer(customerId) {
-        Swal.fire('Edit Customer', 'Feature coming soon!', 'info');
-    }
-
-    async function toggleLock(entityType, entityId, isLocked) {
-        try {
-            const response = await fetch(`${API_URL}/admin/toggle-lock`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entityType, entityId, isLocked, updatedBy: assistantEmail(), updatedByRole: 'assistant' })
-            });
-            const data = await response.json();
-            if (!data.success) return Swal.fire('Error', data.message, 'error');
-            if (entityType === 'hotel') loadHotels();
-            if (entityType === 'customer') loadCustomers();
-            if (entityType === 'mitra') loadMitras();
-            if (entityType === 'bodhi-path') loadBodhiPath();
-        } catch (error) {
-            Swal.fire('Error', error.message, 'error');
-        }
-    }
-
-    loadHotels = async function() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-hotels`);
-            const data = await response.json();
-            hotelsCache = data.hotels || [];
-            let html = '<table class="table table-hover"><thead><tr><th>Hotel Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-            if (data.success && hotelsCache.length > 0) {
-                hotelsCache.forEach(hotel => {
-                    html += `<tr>
-                        <td><strong>${escapeHtml(hotel.hotelName)}</strong></td>
-                        <td>${escapeHtml(hotel.ownerEmail || hotel.email || '')}</td>
-                        <td>${escapeHtml(hotel.phone || '')}</td>
-                        <td>${lockBadge(hotel)}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editHotel('${hotel._id}')"><i class="bi bi-pencil"></i> Edit</button>
-                            <button class="btn btn-sm btn-warning" onclick="toggleLock('hotel', '${hotel._id}', ${!hotel.isLocked})"><i class="bi ${hotel.isLocked ? 'bi-unlock' : 'bi-lock'}"></i> ${hotel.isLocked ? 'Unlock' : 'Lock'}</button>
-                        </td>
-                    </tr>`;
-                });
-            } else {
-                html += '<tr><td colspan="5" class="text-center text-muted">No hotels found</td></tr>';
-            }
-            html += '</tbody></table>';
-            document.getElementById('hotelsTable').innerHTML = html;
-        } catch (error) {
-            document.getElementById('hotelsTable').innerHTML = '<p class="text-danger">Error loading hotels</p>';
-        }
-    };
-
-    loadCustomers = async function() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-customers`);
-            const data = await response.json();
-            customersCache = data.customers || [];
-            let html = '<table class="table table-hover"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-            if (data.success && customersCache.length > 0) {
-                customersCache.forEach(customer => {
-                    html += `<tr>
-                        <td><strong>${escapeHtml(customer.customerName || customer.name || '')}</strong></td>
-                        <td>${escapeHtml(customer.customerEmail || customer.email || '')}</td>
-                        <td>${escapeHtml(customer.customerPhone || customer.phone || '')}</td>
-                        <td>${lockBadge(customer)} ${escapeHtml(customer.status || 'Pending')}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editCustomer('${customer._id}')"><i class="bi bi-pencil"></i> Edit</button>
-                            <button class="btn btn-sm btn-warning" onclick="toggleLock('customer', '${customer._id}', ${!customer.isLocked})"><i class="bi ${customer.isLocked ? 'bi-unlock' : 'bi-lock'}"></i> ${customer.isLocked ? 'Unlock' : 'Lock'}</button>
-                        </td>
-                    </tr>`;
-                });
-            } else {
-                html += '<tr><td colspan="5" class="text-center text-muted">No customers found</td></tr>';
-            }
-            html += '</tbody></table>';
-            document.getElementById('customersTable').innerHTML = html;
-        } catch (error) {
-            document.getElementById('customersTable').innerHTML = '<p class="text-danger">Error loading customers</p>';
-        }
-    };
-
-    async function loadMitras() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-mitras`);
-            const data = await response.json();
-            mitrasCache = data.mitras || [];
-            let html = '<table class="table table-hover"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Experience</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-            if (data.success && mitrasCache.length > 0) {
-                mitrasCache.forEach(mitra => {
-                    html += `<tr>
-                        <td><strong>${escapeHtml(mitra.name)}</strong></td>
-                        <td>${escapeHtml(mitra.email)}</td>
-                        <td>${escapeHtml(mitra.phone || '')}</td>
-                        <td>${escapeHtml(mitra.experience || '')}</td>
-                        <td>${lockBadge(mitra)}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editMitra('${mitra._id}')"><i class="bi bi-pencil"></i> Edit</button>
-                            <button class="btn btn-sm btn-warning" onclick="toggleLock('mitra', '${mitra._id}', ${!mitra.isLocked})"><i class="bi ${mitra.isLocked ? 'bi-unlock' : 'bi-lock'}"></i> ${mitra.isLocked ? 'Unlock' : 'Lock'}</button>
-                        </td>
-                    </tr>`;
-                });
-            } else {
-                html += '<tr><td colspan="6" class="text-center text-muted">No mitras found</td></tr>';
-            }
-            html += '</tbody></table>';
-            document.getElementById('mitrasTable').innerHTML = html;
-        } catch (error) {
-            document.getElementById('mitrasTable').innerHTML = '<p class="text-danger">Error loading mitras</p>';
-        }
-    }
-
-    async function loadBodhiPath() {
-        try {
-            const response = await fetch(`${API_URL}/bodhi-path/all`);
-            const data = await response.json();
-            bodhiCache = data.bodhiPaths || [];
-            let html = '<table class="table table-hover"><thead><tr><th>Title</th><th>Category</th><th>Description</th><th>Updated By</th><th>Actions</th></tr></thead><tbody>';
-            if (data.success && bodhiCache.length > 0) {
-                bodhiCache.forEach(entry => {
-                    html += `<tr>
-                        <td><strong>${escapeHtml(entry.title)}</strong></td>
-                        <td>${escapeHtml(entry.category)}</td>
-                        <td>${escapeHtml((entry.shortDescription || '').substring(0, 70))}</td>
-                        <td>${escapeHtml(entry.updatedBy || '-')}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editBodhi('${entry._id}')"><i class="bi bi-pencil"></i> Edit</button>
-                            <button class="btn btn-sm btn-warning" onclick="toggleLock('bodhi-path', '${entry._id}', ${!entry.isLocked})"><i class="bi ${entry.isLocked ? 'bi-unlock' : 'bi-lock'}"></i> ${entry.isLocked ? 'Unlock' : 'Lock'}</button>
-                        </td>
-                    </tr>`;
-                });
-            } else {
-                html += '<tr><td colspan="5" class="text-center text-muted">No Bodhi Path entries found</td></tr>';
-            }
-            html += '</tbody></table>';
-            document.getElementById('bodhiTable').innerHTML = html;
-        } catch (error) {
-            document.getElementById('bodhiTable').innerHTML = '<p class="text-danger">Error loading Bodhi Path</p>';
-        }
-    }
-
-    async function editHotel(id) {
-        const hotel = hotelsCache.find(item => item._id === id);
-        if (!hotel) return;
-        const { value: form } = await Swal.fire({
-            title: 'Edit Hotel',
-            html: `<input id="swalName" class="swal2-input" placeholder="Hotel Name" value="${escapeHtml(hotel.hotelName || '')}">
-                   <input id="swalPhone" class="swal2-input" placeholder="Phone" value="${escapeHtml(hotel.phone || '')}">
-                   <input id="swalLocation" class="swal2-input" placeholder="Location" value="${escapeHtml(hotel.location || '')}">
-                   <input id="swalRating" class="swal2-input" placeholder="Rating" value="${escapeHtml(hotel.rating || 0)}">`,
-            focusConfirm: false,
-            showCancelButton: true,
-            preConfirm: () => ({
-                hotelName: document.getElementById('swalName').value,
-                phone: document.getElementById('swalPhone').value,
-                location: document.getElementById('swalLocation').value,
-                rating: document.getElementById('swalRating').value
-            })
-        });
-        if (!form) return;
-        const response = await fetch(`${API_URL}/admin/update-hotel`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hotelId: id, ...form, updatedBy: assistantEmail(), updatedByRole: 'assistant' })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Error', data.message, 'error');
-        loadHotels();
-    }
-
-    async function editCustomer(id) {
-        const customer = customersCache.find(item => item._id === id);
-        if (!customer) return;
-        const { value: form } = await Swal.fire({
-            title: 'Edit Customer',
-            html: `<input id="swalName" class="swal2-input" placeholder="Name" value="${escapeHtml(customer.customerName || customer.name || '')}">
-                   <input id="swalEmail" class="swal2-input" placeholder="Email" value="${escapeHtml(customer.customerEmail || customer.email || '')}">
-                   <input id="swalPhone" class="swal2-input" placeholder="Phone" value="${escapeHtml(customer.customerPhone || customer.phone || '')}">
-                   <input id="swalStatus" class="swal2-input" placeholder="Status" value="${escapeHtml(customer.status || 'Pending')}">`,
-            focusConfirm: false,
-            showCancelButton: true,
-            preConfirm: () => ({
-                customerName: document.getElementById('swalName').value,
-                customerEmail: document.getElementById('swalEmail').value,
-                customerPhone: document.getElementById('swalPhone').value,
-                status: document.getElementById('swalStatus').value
-            })
-        });
-        if (!form) return;
-        const response = await fetch(`${API_URL}/admin/update-customer`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ customerId: id, ...form, updatedBy: assistantEmail(), updatedByRole: 'assistant' })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Error', data.message, 'error');
-        loadCustomers();
-    }
-
-    async function editMitra(id) {
-        const mitra = mitrasCache.find(item => item._id === id);
-        if (!mitra) return;
-        const { value: form } = await Swal.fire({
-            title: 'Edit Mitra',
-            html: `<input id="swalName" class="swal2-input" placeholder="Name" value="${escapeHtml(mitra.name || '')}">
-                   <input id="swalEmail" class="swal2-input" placeholder="Email" value="${escapeHtml(mitra.email || '')}">
-                   <input id="swalPhone" class="swal2-input" placeholder="Phone" value="${escapeHtml(mitra.phone || '')}">
-                   <input id="swalExperience" class="swal2-input" placeholder="Experience" value="${escapeHtml(mitra.experience || '')}">`,
-            focusConfirm: false,
-            showCancelButton: true,
-            preConfirm: () => ({
-                name: document.getElementById('swalName').value,
-                email: document.getElementById('swalEmail').value,
-                phone: document.getElementById('swalPhone').value,
-                experience: document.getElementById('swalExperience').value
-            })
-        });
-        if (!form) return;
-        const response = await fetch(`${API_URL}/admin/update-mitra`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mitraId: id, ...form, updatedBy: assistantEmail(), updatedByRole: 'assistant' })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Error', data.message, 'error');
-        loadMitras();
-    }
-
-    async function editBodhi(id) {
-        const entry = bodhiCache.find(item => item._id === id);
-        if (!entry) return;
-        const { value: form } = await Swal.fire({
-            title: 'Edit Bodhi Path',
-            html: `<input id="swalTitle" class="swal2-input" placeholder="Title" value="${escapeHtml(entry.title || '')}">
-                   <input id="swalCategory" class="swal2-input" placeholder="Category" value="${escapeHtml(entry.category || 'temple')}">
-                   <textarea id="swalShort" class="swal2-textarea" placeholder="Short description">${escapeHtml(entry.shortDescription || '')}</textarea>
-                   <textarea id="swalFull" class="swal2-textarea" placeholder="Full description">${escapeHtml(entry.fullDescription || '')}</textarea>`,
-            focusConfirm: false,
-            showCancelButton: true,
-            preConfirm: () => ({
-                title: document.getElementById('swalTitle').value,
-                category: document.getElementById('swalCategory').value,
-                shortDescription: document.getElementById('swalShort').value,
-                fullDescription: document.getElementById('swalFull').value
-            })
-        });
-        if (!form) return;
-        const response = await fetch(`${API_URL}/admin/bodhi-path/update`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bodhiPathId: id, ...form, updatedBy: assistantEmail(), updatedByRole: 'assistant' })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Error', data.message, 'error');
-        loadBodhiPath();
-    }
-
-    document.getElementById('assistantHotelForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const image = await getImageInputValue('hotelImageUrl', 'hotelImageUpload');
-        if (!image) return Swal.fire('Error', 'Hotel image is required.', 'error');
-
-        const response = await fetch(`${API_URL}/admin/create-hotel`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                hotelName: document.getElementById('hotelName').value,
-                ownerEmail: document.getElementById('hotelOwnerEmail').value,
-                phone: document.getElementById('hotelPhone').value,
-                location: document.getElementById('hotelLocation').value,
-                roomRate: document.getElementById('hotelRate').value,
-                rating: document.getElementById('hotelRating').value,
-                description: document.getElementById('hotelDescription').value,
-                imageUrl: image,
-                createdBy: assistantEmail(),
-                createdByRole: 'assistant'
-            })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Error', data.message, 'error');
-        const creds = data.credentials || {};
-        Swal.fire('Hotel Created', `Email: ${creds.email || ''}\nPassword: ${creds.password || ''}`, 'success');
-        event.target.reset();
-        loadHotels();
-    });
-
-    document.getElementById('assistantMitraForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const image = await getImageInputValue('mitraImageUrl', 'mitraImageUpload');
-        if (!image) return Swal.fire('Error', 'Mitra image is required.', 'error');
-
-        const response = await fetch(`${API_URL}/admin/create-mitra`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: document.getElementById('mitraName').value,
-                email: document.getElementById('mitraEmail').value,
-                phone: document.getElementById('mitraPhone').value,
-                address: document.getElementById('mitraAddress').value,
-                experience: document.getElementById('mitraExperience').value,
-                imageUrl: image,
-                createdBy: assistantEmail(),
-                createdByRole: 'assistant'
-            })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Error', data.message, 'error');
-        Swal.fire('Mitra Created', 'The mitra has been created successfully.', 'success');
-        event.target.reset();
-        loadMitras();
-    });
-
-    document.getElementById('assistantBodhiForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const response = await fetch(`${API_URL}/admin/bodhi-path/create`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: document.getElementById('bodhiTitle').value,
-                category: document.getElementById('bodhiCategory').value,
-                shortDescription: document.getElementById('bodhiShortDescription').value,
-                fullDescription: document.getElementById('bodhiFullDescription').value,
-                createdBy: assistantEmail(),
-                createdByRole: 'assistant'
-            })
-        });
-        const data = await response.json();
-        if (!data.success) return Swal.fire('Error', data.message, 'error');
-        event.target.reset();
-        loadBodhiPath();
-    });
-
-    // LOGOUT
-    function logout() {
-        Swal.fire({
-            title: 'Logout?',
-            text: 'Are you sure you want to logout?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, logout'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                localStorage.removeItem('assistantEmail');
-                localStorage.removeItem('assistantName');
-                localStorage.removeItem('assistantRole');
-                localStorage.removeItem('assistantPermissions');
-                localStorage.removeItem('assistantId');
-                window.location.href = 'assistant-login.html';
-            }
-        });
-    }
-
-    // INIT
-    window.addEventListener('gyangarbh:realtime', loadDashboard);
-    window.addEventListener('load', checkAssistantAuth);
+    const ADMIN_SHIELD_HEADER = 'x-gyangarbh-admin-shield';
+    const ADMIN_SHIELD_SECRET = window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821';
+    const state = { hotels: [], customers: [], mitras: [], report: null };
+    const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'bi-speedometer2' },
+        { id: 'hotels', label: 'Hotels', icon: 'bi-buildings', permission: 'manageHotels', loader: loadHotels },
+        { id: 'customers', label: 'Customers', icon: 'bi-people', permission: 'manageCustomers', loader: loadCustomers },
+        { id: 'mitras', label: 'Mitras', icon: 'bi-person-check', permission: 'manageMitra', loader: loadMitras },
+        { id: 'reports', label: 'Reports', icon: 'bi-graph-up-arrow', permission: 'viewReports', loader: loadReports },
+        { id: 'permissions', label: 'Permissions', icon: 'bi-shield-lock', loader: renderPermissions }
+    ];
+    function token() { return localStorage.getItem('authToken') || localStorage.getItem('assistantToken') || ''; }
+    function assistant() { return { name: localStorage.getItem('assistantName') || 'Mukesh Assistant', email: localStorage.getItem('assistantEmail') || '', permissions: parsePermissions() }; }
+    function parsePermissions() { try { return JSON.parse(localStorage.getItem('assistantPermissions') || '{}') || {}; } catch { return {}; } }
+    function hasPermission(key) { const p = parsePermissions(); if (!key) return true; if (key === 'manageMitra' || key === 'manageMitras') return p.manageMitra === true || p.manageMitras === true; return p[key] === true; }
+    function headers(extra = {}) { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, [ADMIN_SHIELD_HEADER]: ADMIN_SHIELD_SECRET, ...extra }; }
+    async function api(path, options = {}) { const response = await fetch(`${API_URL}${path}`, { ...options, headers: headers(options.headers || {}) }); const data = await response.json().catch(() => ({})); if (!response.ok || data.success === false) throw new Error(data.message || `Request failed: ${response.status}`); return data; }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+    function statusBadge(value, locked = false) { if (locked) return '<span class="badge badge-locked">Locked</span>'; const text = String(value || 'Active'); const cls = /pending|review/i.test(text) ? 'badge-pending' : 'badge-active'; return `<span class="badge ${cls}">${escapeHtml(text)}</span>`; }
+    function requireAuth() { if (!token() || !localStorage.getItem('assistantEmail')) window.location.href = 'assistant-login.html'; }
+    function initShell() { const user = assistant(); document.getElementById('assistantName').textContent = user.name; document.getElementById('assistantEmail').textContent = user.email; document.getElementById('avatarInitial').textContent = (user.name || 'M').trim().charAt(0).toUpperCase(); renderNav(); renderPermissions(); loadAll(); }
+    function renderNav() { const activePermissions = Object.values(parsePermissions()).filter(Boolean).length; document.getElementById('permissionCount').textContent = `${activePermissions} permissions active`; document.getElementById('sidebarNav').innerHTML = navItems.filter(i => hasPermission(i.permission)).map(i => `<button class="${i.id === 'dashboard' ? 'active' : ''}" onclick="showSection('${i.id}')"><i class="bi ${i.icon}"></i>${i.label}</button>`).join(''); }
+    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id)); document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.textContent.trim().toLowerCase() === navItems.find(i => i.id === id)?.label.toLowerCase())); closeDrawer(); const item = navItems.find(i => i.id === id); if (item?.loader) item.loader(); }
+    function openDrawer() { document.body.classList.add('drawer-open'); }
+    function closeDrawer() { document.body.classList.remove('drawer-open'); }
+    async function loadAll() { await Promise.allSettled([hasPermission('manageHotels') && loadHotels(), hasPermission('manageCustomers') && loadCustomers(), hasPermission('manageMitra') && loadMitras(), hasPermission('viewReports') && loadReports()]); updateKpis(); }
+    function updateKpis() { const pending = state.customers.filter(c => /pending|new|open/i.test(c.status || '')).length + state.hotels.filter(h => h.isLocked).length + state.mitras.filter(m => m.isLocked).length; document.getElementById('hotelCount').textContent = state.hotels.length; document.getElementById('customerCount').textContent = state.customers.length; document.getElementById('mitraCount').textContent = state.mitras.filter(m => !m.isLocked).length; document.getElementById('pendingCount').textContent = pending; }
+    function filterRows(rows, inputId) { const q = (document.getElementById(inputId)?.value || '').toLowerCase().trim(); return !q ? rows : rows.filter(row => JSON.stringify(row).toLowerCase().includes(q)); }
+    function table(headers, rows, emptyText) { if (!rows.length) return `<div class="empty">${emptyText}</div>`; return `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`; }
+    async function loadHotels() { if (!hasPermission('manageHotels')) return; const data = await api('/admin/all-hotels'); state.hotels = data.hotels || []; renderHotels(); updateKpis(); }
+    function renderHotels() { const rows = filterRows(state.hotels, 'hotelSearch').map(h => `<tr><td><strong>${escapeHtml(h.hotelName || h.name || 'N/A')}</strong><br><small>${escapeHtml(h.location || h.address || '')}</small></td><td>${escapeHtml(h.ownerEmail || h.email || '')}</td><td>${escapeHtml(h.phone || '-')}</td><td>${statusBadge(h.isLocked ? 'Locked' : 'Active', h.isLocked)}</td><td>${escapeHtml(h.updatedBy || '-')}</td><td><div class="actions"><button class="btn btn-soft" onclick="editHotel('${h._id}')"><i class="bi bi-pencil"></i>Edit</button><button class="btn btn-danger" disabled><i class="bi bi-trash"></i>No Delete</button></div></td></tr>`); document.getElementById('hotelsTable').innerHTML = table(['Hotel','Owner Email','Phone','Status','Updated By','Actions'], rows, 'No hotels found.'); }
+    async function loadCustomers() { if (!hasPermission('manageCustomers')) return; const data = await api('/admin/all-customers'); state.customers = data.customers || []; renderCustomers(); updateKpis(); }
+    function renderCustomers() { const rows = filterRows(state.customers, 'customerSearch').map(c => `<tr><td><strong>${escapeHtml(c.customerName || c.name || 'N/A')}</strong></td><td>${escapeHtml(c.customerEmail || c.email || '')}</td><td>${escapeHtml(c.customerPhone || c.phone || '-')}</td><td>${statusBadge(c.status || 'Active', c.isLocked)}</td><td><div class="actions"><button class="btn btn-soft" onclick="editCustomer('${c._id}')"><i class="bi bi-pencil"></i>Edit</button><button class="btn btn-danger" disabled><i class="bi bi-trash"></i>No Delete</button></div></td></tr>`); document.getElementById('customersTable').innerHTML = table(['Name','Email','Phone','Status','Actions'], rows, 'No customers found.'); }
+    async function loadMitras() { if (!hasPermission('manageMitra')) return; const data = await api('/admin/all-mitras'); state.mitras = data.mitras || []; renderMitras(); updateKpis(); }
+    function renderMitras() { const rows = filterRows(state.mitras, 'mitraSearch').map(m => `<tr><td><strong>${escapeHtml(m.name || 'N/A')}</strong></td><td>${escapeHtml(m.email || '')}</td><td>${escapeHtml(m.phone || '-')}</td><td>${escapeHtml(m.experience || '-')}</td><td>${statusBadge(m.isLocked ? 'Locked' : 'Active', m.isLocked)}</td><td><div class="actions"><button class="btn btn-soft" onclick="editMitra('${m._id}')"><i class="bi bi-pencil"></i>Edit</button><button class="btn btn-danger" disabled><i class="bi bi-trash"></i>No Delete</button></div></td></tr>`); document.getElementById('mitrasTable').innerHTML = table(['Name','Email','Phone','Experience','Status','Actions'], rows, 'No mitras found.'); }
+    async function loadReports() { if (!hasPermission('viewReports')) return; const data = await api('/admin/dashboard'); state.report = data; document.getElementById('reportsPanel').innerHTML = `<div style="padding:18px;display:grid;gap:12px"><span class="badge badge-active">Reports Access Active</span><pre style="white-space:pre-wrap;background:#0f172a;color:#dbeafe;padding:14px;border-radius:8px;overflow:auto">${escapeHtml(JSON.stringify(data, null, 2))}</pre></div>`; }
+    function renderPermissions() { const labels = { manageHotels:'Manage Hotels', manageCustomers:'Manage Customers', manageMitra:'Manage Mitras', manageMitras:'Manage Mitras', manageBookings:'Manage Bookings', viewReports:'View Reports' }; const p = parsePermissions(); const rows = Object.keys(labels).filter((key, index, arr) => key !== 'manageMitras' || !arr.includes('manageMitra')).map(key => `<span class="badge ${hasPermission(key) ? 'badge-active' : 'badge-muted'}" style="margin:5px">${hasPermission(key) ? 'Allowed' : 'Blocked'}: ${labels[key]}</span>`).join(''); document.getElementById('permissionsPanel').innerHTML = rows + '<div class="notice" style="color:#334155;background:#f8fafc;border-color:#e2e8f0">Permanent delete, assistant management, and primary admin edits are blocked for assistant accounts.</div>'; }
+    async function editHotel(id) { const item = state.hotels.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Hotel', { hotelName: item.hotelName || '', phone: item.phone || '', location: item.location || '', rating: item.rating || 4 }); if (!form) return; await api('/admin/update-hotel', { method:'PUT', body: JSON.stringify({ hotelId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadHotels(); }
+    async function editCustomer(id) { const item = state.customers.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Customer', { customerName: item.customerName || item.name || '', customerEmail: item.customerEmail || item.email || '', customerPhone: item.customerPhone || item.phone || '', status: item.status || 'Active' }); if (!form) return; await api('/admin/update-customer', { method:'PUT', body: JSON.stringify({ customerId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadCustomers(); }
+    async function editMitra(id) { const item = state.mitras.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Mitra', { name: item.name || '', email: item.email || '', phone: item.phone || '', experience: item.experience || '' }); if (!form) return; await api('/admin/update-mitra', { method:'PUT', body: JSON.stringify({ mitraId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadMitras(); }
+    async function promptFields(title, fields) { if (!window.Swal) return null; const html = Object.entries(fields).map(([key, value]) => `<input id="field-${key}" class="swal2-input" placeholder="${key}" value="${escapeHtml(value)}">`).join(''); const result = await Swal.fire({ title, html, showCancelButton:true, confirmButtonText:'Save', focusConfirm:false, preConfirm: () => Object.fromEntries(Object.keys(fields).map(key => [key, document.getElementById(`field-${key}`).value])) }); return result.isConfirmed ? result.value : null; }
+    function logout() { ['assistantEmail','assistantName','assistantRole','assistantPermissions','assistantId','assistantToken','authToken'].forEach(k => localStorage.removeItem(k)); window.location.href = 'assistant-login.html'; }
+    window.addEventListener('load', () => { requireAuth(); initShell(); window.GyanGarbhApi?.connectRealtime?.(); });
+    window.addEventListener('gyangarbh:realtime', () => loadAll());
 </script>
-
-    <script src="mobile-responsive.js"></script>
 </body>
 </html>
-

@@ -422,9 +422,9 @@ const signTokenPayload = (payload) => crypto
 
     .digest('base64url');
 
-const createSessionToken = (role, email, expiresIn = '8h') => {
+const createSessionToken = (role, email, expiresIn = '8h', extraPayload = {}) => {
 
-    return signJwt({ role, enterpriseRole: normalizeEnterpriseRole(role), email: normalizeEmail(email) }, expiresIn);
+    return signJwt({ role, enterpriseRole: normalizeEnterpriseRole(role), email: normalizeEmail(email), ...extraPayload }, expiresIn);
 
 };
 
@@ -800,7 +800,7 @@ const getRequestActor = async (req) => {
 
         if (assistant) {
 
-            return { email: assistant.email, role: 'assistant', permissions: assistant.permissions || {} };
+            return { email: assistant.email, role: 'assistant', permissions: normalizeAssistantPermissions(assistant.permissions || {}) };
 
         }
 
@@ -878,7 +878,7 @@ const verifyAssistant = (permission = null) => async (req, res, next) => {
 
         }
 
-        if (permission && actor.permissions?.[permission] !== true) {
+        if (!assistantHasPermission(actor.permissions, permission)) {
 
             return res.status(403).json({ success: false, message: `Assistant permission required: ${permission}` });
 
@@ -897,6 +897,8 @@ const verifyAssistant = (permission = null) => async (req, res, next) => {
 };
 
 
+
+const verifyAssistantToken = (permission = null) => verifyAssistant(permission);
 
 const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => {
 
@@ -929,7 +931,7 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
 
         }
 
-        if (actor.role === 'assistant' && (!permission || actor.permissions?.[permission] === true)) {
+        if (actor.role === 'assistant' && assistantHasPermission(actor.permissions, permission)) {
 
             req.actor = actor;
 
@@ -1090,6 +1092,35 @@ const safeSortQuery = (query, sortArg) => {
 
 
 const verifyAdminOnly = (email, role) => role === 'admin' && shouldTreatAsAdmin(email);
+
+const normalizeAssistantPermissions = (permissions = {}) => {
+
+    const normalized = {
+        manageHotels: permissions.manageHotels === true,
+        manageCustomers: permissions.manageCustomers === true,
+        manageMitra: permissions.manageMitra === true || permissions.manageMitras === true,
+        manageMitras: permissions.manageMitras === true || permissions.manageMitra === true,
+        manageBookings: permissions.manageBookings === true,
+        viewReports: permissions.viewReports === true
+    };
+
+    return normalized;
+
+};
+
+const assistantHasPermission = (permissions = {}, permission = null) => {
+
+    if (!permission) return true;
+
+    const normalized = normalizeAssistantPermissions(permissions);
+
+    if (permission === 'manageMitra' || permission === 'manageMitras') {
+        return normalized.manageMitra === true || normalized.manageMitras === true;
+    }
+
+    return normalized[permission] === true;
+
+};
 
 
 
@@ -2792,7 +2823,8 @@ app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (re
 
 
 
-        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || updatedBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || updatedByRole);
 
         if (!actorRole) {
 
@@ -2802,7 +2834,7 @@ app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (re
 
 
 
-        const updateData = { updatedBy: updatedBy || req.actor?.email, updatedAt: new Date() };
+        const updateData = { updatedBy: actorEmail, updatedAt: new Date() };
 
         if (hotelName !== undefined) updateData.hotelName = hotelName;
 
@@ -2850,13 +2882,13 @@ app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (re
 
         // Log activity
 
-        await logActivity('UPDATE', 'Hotel', hotelId, updatedHotel.hotelName, updatedBy || req.actor?.email, actorRole, { 
+        await logActivity('UPDATE', 'Hotel', hotelId, updatedHotel.hotelName, actorEmail, actorRole, {
 
             phone, address, location, rating, description, totalRooms 
 
         });
 
-        emitRealtime('hotel-updated', { hotel: updatedHotel, updatedBy: updatedBy || req.actor?.email, actorRole });
+        emitRealtime('hotel-updated', { hotel: updatedHotel, updatedBy: actorEmail, actorRole });
 
 
 
@@ -2882,11 +2914,12 @@ app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (r
 
         const { hotelName, ownerEmail, phone, address, location, roomRate, rating, description, totalRooms, acRoomPrice, nonAcRoomPrice, facilities, imageUrl, imageUrl2, imageUrl3, createdBy, createdByRole } = req.body;
 
-        const actorRole = await resolveActorRole(createdBy || req.actor?.email, createdByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || createdBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || createdByRole);
 
         if (!actorRole) {
 
-            await logSecurityEvent('Unauthorized Hotel Creation', hotelName || 'Unknown Hotel', createdBy || req.actor?.email || 'unknown', createdByRole || req.actor?.role || 'unknown', 'Actor cannot create hotels');
+            await logSecurityEvent('Unauthorized Hotel Creation', hotelName || 'Unknown Hotel', actorEmail || 'unknown', req.actor?.role || createdByRole || 'unknown', 'Actor cannot create hotels');
 
             return res.status(403).json({ success: false, message: 'Unauthorized to create hotels' });
 
@@ -2964,7 +2997,7 @@ app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (r
 
             isLocked: false,
 
-            updatedBy: createdBy || req.actor?.email,
+            updatedBy: actorEmail,
 
             updatedAt: new Date()
 
@@ -2972,9 +3005,9 @@ app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (r
 
         await newHotel.save();
 
-        await logActivity('CREATE', 'Hotel', newHotel._id, hotelName, createdBy || req.actor?.email, actorRole);
+        await logActivity('CREATE', 'Hotel', newHotel._id, hotelName, actorEmail, actorRole);
 
-        emitRealtime('hotel-created', { hotel: newHotel, createdBy: createdBy || req.actor?.email, actorRole });
+        emitRealtime('hotel-created', { hotel: newHotel, createdBy: actorEmail, actorRole });
 
         res.status(201).json({
 
@@ -3200,11 +3233,12 @@ app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (re
 
         const { name, email, phone, address, experience, imageUrl, createdBy, createdByRole } = req.body;
 
-        const actorRole = await resolveActorRole(createdBy || req.actor?.email, createdByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || createdBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || createdByRole);
 
         if (!actorRole) {
 
-            await logSecurityEvent('Unauthorized Mitra Creation', name || 'Unknown Mitra', createdBy || req.actor?.email || 'unknown', createdByRole || req.actor?.role || 'unknown', 'Actor cannot create mitras');
+            await logSecurityEvent('Unauthorized Mitra Creation', name || 'Unknown Mitra', actorEmail || 'unknown', req.actor?.role || createdByRole || 'unknown', 'Actor cannot create mitras');
 
             return res.status(403).json({ success: false, message: 'Unauthorized to create mitras' });
 
@@ -3260,7 +3294,7 @@ app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (re
 
             profilePic: imageUrl || placeholderPhoto,
 
-            updatedBy: createdBy || req.actor?.email,
+            updatedBy: actorEmail,
 
             updatedAt: new Date(),
 
@@ -3272,9 +3306,9 @@ app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (re
 
         await newMitra.save();
 
-        await logActivity('CREATE', 'Mitra', newMitra._id, newMitra.name, createdBy || req.actor?.email, actorRole);
+        await logActivity('CREATE', 'Mitra', newMitra._id, newMitra.name, actorEmail, actorRole);
 
-        emitRealtime('mitra-created', { mitra: newMitra, createdBy: createdBy || req.actor?.email, actorRole });
+        emitRealtime('mitra-created', { mitra: newMitra, createdBy: actorEmail, actorRole });
 
 
 
@@ -3560,7 +3594,8 @@ app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req
 
         const { mitraId, name, email, phone, address, experience, imageUrl, updatedBy, updatedByRole } = req.body;
 
-        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || updatedBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || updatedByRole);
 
         if (!actorRole) {
 
@@ -3582,7 +3617,7 @@ app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req
 
             experience,
 
-            updatedBy: updatedBy || req.actor?.email,
+            updatedBy: actorEmail,
 
             updatedAt: new Date()
 
@@ -3618,9 +3653,9 @@ app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req
 
 
 
-        await logActivity('UPDATE', 'Mitra', mitraId, updatedMitra.name, updatedBy || req.actor?.email, actorRole, { email, phone, address, experience });
+        await logActivity('UPDATE', 'Mitra', mitraId, updatedMitra.name, actorEmail, actorRole, { email, phone, address, experience });
 
-        emitRealtime('mitra-updated', { mitra: updatedMitra, updatedBy: updatedBy || req.actor?.email, actorRole });
+        emitRealtime('mitra-updated', { mitra: updatedMitra, updatedBy: actorEmail, actorRole });
 
 
 
@@ -3732,7 +3767,8 @@ app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), asy
 
         const { customerId, customerName, customerEmail, customerPhone, status, updatedBy, updatedByRole } = req.body;
 
-        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || updatedBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || updatedByRole);
 
         if (!actorRole) {
 
@@ -3756,7 +3792,7 @@ app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), asy
 
                 status,
 
-                updatedBy: updatedBy || req.actor?.email,
+                updatedBy: actorEmail,
 
                 updatedAt: new Date()
 
@@ -3776,9 +3812,9 @@ app.put('/admin/update-customer', verifyAdminOrAssistant('manageCustomers'), asy
 
 
 
-        await logActivity('UPDATE', 'Customer', customerId, updatedCustomer.customerName, updatedBy || req.actor?.email, actorRole, { customerEmail, customerPhone, status });
+        await logActivity('UPDATE', 'Customer', customerId, updatedCustomer.customerName, actorEmail, actorRole, { customerEmail, customerPhone, status });
 
-        emitRealtime('customer-updated', { customer: updatedCustomer, updatedBy: updatedBy || req.actor?.email, actorRole });
+        emitRealtime('customer-updated', { customer: updatedCustomer, updatedBy: actorEmail, actorRole });
 
 
 
@@ -3850,7 +3886,8 @@ app.put('/admin/toggle-lock', verifyAdmin, async (req, res) => {
 
         const { entityType, entityId, isLocked, updatedBy, updatedByRole } = req.body;
 
-        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || updatedBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || updatedByRole);
 
         if (!actorRole) {
 
@@ -3862,7 +3899,7 @@ app.put('/admin/toggle-lock', verifyAdmin, async (req, res) => {
 
         const locked = Boolean(isLocked);
 
-        const update = { isLocked: locked, updatedBy: updatedBy || req.actor?.email, updatedAt: new Date() };
+        const update = { isLocked: locked, updatedBy: actorEmail, updatedAt: new Date() };
 
         let model = null;
 
@@ -3900,9 +3937,9 @@ app.put('/admin/toggle-lock', verifyAdmin, async (req, res) => {
 
         const logType = entityType === 'hotel' ? 'Hotel' : entityType === 'customer' ? 'Customer' : entityType === 'mitra' ? 'Mitra' : 'BodhiPath';
 
-        await logActivity('TOGGLE_STATUS', logType, entityId, entityName, updatedBy || req.actor?.email, actorRole, { isLocked: locked });
+        await logActivity('TOGGLE_STATUS', logType, entityId, entityName, actorEmail, actorRole, { isLocked: locked });
 
-        emitRealtime(`${entityType}-lock-updated`, { entityType, entityId, entityName, isLocked: locked, updatedBy: updatedBy || req.actor?.email });
+        emitRealtime(`${entityType}-lock-updated`, { entityType, entityId, entityName, isLocked: locked, updatedBy: actorEmail });
 
 
 
@@ -5126,6 +5163,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
                 manageCustomers: true,
 
                 manageMitra: true,
+                manageMitras: true,
 
                 manageBookings: false,
 
@@ -5187,7 +5225,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
 // Assistant Login
 
-app.post(['/assistant-login', '/api/assistant-login', '/api/auth/assistant-login'], async (req, res) => {
+app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/assistants/login', '/api/auth/assistant-login'], async (req, res) => {
 
     try {
 
@@ -5229,13 +5267,20 @@ app.post(['/assistant-login', '/api/assistant-login', '/api/auth/assistant-login
 
 
 
+        const permissions = normalizeAssistantPermissions(assistant.permissions || {});
+        const sessionToken = createSessionToken('assistant', assistant.email, '8h', {
+            id: String(assistant._id),
+            permissions
+        });
+
         res.status(200).json({
 
             success: true,
 
             message: 'Assistant login successful',
 
-            sessionToken: createSessionToken('assistant', assistant.email),
+            sessionToken,
+            token: sessionToken,
 
             assistant: {
 
@@ -5245,9 +5290,9 @@ app.post(['/assistant-login', '/api/assistant-login', '/api/auth/assistant-login
 
                 email: assistant.email,
 
-                role: assistant.role,
+                role: 'assistant',
 
-                permissions: assistant.permissions
+                permissions
 
             }
 
@@ -5752,7 +5797,8 @@ app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) 
 
 
 
-        const actorRole = await resolveActorRole(createdBy || req.actor?.email, createdByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || createdBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || createdByRole);
 
         if (!actorRole) {
 
@@ -5794,7 +5840,7 @@ app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) 
 
             spiritualSignificance,
 
-            updatedBy: createdBy || req.actor?.email
+            updatedBy: actorEmail
 
         });
 
@@ -5802,9 +5848,9 @@ app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) 
 
         await newBodhiPath.save();
 
-        await logActivity('CREATE', 'BodhiPath', newBodhiPath._id, title, createdBy || req.actor?.email, actorRole);
+        await logActivity('CREATE', 'BodhiPath', newBodhiPath._id, title, actorEmail, actorRole);
 
-        emitRealtime('bodhi-path-created', { bodhiPath: newBodhiPath, createdBy: createdBy || req.actor?.email, actorRole });
+        emitRealtime('bodhi-path-created', { bodhiPath: newBodhiPath, createdBy: actorEmail, actorRole });
 
         res.status(201).json({
 
@@ -5838,7 +5884,8 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) =
 
 
 
-        const actorRole = await resolveActorRole(updatedBy || req.actor?.email, updatedByRole || req.actor?.role);
+        const actorEmail = req.actor?.email || updatedBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || updatedByRole);
 
         if (!actorRole) {
 
@@ -5884,7 +5931,7 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) =
 
                 spiritualSignificance,
 
-                updatedBy: updatedBy || req.actor?.email,
+                updatedBy: actorEmail,
 
                 updatedAt: new Date()
 
@@ -5906,13 +5953,13 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) =
 
         // Log activity
 
-        await logActivity('UPDATE', 'BodhiPath', bodhiPathId, title, updatedBy || req.actor?.email, actorRole, { 
+        await logActivity('UPDATE', 'BodhiPath', bodhiPathId, title, actorEmail, actorRole, {
 
             category, shortDescription 
 
         });
 
-        emitRealtime('bodhi-path-updated', { bodhiPath: updatedBodhiPath, updatedBy: updatedBy || req.actor?.email, actorRole });
+        emitRealtime('bodhi-path-updated', { bodhiPath: updatedBodhiPath, updatedBy: actorEmail, actorRole });
 
 
 

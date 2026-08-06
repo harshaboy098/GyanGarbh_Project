@@ -27,6 +27,7 @@ const assistantSchema = new mongoose.Schema({
         manageHotels: { type: Boolean, default: true },
         manageCustomers: { type: Boolean, default: true },
         manageMitra: { type: Boolean, default: true },
+        manageMitras: { type: Boolean, default: true },
         manageBookings: { type: Boolean, default: false },
         viewReports: { type: Boolean, default: false }
     },

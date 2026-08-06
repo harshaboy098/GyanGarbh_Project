@@ -3,961 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔐 Gyan Garbh Assistant Control Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Gyan Garbh Assistant Operations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        :root {
+            --bg: #0f172a;
+            --panel: rgba(15, 23, 42, 0.72);
+            --panel-strong: rgba(30, 41, 59, 0.9);
+            --card: rgba(255, 255, 255, 0.92);
+            --muted: #64748b;
+            --text: #0f172a;
+            --line: rgba(148, 163, 184, 0.28);
+            --indigo: #4f46e5;
+            --cyan: #06b6d4;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+            --radius: 8px;
+        }
+        * { box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-
-        .login-container {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            background: rgba(0,0,0,0.25);
-            z-index: 2000;
-        }
-
-        .login-card {
-            background: white;
-            border-radius: 20px;
-            padding: 50px 40px;
-            width: 100%;
-            max-width: 450px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .login-card h2 {
-            color: #667eea;
-            margin-bottom: 10px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #eee;
-            border-radius: 10px;
-            font-size: 1rem;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.1);
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .assistant-panel {
-            display: none;
-            position: relative;
-            z-index: 1;
-        }
-
-        .sidebar {
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: white;
-            padding: 30px 20px;
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 250px;
-            overflow-y: auto;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
-        }
-
-        .sidebar h3 {
-            color: white;
-            margin-bottom: 30px;
-            font-size: 1.5rem;
-            text-align: center;
-        }
-
-        .sidebar-nav { list-style: none; }
-        .sidebar-nav li { margin-bottom: 15px; }
-        .sidebar-nav a {
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            padding: 12px 15px;
-            border-radius: 10px;
-            display: block;
-            transition: 0.3s;
-            cursor: pointer;
-        }
-
-        .sidebar-nav a:hover,
-        .sidebar-nav a.active {
-            background: rgba(255,255,255,0.2);
-            color: white;
-        }
-
-        .main-content {
-            margin-left: 250px;
-            padding: 30px;
-            background: #f8f9fa;
-            min-height: 100vh;
-        }
-
-        .header {
-            background: white;
-            padding: 20px 30px;
-            border-radius: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .header h1 { color: #667eea; margin: 0; font-weight: bold; }
-        
-        .logout-btn {
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .logout-btn:hover { background: #ee5a52; }
-
-        .section-content { display: none; }
-        .section-content.active { display: block; }
-
-        .table-container {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-top: 20px;
-        }
-
-        .table {
             margin: 0;
-            color: #333;
+            min-height: 100vh;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 12% 12%, rgba(6, 182, 212, 0.22), transparent 30%),
+                radial-gradient(circle at 88% 4%, rgba(79, 70, 229, 0.28), transparent 34%),
+                linear-gradient(135deg, #0f172a 0%, #111827 48%, #1e1b4b 100%);
         }
-
-        .table thead { background: #f0f2f5; }
-        .table th { color: #667eea; font-weight: 600; padding: 15px; }
-        .table td { padding: 12px 15px; }
-        .table tbody tr:hover { background: #f8f9fa; }
-
-        .action-btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            margin-right: 5px;
-            transition: 0.3s;
+        button, input { font: inherit; }
+        .app-shell { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+        .sidebar {
+            position: sticky; top: 0; height: 100vh; padding: 22px;
+            background: rgba(15, 23, 42, 0.78); color: white;
+            border-right: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(20px);
         }
-
-        .edit-btn { background: #667eea; color: white; }
-        .edit-btn:hover { background: #5568d3; }
-
-        .delete-btn { background: #999; color: white; cursor: not-allowed; opacity: 0.6; }
-
-        .form-container {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+        .brand-mark { width: 42px; height: 42px; display:grid; place-items:center; border-radius: var(--radius); background: linear-gradient(135deg, var(--indigo), var(--cyan)); box-shadow: 0 12px 30px rgba(6, 182, 212, .24); }
+        .brand-title { font-weight: 800; line-height: 1.1; }
+        .brand-subtitle { color: #94a3b8; font-size: 12px; margin-top: 3px; }
+        .nav { display: grid; gap: 8px; }
+        .nav button {
+            width: 100%; display:flex; align-items:center; gap: 12px; padding: 11px 12px;
+            border: 1px solid transparent; border-radius: var(--radius); color: #cbd5e1;
+            background: transparent; cursor: pointer; text-align: left; transition: .2s ease;
         }
-
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; color: #333; font-weight: 600; margin-bottom: 8px; }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 0.95rem;
+        .nav button:hover, .nav button.active { color: white; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.1); }
+        .sidebar-footer { position: absolute; left: 22px; right: 22px; bottom: 22px; display: grid; gap: 10px; }
+        .permission-pill { display:inline-flex; align-items:center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: rgba(16,185,129,.14); color: #a7f3d0; font-size: 12px; }
+        .main { padding: 24px; min-width: 0; }
+        .topbar { display:flex; align-items:center; justify-content:space-between; gap: 16px; margin-bottom: 22px; }
+        .title h1 { margin: 0; color: white; font-size: clamp(24px, 3vw, 36px); letter-spacing: 0; }
+        .title p { margin: 7px 0 0; color: #cbd5e1; }
+        .user-strip { display:flex; align-items:center; gap: 10px; flex-wrap: wrap; justify-content:flex-end; }
+        .user-badge { display:flex; align-items:center; gap:10px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius); color:white; background: rgba(255,255,255,.1); backdrop-filter: blur(16px); }
+        .avatar { width:32px; height:32px; display:grid; place-items:center; border-radius: 50%; background: linear-gradient(135deg, var(--cyan), var(--indigo)); font-weight: 800; }
+        .btn { border:0; border-radius: var(--radius); padding: 10px 12px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap: 8px; font-weight: 700; transition:.2s ease; }
+        .btn-primary { color:white; background: linear-gradient(135deg, var(--indigo), var(--cyan)); }
+        .btn-ghost { color:white; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); }
+        .btn-soft { color:#1e293b; background:#eef2ff; }
+        .btn-danger { color:white; background: var(--rose); }
+        .btn:disabled { opacity:.55; cursor:not-allowed; }
+        .mobile-menu { display:none; }
+        .grid { display:grid; gap: 16px; }
+        .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .card { background: var(--card); border: 1px solid rgba(255,255,255,.62); border-radius: var(--radius); box-shadow: 0 20px 70px rgba(15,23,42,.18); backdrop-filter: blur(18px); }
+        .kpi { padding: 18px; display:flex; justify-content:space-between; gap: 12px; min-height: 116px; }
+        .kpi-label { color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; }
+        .kpi-value { font-size: 34px; font-weight: 800; margin-top: 8px; }
+        .kpi-icon { width:44px; height:44px; border-radius: var(--radius); display:grid; place-items:center; color:white; }
+        .section { display:none; animation: rise .22s ease; }
+        .section.active { display:block; }
+        @keyframes rise { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+        .section-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 18px; border-bottom:1px solid #e2e8f0; }
+        .section-header h2 { margin:0; font-size: 18px; }
+        .search { min-width: 240px; max-width: 360px; width: 100%; position: relative; }
+        .search i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); }
+        .search input { width:100%; border:1px solid #cbd5e1; border-radius: var(--radius); padding: 10px 12px 10px 36px; outline:none; }
+        .search input:focus { border-color: var(--indigo); box-shadow:0 0 0 3px rgba(79,70,229,.15); }
+        .table-wrap { overflow:auto; }
+        table { width:100%; border-collapse: collapse; min-width: 760px; }
+        th, td { padding: 14px 18px; text-align:left; border-bottom:1px solid #e2e8f0; vertical-align: middle; }
+        th { color:#475569; font-size:12px; text-transform:uppercase; letter-spacing:.04em; background:#f8fafc; }
+        tr:hover td { background:#f8fafc; }
+        .badge { display:inline-flex; align-items:center; gap:6px; padding: 5px 9px; border-radius:999px; font-size:12px; font-weight:800; }
+        .badge-active { color:#047857; background:#d1fae5; }
+        .badge-pending { color:#92400e; background:#fef3c7; }
+        .badge-locked { color:#be123c; background:#ffe4e6; }
+        .badge-muted { color:#475569; background:#e2e8f0; }
+        .actions { display:flex; flex-wrap:wrap; gap: 8px; }
+        .empty { padding: 34px; color: var(--muted); text-align:center; }
+        .notice { padding: 16px 18px; margin: 16px 0; color:#cbd5e1; background: rgba(15,23,42,.56); border:1px solid rgba(255,255,255,.1); border-radius: var(--radius); }
+        .drawer-backdrop { display:none; }
+        @media (max-width: 1000px) {
+            .app-shell { grid-template-columns: 1fr; }
+            .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; width: 280px; transform: translateX(-102%); transition: .24s ease; }
+            body.drawer-open .sidebar { transform: translateX(0); }
+            .drawer-backdrop { display:block; position:fixed; inset:0; z-index:20; background:rgba(2,6,23,.55); opacity:0; pointer-events:none; transition:.24s ease; }
+            body.drawer-open .drawer-backdrop { opacity:1; pointer-events:auto; }
+            .mobile-menu { display:inline-flex; }
+            .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-
-        .form-group textarea { resize: vertical; }
-
-        .submit-btn {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.4);
-        }
-
-        .modal.show { display: flex; justify-content: center; align-items: center; }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 600px;
-            width: 100%;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f2f5;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #999;
-        }
-
-        .restriction-alert {
-            background: #fff3cd;
-            border-left: 4px solid #ff9800;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .badge-admin { background: #fee; color: #c92a2a; }
-        .badge-assistant { background: #e7f5ff; color: #1971c2; }
-
-        @media (max-width: 768px) {
-            .sidebar { width: 100%; position: relative; min-height: auto; margin-bottom: 20px; }
-            .main-content { margin-left: 0; }
-            .form-row { grid-template-columns: 1fr; }
+        @media (max-width: 640px) {
+            .main { padding: 16px; }
+            .topbar, .section-header { align-items: stretch; flex-direction: column; }
+            .user-strip { justify-content: flex-start; }
+            .kpis { grid-template-columns: 1fr; }
+            .search { min-width: 0; max-width: none; }
         }
     </style>
-    <script src="api-client.js"></script>
-    <link rel="stylesheet" href="mobile-responsive.css">
 </head>
 <body>
-
-<!-- LOGIN PAGE -->
-<div id="loginPage" class="login-container">
-    <div class="login-card">
-        <h2><i class="bi bi-person-check"></i> Gyan Garbh Assistant</h2>
-        <p style="text-align: center; color: #999; margin-bottom: 30px; font-size: 0.9rem;">Assistant Portal</p>
-        <form id="assistantLoginForm">
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="assistantEmail" placeholder="Enter assistant email" required>
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="assistantPassword" placeholder="Enter password" minlength="8" required>
-            </div>
-            <button type="submit" class="login-btn">🔓 Login to Assistant Panel</button>
-        </form>
-    </div>
-</div>
-
-<!-- ASSISTANT PANEL -->
-<div id="assistantPanel" class="assistant-panel d-flex">
-    <div class="sidebar">
-        <h3>👥 ASSISTANT</h3>
-        <ul class="sidebar-nav">
-            <li><a class="nav-link active" onclick="showSection('dashboard')"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-            <li><a class="nav-link" onclick="showSection('hotels')"><i class="bi bi-building"></i> Hotels</a></li>
-            <li><a class="nav-link" onclick="showSection('customers')"><i class="bi bi-person-hearts"></i> Customers</a></li>
-            <li><a class="nav-link" onclick="showSection('mitras')"><i class="bi bi-handshake"></i> Mitras</a></li>
-            <li><a class="nav-link" onclick="showSection('bodhi-path')"><i class="bi bi-temple2"></i> Bodhi Path</a></li>
-            <li><a class="nav-link" onclick="showSection('restrictions')"><i class="bi bi-shield-exclamation"></i> My Restrictions</a></li>
-            <li><a class="nav-link ai-sidebar-link" onclick="openRoleAIAssistant('assistant')"><i class="bi bi-robot"></i> 🤖 Chat with AI</a></li>
-            <li><hr style="border-color: rgba(255,255,255,0.2)"></li>
-            <li><a class="nav-link text-danger" onclick="logout()"><i class="bi bi-box-arrow-left"></i> Logout</a></li>
-        </ul>
-    </div>
-
-    <div style="flex: 1;">
-        <div class="main-content">
-            <!-- HEADER -->
-            <div class="header">
-                <h1>Gyan Garbh Assistant Panel</h1>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                    <button class="ai-navbar-btn" onclick="openRoleAIAssistant('assistant')"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
-                    <button class="logout-btn" onclick="logout()">Logout</button>
-                </div>
-            </div>
-
-            <!-- DASHBOARD SECTION -->
-            <div id="dashboard" class="section-content active">
-                <h2 style="margin-bottom: 30px; color: #333;">📊 Dashboard</h2>
-                <div class="restriction-alert">
-                    <strong>⚠️ Assistant Restrictions:</strong> You cannot delete items or create other assistants. Your edits are logged for audit purposes.
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                    <div class="table-container">
-                        <div style="text-align: center;">
-                            <h6 style="color: #999;">Hotels Managed</h6>
-                            <h2 id="hotelCount" style="color: #667eea;">0</h2>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <div style="text-align: center;">
-                            <h6 style="color: #999;">Customers</h6>
-                            <h2 id="customerCount" style="color: #667eea;">0</h2>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <div style="text-align: center;">
-                            <h6 style="color: #999;">Mitras</h6>
-                            <h2 id="mitraCount" style="color: #667eea;">0</h2>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <div style="text-align: center;">
-                            <h6 style="color: #999;">Heritage Entries</h6>
-                            <h2 id="bodhiCount" style="color: #667eea;">0</h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- HOTELS SECTION -->
-            <div id="hotels" class="section-content">
-                <h2 style="margin-bottom: 30px; color: #333;">🏨 Manage Hotels</h2>
-                <div class="table-container">
-                    <h4>📋 Hotels List</h4>
-                    <table id="hotelsTable">
-                        <thead>
-                            <tr>
-                                <th>Hotel Name</th>
-                                <th>Email</th>
-                                <th>Location</th>
-                                <th>Rating</th>
-                                <th>Updated By</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- CUSTOMERS SECTION -->
-            <div id="customers" class="section-content">
-                <h2 style="margin-bottom: 30px; color: #333;">👤 Manage Customers</h2>
-                <div class="table-container">
-                    <h4>📋 Customers List</h4>
-                    <table id="customersTable">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- MITRAS SECTION -->
-            <div id="mitras" class="section-content">
-                <h2 style="margin-bottom: 30px; color: #333;">🤝 Manage Mitras</h2>
-                <div class="table-container">
-                    <h4>📋 Mitras List</h4>
-                    <table id="mitrasTable">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Experience</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- BODHI PATH SECTION -->
-            <div id="bodhi-path" class="section-content">
-                <h2 style="margin-bottom: 30px; color: #333;">🏛️ Manage Bodhi Path Heritage</h2>
-                <div class="form-container" style="margin-bottom: 30px;">
-                    <h4>➕ Add Heritage Entry</h4>
-                    <form id="createBodhiPathForm" style="margin-top: 20px;">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Name</label>
-                                <input type="text" id="bodhiTitle" placeholder="e.g., Mahabodhi Temple" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Subtitle</label>
-                                <input type="text" id="bodhiSubtitle" placeholder="Sacred site subtitle">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Location</label>
-                                <input type="text" id="bodhiLocation" placeholder="Bodh Gaya, Bihar">
-                            </div>
-                            <div class="form-group">
-                                <label>Timings</label>
-                                <input type="text" id="bodhiTimings" placeholder="5:00 AM - 9:00 PM">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Entry Fee</label>
-                                <input type="text" id="bodhiEntryFee" placeholder="Free">
-                            </div>
-                            <div class="form-group">
-                                <label>Main Image URL</label>
-                                <input type="url" id="bodhiMainImage" placeholder="https://...">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Gallery Image URLs</label>
-                            <textarea id="bodhiGalleryImages" placeholder="Comma-separated image URLs"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea id="bodhiShortDesc" placeholder="Temple description" required></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>History</label>
-                            <textarea id="bodhiHistory" placeholder="Historical background"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Rules and Guidelines</label>
-                            <textarea id="bodhiRules" placeholder="Comma-separated rules"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 8px;">
-                                <input type="checkbox" id="bodhiFeatured" style="width: auto;">
-                                Featured temple
-                            </label>
-                        </div>
-                        <button type="submit" class="submit-btn">Add Temple</button>
-                    </form>
-                </div>
-
-                <div class="table-container">
-                    <h4>📚 Heritage Entries</h4>
-                    <table id="bodhiPathTable">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Location</th>
-                                <th>Description</th>
-                                <th>Featured</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- RESTRICTIONS SECTION -->
-            <div id="restrictions" class="section-content">
-                <h2 style="margin-bottom: 30px; color: #333;">🔒 My Restrictions & Permissions</h2>
-                <div class="form-container">
-                    <h4>Allowed Permissions:</h4>
-                    <div id="permissionsList" style="margin: 20px 0;"></div>
-                    <hr>
-                    <h4 style="margin-top: 20px;">Restrictions (Admin Only):</h4>
-                    <div style="margin: 20px 0;">
-                        <div style="background: #fee; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                            <i class="bi bi-x-circle" style="color: #c92a2a;"></i> <strong>No Permanent Delete Access</strong>
-                            <p style="font-size: 0.9rem; color: #666; margin: 5px 0 0 0;">Only Admin can delete items permanently</p>
-                        </div>
-                        <div style="background: #fee; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                            <i class="bi bi-x-circle" style="color: #c92a2a;"></i> <strong>Cannot Create Assistants</strong>
-                            <p style="font-size: 0.9rem; color: #666; margin: 5px 0 0 0;">Only Admin can create new assistants</p>
-                        </div>
-                        <div style="background: #fee; padding: 15px; border-radius: 8px;">
-                            <i class="bi bi-x-circle" style="color: #c92a2a;"></i> <strong>No Activity Log Access</strong>
-                            <p style="font-size: 0.9rem; color: #666; margin: 5px 0 0 0;">Activity logs are visible to Admin only</p>
-                        </div>
-                    </div>
-                    <div style="background: #e7f5ff; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                        <i class="bi bi-info-circle-fill" style="color: #1971c2;"></i> All your changes are logged and tracked for audit purposes.
-                    </div>
-                </div>
-            </div>
+<div class="drawer-backdrop" onclick="closeDrawer()"></div>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark"><i class="bi bi-shield-check"></i></div>
+            <div><div class="brand-title">Gyan Garbh</div><div class="brand-subtitle">Assistant Operations</div></div>
         </div>
-    </div>
-</div>
-
-<!-- EDIT HOTEL MODAL -->
-<div id="editHotelModal" class="modal">
-    <div class="modal-content" style="max-width: 600px;">
-        <div class="modal-header">
-            <h2>Edit Hotel</h2>
-            <button class="close-btn" onclick="closeModal('editHotelModal')">✕</button>
+        <nav id="sidebarNav" class="nav"></nav>
+        <div class="sidebar-footer">
+            <span class="permission-pill"><i class="bi bi-check2-circle"></i><span id="permissionCount">0 permissions active</span></span>
+            <button class="btn btn-ghost" onclick="logout()"><i class="bi bi-box-arrow-left"></i>Logout</button>
         </div>
-        <form id="editHotelForm">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Hotel Name</label>
-                    <input type="text" id="editHotelName" required>
-                </div>
-                <div class="form-group">
-                    <label>Location</label>
-                    <input type="text" id="editHotelLocation" required>
-                </div>
+    </aside>
+    <main class="main">
+        <header class="topbar">
+            <button class="btn btn-ghost mobile-menu" onclick="openDrawer()"><i class="bi bi-list"></i>Menu</button>
+            <div class="title"><h1>Gyan Garbh Assistant Operations</h1><p>Secure daily operations for hotels, customers, mitras, and reports.</p></div>
+            <div class="user-strip">
+                <div class="user-badge"><div class="avatar" id="avatarInitial">M</div><div><strong id="assistantName">Mukesh Assistant</strong><br><small id="assistantEmail">assistant@gyangarbh.com</small></div></div>
+                <button class="btn btn-primary" onclick="logout()"><i class="bi bi-power"></i>Logout</button>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Phone</label>
-                    <input type="text" id="editHotelPhone">
-                </div>
-                <div class="form-group">
-                    <label>Rating</label>
-                    <input type="number" id="editHotelRating" min="0" max="5" step="0.1">
-                </div>
+        </header>
+        <section id="dashboard" class="section active">
+            <div class="grid kpis">
+                <div class="card kpi"><div><div class="kpi-label">Managed Hotels</div><div id="hotelCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--indigo)"><i class="bi bi-buildings"></i></div></div>
+                <div class="card kpi"><div><div class="kpi-label">Total Customers</div><div id="customerCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--cyan)"><i class="bi bi-people"></i></div></div>
+                <div class="card kpi"><div><div class="kpi-label">Active Mitras</div><div id="mitraCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--emerald)"><i class="bi bi-person-check"></i></div></div>
+                <div class="card kpi"><div><div class="kpi-label">Pending Tasks</div><div id="pendingCount" class="kpi-value">0</div></div><div class="kpi-icon" style="background:var(--amber)"><i class="bi bi-hourglass-split"></i></div></div>
             </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="editHotelDescription" rows="3"></textarea>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button type="submit" class="submit-btn">💾 Save Changes</button>
-                <button type="button" class="submit-btn" style="background: #999;" onclick="closeModal('editHotelModal')">Cancel</button>
-            </div>
-        </form>
-    </div>
+            <div class="notice"><strong>Security rules:</strong> assistant accounts cannot access super-admin management, permanent delete actions, or admin control endpoints. All write actions use your verified JWT identity.</div>
+        </section>
+        <section id="hotels" class="section"><div class="card"><div class="section-header"><h2>Managed Hotels</h2><label class="search"><i class="bi bi-search"></i><input id="hotelSearch" placeholder="Search hotels" oninput="renderHotels()"></label></div><div id="hotelsTable" class="table-wrap"></div></div></section>
+        <section id="customers" class="section"><div class="card"><div class="section-header"><h2>Total Customers</h2><label class="search"><i class="bi bi-search"></i><input id="customerSearch" placeholder="Search customers" oninput="renderCustomers()"></label></div><div id="customersTable" class="table-wrap"></div></div></section>
+        <section id="mitras" class="section"><div class="card"><div class="section-header"><h2>Active Mitras</h2><label class="search"><i class="bi bi-search"></i><input id="mitraSearch" placeholder="Search mitras" oninput="renderMitras()"></label></div><div id="mitrasTable" class="table-wrap"></div></div></section>
+        <section id="reports" class="section"><div class="card"><div class="section-header"><h2>Reports</h2><button class="btn btn-soft" onclick="loadAll()"><i class="bi bi-arrow-clockwise"></i>Refresh</button></div><div id="reportsPanel" class="empty">Reports load when viewReports permission is active.</div></div></section>
+        <section id="permissions" class="section"><div class="card"><div class="section-header"><h2>My Permissions</h2></div><div id="permissionsPanel" style="padding:18px"></div></div></section>
+    </main>
 </div>
-
-<!-- EDIT BODHI PATH MODAL -->
-<div id="editBodhiPathModal" class="modal">
-    <div class="modal-content" style="max-width: 600px;">
-        <div class="modal-header">
-            <h2>Edit Bodhi Path Entry</h2>
-            <button class="close-btn" onclick="closeModal('editBodhiPathModal')">✕</button>
-        </div>
-        <form id="editBodhiPathForm">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="editBodhiTitle" required>
-                </div>
-                <div class="form-group">
-                    <label>Category</label>
-                    <select id="editBodhiCategory" required>
-                        <option value="temple">Temple</option>
-                        <option value="history">History</option>
-                        <option value="monument">Monument</option>
-                        <option value="festival">Festival</option>
-                        <option value="tradition">Tradition</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Short Description</label>
-                <textarea id="editBodhiShortDesc" rows="2" required></textarea>
-            </div>
-            <div class="form-group">
-                <label>Full Description</label>
-                <textarea id="editBodhiFullDesc" rows="3" required></textarea>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button type="submit" class="submit-btn">💾 Save Changes</button>
-                <button type="button" class="submit-btn" style="background: #999;" onclick="closeModal('editBodhiPathModal')">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="ai-navbar.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
-    let assistantEmail = localStorage.getItem('assistantEmail');
-    let assistantRole = localStorage.getItem('assistantRole');
-
-    // Check if already logged in
-    window.addEventListener('load', () => {
-        if (assistantEmail) {
-            document.getElementById('loginPage').style.display = 'none';
-            document.getElementById('assistantPanel').style.display = 'flex';
-            loadDashboard();
-        }
-    });
-
-    // LOGIN
-    document.getElementById('assistantLoginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('assistantEmail').value;
-        const password = document.getElementById('assistantPassword').value;
-
-        try {
-            const response = await fetch(`${API_URL}/assistant-login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                assistantEmail = email;
-                assistantRole = 'assistant';
-                localStorage.setItem('assistantEmail', email);
-                localStorage.setItem('assistantRole', 'assistant');
-                localStorage.setItem('authToken', data.sessionToken);
-                window.GyanGarbhApi?.connectRealtime();
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('assistantPanel').style.display = 'flex';
-                loadDashboard();
-            } else {
-                alert('❌ Invalid credentials');
-            }
-        } catch (error) {
-            alert('❌ Login error: ' + error.message);
-        }
-    });
-
-    function showSection(section) {
-        document.querySelectorAll('.section-content').forEach(el => el.classList.remove('active'));
-        document.getElementById(section).classList.add('active');
-        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-        event.target.classList.add('active');
-
-        if (section === 'hotels') loadHotels();
-        if (section === 'customers') loadCustomers();
-        if (section === 'mitras') loadMitras();
-        if (section === 'bodhi-path') loadBodhiPath();
-        if (section === 'restrictions') loadRestrictions();
-    }
-
-    async function loadDashboard() {
-        try {
-            const hotelsRes = await fetch(`${API_URL}/admin/all-hotels`);
-            const customersRes = await fetch(`${API_URL}/admin/all-customers`);
-            const mitrasRes = await fetch(`${API_URL}/admin/all-mitras`);
-            const bodhiRes = await fetch(`${API_URL}/api/temples/all`);
-
-            const hotels = await hotelsRes.json();
-            const customers = await customersRes.json();
-            const mitras = await mitrasRes.json();
-            const bodhi = await bodhiRes.json();
-
-            document.getElementById('hotelCount').textContent = hotels.hotels?.length || 0;
-            document.getElementById('customerCount').textContent = customers.customers?.length || 0;
-            document.getElementById('mitraCount').textContent = mitras.mitras?.length || 0;
-            document.getElementById('bodhiCount').textContent = bodhi.temples?.length || 0;
-        } catch (error) {
-            console.error('Dashboard load error:', error);
-        }
-    }
-
-    async function loadHotels() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-hotels`);
-            const data = await response.json();
-
-            const tbody = document.querySelector('#hotelsTable tbody');
-            tbody.innerHTML = data.hotels.map(hotel => `
-                <tr>
-                    <td>${hotel.hotelName || 'N/A'}</td>
-                    <td>${hotel.ownerEmail || 'N/A'}</td>
-                    <td>${hotel.location || 'N/A'}</td>
-                    <td>${hotel.rating || 0}</td>
-                    <td>${hotel.updatedBy ? `<span class="badge badge-assistant">${hotel.updatedBy}</span>` : '-'}</td>
-                    <td>
-                        <button class="action-btn edit-btn" onclick="openEditHotelModal('${hotel._id}', '${hotel.hotelName}', '${hotel.location}', '${hotel.phone || ''}', ${hotel.rating || 0}, '${hotel.description || ''}')">✏️ Edit</button>
-                        <button class="action-btn delete-btn" disabled title="Delete disabled for assistants">🗑️ Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (error) {
-            console.error('Load hotels error:', error);
-        }
-    }
-
-    async function loadCustomers() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-customers`);
-            const data = await response.json();
-
-            const tbody = document.querySelector('#customersTable tbody');
-            tbody.innerHTML = data.customers.map(customer => `
-                <tr>
-                    <td>${customer.customerName || 'N/A'}</td>
-                    <td>${customer.customerEmail || 'N/A'}</td>
-                    <td>${customer.customerPhone || 'N/A'}</td>
-                    <td><span class="badge badge-info">${customer.status || 'Active'}</span></td>
-                    <td>
-                        <button class="action-btn delete-btn" disabled title="Delete disabled for assistants">🗑️ Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (error) {
-            console.error('Load customers error:', error);
-        }
-    }
-
-    async function loadMitras() {
-        try {
-            const response = await fetch(`${API_URL}/admin/all-mitras`);
-            const data = await response.json();
-
-            const tbody = document.querySelector('#mitrasTable tbody');
-            tbody.innerHTML = data.mitras.map(mitra => `
-                <tr>
-                    <td>${mitra.name || 'N/A'}</td>
-                    <td>${mitra.email || 'N/A'}</td>
-                    <td>${mitra.phone || 'N/A'}</td>
-                    <td>${mitra.experience || '-'}</td>
-                    <td>
-                        <button class="action-btn delete-btn" disabled title="Delete disabled for assistants">🗑️ Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (error) {
-            console.error('Load mitras error:', error);
-        }
-    }
-
-    async function loadBodhiPath() {
-        try {
-            const response = await fetch(`${API_URL}/api/temples/all`);
-            const data = await response.json();
-
-            const tbody = document.querySelector('#bodhiPathTable tbody');
-            tbody.innerHTML = (data.temples || []).map(entry => `
-                <tr>
-                    <td>${entry.name || 'N/A'}</td>
-                    <td>${entry.location || '-'}</td>
-                    <td>${(entry.description || '').substring(0, 50)}${(entry.description || '').length > 50 ? '...' : ''}</td>
-                    <td>${entry.isFeatured ? '<span class="badge badge-success">Featured</span>' : '-'}</td>
-                    <td>
-                        <button class="action-btn delete-btn" disabled title="Delete disabled for assistants">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (error) {
-            console.error('Load Bodhi Path error:', error);
-        }
-    }
-
-    function loadRestrictions() {
-        const restrictions = [
-            '✅ View and Edit Hotels',
-            '✅ View Customers',
-            '✅ View and Edit Bodhi Path Entries',
-            '✅ View and Edit Mitras',
-            '✅ Create Heritage Entries'
-        ];
-        
-        let html = '';
-        restrictions.forEach(perm => {
-            html += `<div style="background: #e7f5ff; padding: 10px 15px; border-radius: 8px; margin-bottom: 8px;">
-                <i class="bi bi-check-circle-fill" style="color: #1971c2;"></i> ${perm}
-            </div>`;
-        });
-        
-        document.getElementById('permissionsList').innerHTML = html;
-    }
-
-    let currentEditHotelId = null;
-
-    function openEditHotelModal(hotelId, name, location, phone, rating, description) {
-        currentEditHotelId = hotelId;
-        document.getElementById('editHotelName').value = name;
-        document.getElementById('editHotelLocation').value = location;
-        document.getElementById('editHotelPhone').value = phone;
-        document.getElementById('editHotelRating').value = rating;
-        document.getElementById('editHotelDescription').value = description;
-        document.getElementById('editHotelModal').classList.add('show');
-    }
-
-    document.getElementById('editHotelForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`${API_URL}/admin/update-hotel`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    hotelId: currentEditHotelId,
-                    hotelName: document.getElementById('editHotelName').value,
-                    location: document.getElementById('editHotelLocation').value,
-                    phone: document.getElementById('editHotelPhone').value,
-                    rating: document.getElementById('editHotelRating').value,
-                    description: document.getElementById('editHotelDescription').value,
-                    updatedBy: assistantEmail,
-                    updatedByRole: 'assistant'
-                })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                alert('✅ Hotel updated successfully!');
-                closeModal('editHotelModal');
-                loadHotels();
-            } else {
-                alert('❌ Error: ' + data.message);
-            }
-        } catch (error) {
-            alert('❌ Error: ' + error.message);
-        }
-    });
-
-    let currentEditBodhiPathId = null;
-
-    function openEditBodhiPathModal(bodhiId, title, category, shortDesc, fullDesc) {
-        currentEditBodhiPathId = bodhiId;
-        document.getElementById('editBodhiTitle').value = title;
-        document.getElementById('editBodhiCategory').value = category;
-        document.getElementById('editBodhiShortDesc').value = shortDesc;
-        document.getElementById('editBodhiFullDesc').value = fullDesc;
-        document.getElementById('editBodhiPathModal').classList.add('show');
-    }
-
-    document.getElementById('editBodhiPathForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`${API_URL}/admin/bodhi-path/update`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bodhiPathId: currentEditBodhiPathId,
-                    title: document.getElementById('editBodhiTitle').value,
-                    category: document.getElementById('editBodhiCategory').value,
-                    shortDescription: document.getElementById('editBodhiShortDesc').value,
-                    fullDescription: document.getElementById('editBodhiFullDesc').value,
-                    updatedBy: assistantEmail,
-                    updatedByRole: 'assistant'
-                })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                alert('✅ Bodhi Path entry updated successfully!');
-                closeModal('editBodhiPathModal');
-                loadBodhiPath();
-            } else {
-                alert('❌ Error: ' + data.message);
-            }
-        } catch (error) {
-            alert('❌ Error: ' + error.message);
-        }
-    });
-
-    document.getElementById('createBodhiPathForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`${API_URL}/api/temples/add`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: document.getElementById('bodhiTitle').value,
-                    subtitle: document.getElementById('bodhiSubtitle').value,
-                    location: document.getElementById('bodhiLocation').value,
-                    timings: document.getElementById('bodhiTimings').value,
-                    entryFee: document.getElementById('bodhiEntryFee').value,
-                    mainImage: document.getElementById('bodhiMainImage').value,
-                    galleryImages: document.getElementById('bodhiGalleryImages').value,
-                    description: document.getElementById('bodhiShortDesc').value,
-                    history: document.getElementById('bodhiHistory').value,
-                    rulesAndGuidelines: document.getElementById('bodhiRules').value,
-                    isFeatured: document.getElementById('bodhiFeatured').checked
-                })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                alert('Temple created successfully!');
-                e.target.reset();
-                loadBodhiPath();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        } catch (error) {
-            alert('Error: ' + error.message);
-        }
-    });
-
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('show');
-    }
-
-    window.addEventListener('gyangarbh:realtime', loadDashboard);
-
-    function logout() {
-        localStorage.removeItem('assistantEmail');
-        localStorage.removeItem('assistantRole');
-        localStorage.removeItem('authToken');
-        window.location.href = 'assistant-login.html';
-    }
+    const ADMIN_SHIELD_HEADER = 'x-gyangarbh-admin-shield';
+    const ADMIN_SHIELD_SECRET = window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821';
+    const state = { hotels: [], customers: [], mitras: [], report: null };
+    const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'bi-speedometer2' },
+        { id: 'hotels', label: 'Hotels', icon: 'bi-buildings', permission: 'manageHotels', loader: loadHotels },
+        { id: 'customers', label: 'Customers', icon: 'bi-people', permission: 'manageCustomers', loader: loadCustomers },
+        { id: 'mitras', label: 'Mitras', icon: 'bi-person-check', permission: 'manageMitra', loader: loadMitras },
+        { id: 'reports', label: 'Reports', icon: 'bi-graph-up-arrow', permission: 'viewReports', loader: loadReports },
+        { id: 'permissions', label: 'Permissions', icon: 'bi-shield-lock', loader: renderPermissions }
+    ];
+    function token() { return localStorage.getItem('authToken') || localStorage.getItem('assistantToken') || ''; }
+    function assistant() { return { name: localStorage.getItem('assistantName') || 'Mukesh Assistant', email: localStorage.getItem('assistantEmail') || '', permissions: parsePermissions() }; }
+    function parsePermissions() { try { return JSON.parse(localStorage.getItem('assistantPermissions') || '{}') || {}; } catch { return {}; } }
+    function hasPermission(key) { const p = parsePermissions(); if (!key) return true; if (key === 'manageMitra' || key === 'manageMitras') return p.manageMitra === true || p.manageMitras === true; return p[key] === true; }
+    function headers(extra = {}) { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, [ADMIN_SHIELD_HEADER]: ADMIN_SHIELD_SECRET, ...extra }; }
+    async function api(path, options = {}) { const response = await fetch(`${API_URL}${path}`, { ...options, headers: headers(options.headers || {}) }); const data = await response.json().catch(() => ({})); if (!response.ok || data.success === false) throw new Error(data.message || `Request failed: ${response.status}`); return data; }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+    function statusBadge(value, locked = false) { if (locked) return '<span class="badge badge-locked">Locked</span>'; const text = String(value || 'Active'); const cls = /pending|review/i.test(text) ? 'badge-pending' : 'badge-active'; return `<span class="badge ${cls}">${escapeHtml(text)}</span>`; }
+    function requireAuth() { if (!token() || !localStorage.getItem('assistantEmail')) window.location.href = 'assistant-login.html'; }
+    function initShell() { const user = assistant(); document.getElementById('assistantName').textContent = user.name; document.getElementById('assistantEmail').textContent = user.email; document.getElementById('avatarInitial').textContent = (user.name || 'M').trim().charAt(0).toUpperCase(); renderNav(); renderPermissions(); loadAll(); }
+    function renderNav() { const activePermissions = Object.values(parsePermissions()).filter(Boolean).length; document.getElementById('permissionCount').textContent = `${activePermissions} permissions active`; document.getElementById('sidebarNav').innerHTML = navItems.filter(i => hasPermission(i.permission)).map(i => `<button class="${i.id === 'dashboard' ? 'active' : ''}" onclick="showSection('${i.id}')"><i class="bi ${i.icon}"></i>${i.label}</button>`).join(''); }
+    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id)); document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.textContent.trim().toLowerCase() === navItems.find(i => i.id === id)?.label.toLowerCase())); closeDrawer(); const item = navItems.find(i => i.id === id); if (item?.loader) item.loader(); }
+    function openDrawer() { document.body.classList.add('drawer-open'); }
+    function closeDrawer() { document.body.classList.remove('drawer-open'); }
+    async function loadAll() { await Promise.allSettled([hasPermission('manageHotels') && loadHotels(), hasPermission('manageCustomers') && loadCustomers(), hasPermission('manageMitra') && loadMitras(), hasPermission('viewReports') && loadReports()]); updateKpis(); }
+    function updateKpis() { const pending = state.customers.filter(c => /pending|new|open/i.test(c.status || '')).length + state.hotels.filter(h => h.isLocked).length + state.mitras.filter(m => m.isLocked).length; document.getElementById('hotelCount').textContent = state.hotels.length; document.getElementById('customerCount').textContent = state.customers.length; document.getElementById('mitraCount').textContent = state.mitras.filter(m => !m.isLocked).length; document.getElementById('pendingCount').textContent = pending; }
+    function filterRows(rows, inputId) { const q = (document.getElementById(inputId)?.value || '').toLowerCase().trim(); return !q ? rows : rows.filter(row => JSON.stringify(row).toLowerCase().includes(q)); }
+    function table(headers, rows, emptyText) { if (!rows.length) return `<div class="empty">${emptyText}</div>`; return `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`; }
+    async function loadHotels() { if (!hasPermission('manageHotels')) return; const data = await api('/admin/all-hotels'); state.hotels = data.hotels || []; renderHotels(); updateKpis(); }
+    function renderHotels() { const rows = filterRows(state.hotels, 'hotelSearch').map(h => `<tr><td><strong>${escapeHtml(h.hotelName || h.name || 'N/A')}</strong><br><small>${escapeHtml(h.location || h.address || '')}</small></td><td>${escapeHtml(h.ownerEmail || h.email || '')}</td><td>${escapeHtml(h.phone || '-')}</td><td>${statusBadge(h.isLocked ? 'Locked' : 'Active', h.isLocked)}</td><td>${escapeHtml(h.updatedBy || '-')}</td><td><div class="actions"><button class="btn btn-soft" onclick="editHotel('${h._id}')"><i class="bi bi-pencil"></i>Edit</button><button class="btn btn-danger" disabled><i class="bi bi-trash"></i>No Delete</button></div></td></tr>`); document.getElementById('hotelsTable').innerHTML = table(['Hotel','Owner Email','Phone','Status','Updated By','Actions'], rows, 'No hotels found.'); }
+    async function loadCustomers() { if (!hasPermission('manageCustomers')) return; const data = await api('/admin/all-customers'); state.customers = data.customers || []; renderCustomers(); updateKpis(); }
+    function renderCustomers() { const rows = filterRows(state.customers, 'customerSearch').map(c => `<tr><td><strong>${escapeHtml(c.customerName || c.name || 'N/A')}</strong></td><td>${escapeHtml(c.customerEmail || c.email || '')}</td><td>${escapeHtml(c.customerPhone || c.phone || '-')}</td><td>${statusBadge(c.status || 'Active', c.isLocked)}</td><td><div class="actions"><button class="btn btn-soft" onclick="editCustomer('${c._id}')"><i class="bi bi-pencil"></i>Edit</button><button class="btn btn-danger" disabled><i class="bi bi-trash"></i>No Delete</button></div></td></tr>`); document.getElementById('customersTable').innerHTML = table(['Name','Email','Phone','Status','Actions'], rows, 'No customers found.'); }
+    async function loadMitras() { if (!hasPermission('manageMitra')) return; const data = await api('/admin/all-mitras'); state.mitras = data.mitras || []; renderMitras(); updateKpis(); }
+    function renderMitras() { const rows = filterRows(state.mitras, 'mitraSearch').map(m => `<tr><td><strong>${escapeHtml(m.name || 'N/A')}</strong></td><td>${escapeHtml(m.email || '')}</td><td>${escapeHtml(m.phone || '-')}</td><td>${escapeHtml(m.experience || '-')}</td><td>${statusBadge(m.isLocked ? 'Locked' : 'Active', m.isLocked)}</td><td><div class="actions"><button class="btn btn-soft" onclick="editMitra('${m._id}')"><i class="bi bi-pencil"></i>Edit</button><button class="btn btn-danger" disabled><i class="bi bi-trash"></i>No Delete</button></div></td></tr>`); document.getElementById('mitrasTable').innerHTML = table(['Name','Email','Phone','Experience','Status','Actions'], rows, 'No mitras found.'); }
+    async function loadReports() { if (!hasPermission('viewReports')) return; const data = await api('/admin/dashboard'); state.report = data; document.getElementById('reportsPanel').innerHTML = `<div style="padding:18px;display:grid;gap:12px"><span class="badge badge-active">Reports Access Active</span><pre style="white-space:pre-wrap;background:#0f172a;color:#dbeafe;padding:14px;border-radius:8px;overflow:auto">${escapeHtml(JSON.stringify(data, null, 2))}</pre></div>`; }
+    function renderPermissions() { const labels = { manageHotels:'Manage Hotels', manageCustomers:'Manage Customers', manageMitra:'Manage Mitras', manageMitras:'Manage Mitras', manageBookings:'Manage Bookings', viewReports:'View Reports' }; const p = parsePermissions(); const rows = Object.keys(labels).filter((key, index, arr) => key !== 'manageMitras' || !arr.includes('manageMitra')).map(key => `<span class="badge ${hasPermission(key) ? 'badge-active' : 'badge-muted'}" style="margin:5px">${hasPermission(key) ? 'Allowed' : 'Blocked'}: ${labels[key]}</span>`).join(''); document.getElementById('permissionsPanel').innerHTML = rows + '<div class="notice" style="color:#334155;background:#f8fafc;border-color:#e2e8f0">Permanent delete, assistant management, and primary admin edits are blocked for assistant accounts.</div>'; }
+    async function editHotel(id) { const item = state.hotels.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Hotel', { hotelName: item.hotelName || '', phone: item.phone || '', location: item.location || '', rating: item.rating || 4 }); if (!form) return; await api('/admin/update-hotel', { method:'PUT', body: JSON.stringify({ hotelId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadHotels(); }
+    async function editCustomer(id) { const item = state.customers.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Customer', { customerName: item.customerName || item.name || '', customerEmail: item.customerEmail || item.email || '', customerPhone: item.customerPhone || item.phone || '', status: item.status || 'Active' }); if (!form) return; await api('/admin/update-customer', { method:'PUT', body: JSON.stringify({ customerId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadCustomers(); }
+    async function editMitra(id) { const item = state.mitras.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Mitra', { name: item.name || '', email: item.email || '', phone: item.phone || '', experience: item.experience || '' }); if (!form) return; await api('/admin/update-mitra', { method:'PUT', body: JSON.stringify({ mitraId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadMitras(); }
+    async function promptFields(title, fields) { if (!window.Swal) return null; const html = Object.entries(fields).map(([key, value]) => `<input id="field-${key}" class="swal2-input" placeholder="${key}" value="${escapeHtml(value)}">`).join(''); const result = await Swal.fire({ title, html, showCancelButton:true, confirmButtonText:'Save', focusConfirm:false, preConfirm: () => Object.fromEntries(Object.keys(fields).map(key => [key, document.getElementById(`field-${key}`).value])) }); return result.isConfirmed ? result.value : null; }
+    function logout() { ['assistantEmail','assistantName','assistantRole','assistantPermissions','assistantId','assistantToken','authToken'].forEach(k => localStorage.removeItem(k)); window.location.href = 'assistant-login.html'; }
+    window.addEventListener('load', () => { requireAuth(); initShell(); window.GyanGarbhApi?.connectRealtime?.(); });
+    window.addEventListener('gyangarbh:realtime', () => loadAll());
 </script>
-
-    <script src="mobile-responsive.js"></script>
 </body>
 </html>

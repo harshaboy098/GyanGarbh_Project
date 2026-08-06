@@ -3,330 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔓 Assistant Login | Gyan Garbh</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Assistant Login | Gyan Garbh</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        :root { --indigo:#4f46e5; --cyan:#06b6d4; --slate:#0f172a; --muted:#64748b; --line:#cbd5e1; --danger:#be123c; --radius:8px; }
+        * { box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #0f172a;
+            background:
+                radial-gradient(circle at 14% 16%, rgba(6,182,212,.22), transparent 30%),
+                radial-gradient(circle at 86% 10%, rgba(79,70,229,.28), transparent 34%),
+                linear-gradient(135deg, #0f172a 0%, #111827 48%, #1e1b4b 100%);
+            display: grid;
+            place-items: center;
+            padding: 24px;
         }
-
-        .login-container {
-            background: white;
-            border-radius: 20px;
-            padding: 50px 40px;
-            width: 100%;
-            max-width: 450px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            animation: slideIn 0.5s ease;
+        .login-shell { width: min(100%, 1040px); display: grid; grid-template-columns: 1fr 430px; gap: 22px; align-items: stretch; }
+        .hero, .panel {
+            border: 1px solid rgba(255,255,255,.16);
+            border-radius: var(--radius);
+            background: rgba(255,255,255,.1);
+            backdrop-filter: blur(22px);
+            box-shadow: 0 24px 80px rgba(2,6,23,.32);
         }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header-section {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .header-section h2 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-weight: bold;
-            font-size: 1.8rem;
-        }
-
-        .header-section p {
-            color: #999;
-            font-size: 0.9rem;
-            margin-bottom: 0;
-        }
-
-        .icon-badge {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            color: white;
-            font-size: 1.8rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 8px;
-            display: block;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #eee;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: 0.3s;
-            background: #f8f9fa;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.1);
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 13px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 10px;
-        }
-
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .login-btn:active {
-            transform: translateY(0);
-        }
-
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 25px 0;
-            color: #ccc;
-        }
-
-        .divider:before {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #eee;
-        }
-
-        .divider span {
-            padding: 0 10px;
-            color: #999;
-            font-size: 0.85rem;
-        }
-
-        .divider:after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #eee;
-        }
-
-        .back-link {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .back-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-
-        .back-link a:hover {
-            color: #764ba2;
-            text-decoration: underline;
-        }
-
-        .info-box {
-            background: #f0f4ff;
-            border-left: 4px solid #667eea;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            font-size: 0.9rem;
-            color: #555;
-        }
-
-        .info-box strong {
-            color: #667eea;
-        }
-
-        .error-message {
-            background: #ffe0e0;
-            border-left: 4px solid #ff6b6b;
-            color: #c92a2a;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-            font-size: 0.9rem;
-        }
-
-        .success-message {
-            background: #e0ffe0;
-            border-left: 4px solid #51cf66;
-            color: #2b8a2b;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-            font-size: 0.9rem;
-        }
-
-        @media (max-width: 480px) {
-            .login-container {
-                padding: 30px 20px;
-            }
-
-            .header-section h2 {
-                font-size: 1.5rem;
-            }
-        }
+        .hero { padding: clamp(28px, 5vw, 56px); color: white; display: flex; flex-direction: column; justify-content: space-between; min-height: 560px; }
+        .brand { display:flex; align-items:center; gap:12px; }
+        .brand-mark { width:44px; height:44px; display:grid; place-items:center; border-radius: var(--radius); background: linear-gradient(135deg, var(--indigo), var(--cyan)); }
+        .hero h1 { margin: 70px 0 12px; font-size: clamp(34px, 5vw, 58px); line-height: 1; letter-spacing: 0; }
+        .hero p { margin: 0; max-width: 600px; color: #cbd5e1; font-size: 17px; line-height: 1.7; }
+        .hero-row { display:flex; flex-wrap:wrap; gap: 10px; margin-top: 28px; }
+        .pill { display:inline-flex; align-items:center; gap:8px; padding: 8px 11px; border-radius: 999px; color:#dbeafe; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); font-size: 13px; font-weight: 700; }
+        .panel { background: rgba(255,255,255,.94); padding: 30px; align-self: center; }
+        .panel h2 { margin: 0 0 8px; font-size: 26px; }
+        .panel .sub { margin: 0 0 26px; color: var(--muted); }
+        label { display:block; color:#334155; font-size: 13px; font-weight: 800; margin: 0 0 8px; }
+        .field { margin-bottom: 18px; }
+        .input-wrap { position: relative; }
+        .input-wrap i { position:absolute; left:13px; top:50%; transform: translateY(-50%); color: var(--muted); }
+        input { width:100%; border:1px solid var(--line); border-radius: var(--radius); padding: 13px 13px 13px 40px; outline:none; transition:.2s ease; background:white; }
+        input:focus { border-color: var(--indigo); box-shadow: 0 0 0 4px rgba(79,70,229,.14); }
+        .btn { width:100%; border:0; border-radius: var(--radius); padding: 13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:9px; color:white; font-weight:800; background: linear-gradient(135deg, var(--indigo), var(--cyan)); transition:.2s ease; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(79,70,229,.26); }
+        .btn:disabled { opacity:.7; cursor:not-allowed; transform:none; }
+        .message { display:none; margin: 0 0 18px; padding: 12px; border-radius: var(--radius); font-size: 14px; font-weight: 700; }
+        .message.error { display:block; color: var(--danger); background:#ffe4e6; }
+        .message.success { display:block; color:#047857; background:#d1fae5; }
+        .meta { margin-top: 20px; color: var(--muted); font-size: 13px; line-height:1.6; }
+        .meta a { color: var(--indigo); font-weight:800; text-decoration:none; }
+        @media (max-width: 860px) { .login-shell { grid-template-columns: 1fr; } .hero { min-height: auto; } .hero h1 { margin-top: 42px; } }
     </style>
-    <link rel="stylesheet" href="mobile-responsive.css">
 </head>
 <body>
-
-<div class="login-container">
-    <div class="header-section">
-        <div class="icon-badge">
-            <i class="bi bi-person-check"></i>
-        </div>
-        <h2>Assistant Login</h2>
-        <p>Access your management dashboard</p>
-    </div>
-
-    <div id="errorMessage" class="error-message"></div>
-    <div id="successMessage" class="success-message"></div>
-
-    <div class="info-box">
-        <strong><i class="bi bi-info-circle-fill"></i> Note:</strong> Only authorized assistants can login. Contact your admin if you don't have credentials.
-    </div>
-
-    <form id="assistantLoginForm" onsubmit="handleAssistantLogin(event)">
-        <div class="form-group">
-            <label for="assistantEmail">Email Address</label>
-            <input type="email" id="assistantEmail" placeholder="your@email.com" required>
-        </div>
-
-        <div class="form-group">
-            <label for="assistantPassword">Password</label>
-            <input type="password" id="assistantPassword" placeholder="••••••••••••" minlength="8" required>
-        </div>
-
-        <button type="submit" class="login-btn">
-            <i class="bi bi-lock-fill"></i> Login
-        </button>
-    </form>
-
-    <div class="divider">
-        <span>Need Help?</span>
-    </div>
-
-    <div class="back-link">
-        <a href="index.html">
-            <i class="bi bi-arrow-left"></i> Back to Login
-        </a>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <main class="login-shell">
+        <section class="hero">
+            <div class="brand"><div class="brand-mark"><i class="bi bi-shield-check"></i></div><div><strong>Gyan Garbh</strong><br><small>Assistant Operations</small></div></div>
+            <div>
+                <h1>Secure operations console</h1>
+                <p>Assistants can manage assigned operational workflows with permission-based access, JWT authentication, and protected admin boundaries.</p>
+                <div class="hero-row">
+                    <span class="pill"><i class="bi bi-lock"></i>JWT secured</span>
+                    <span class="pill"><i class="bi bi-sliders"></i>Permission aware</span>
+                    <span class="pill"><i class="bi bi-phone"></i>Mobile ready</span>
+                </div>
+            </div>
+            <small style="color:#94a3b8">Admin-only delete and super-admin controls remain blocked.</small>
+        </section>
+        <section class="panel">
+            <h2>Assistant Login</h2>
+            <p class="sub">Use your assistant credentials to continue.</p>
+            <div id="message" class="message"></div>
+            <form id="assistantLoginForm">
+                <div class="field"><label for="assistantEmail">Email address</label><div class="input-wrap"><i class="bi bi-envelope"></i><input id="assistantEmail" type="email" autocomplete="email" placeholder="assistant@example.com" required></div></div>
+                <div class="field"><label for="assistantPassword">Password</label><div class="input-wrap"><i class="bi bi-key"></i><input id="assistantPassword" type="password" autocomplete="current-password" minlength="8" placeholder="Enter password" required></div></div>
+                <button id="loginButton" class="btn" type="submit"><i class="bi bi-box-arrow-in-right"></i>Login to Portal</button>
+            </form>
+            <p class="meta">Need access? Contact the Gyan Garbh admin team. <br><a href="index.html">Return to main site</a></p>
+        </section>
+    </main>
 <script src="api-client.js"></script>
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
-
-    async function handleAssistantLogin(event) {
+    const message = document.getElementById('message');
+    const form = document.getElementById('assistantLoginForm');
+    const button = document.getElementById('loginButton');
+    function showMessage(type, text) { message.className = `message ${type}`; message.textContent = text; }
+    function clearAssistantSession() { ['assistantEmail','assistantName','assistantRole','assistantPermissions','assistantId','assistantToken','authToken'].forEach(key => localStorage.removeItem(key)); }
+    form.addEventListener('submit', async (event) => {
         event.preventDefault();
-
-        const email = document.getElementById('assistantEmail').value;
-        const password = document.getElementById('assistantPassword').value;
-
-        const errorMsg = document.getElementById('errorMessage');
-        const successMsg = document.getElementById('successMessage');
-        errorMsg.style.display = 'none';
-        successMsg.style.display = 'none';
-
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-arrow-repeat"></i>Checking access';
+        message.className = 'message';
         try {
-            const response = await fetch(`${API_URL}/assistant-login`, {
+            const response = await fetch(`${API_URL}/assistant/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({
+                    email: document.getElementById('assistantEmail').value.trim(),
+                    password: document.getElementById('assistantPassword').value
+                })
             });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                // Store assistant data in localStorage
-                localStorage.setItem('assistantEmail', data.assistant.email);
-                localStorage.setItem('assistantName', data.assistant.name);
-                localStorage.setItem('assistantRole', data.assistant.role);
-                localStorage.setItem('assistantPermissions', JSON.stringify(data.assistant.permissions));
-                localStorage.setItem('assistantId', data.assistant._id);
-                localStorage.setItem('authToken', data.sessionToken);
-
-                successMsg.textContent = '✅ Login successful! Redirecting...';
-                successMsg.style.display = 'block';
-
-                setTimeout(() => {
-                    window.location.href = 'assistant-dashboard.html';
-                }, 1500);
-            } else {
-                errorMsg.textContent = '❌ ' + (data.message || 'Invalid credentials');
-                errorMsg.style.display = 'block';
-            }
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.message || 'Invalid assistant credentials');
+            const assistant = data.assistant || {};
+            const token = data.token || data.sessionToken;
+            clearAssistantSession();
+            localStorage.setItem('assistantEmail', assistant.email || '');
+            localStorage.setItem('assistantName', assistant.name || 'Assistant');
+            localStorage.setItem('assistantRole', 'assistant');
+            localStorage.setItem('assistantPermissions', JSON.stringify(assistant.permissions || {}));
+            localStorage.setItem('assistantId', assistant._id || '');
+            localStorage.setItem('assistantToken', token || '');
+            localStorage.setItem('authToken', token || '');
+            showMessage('success', 'Login successful. Opening assistant portal...');
+            setTimeout(() => { window.location.href = 'assistant-dashboard.html'; }, 650);
         } catch (error) {
-            console.error('Login error:', error);
-            errorMsg.textContent = '❌ Server connection error. Please check backend.';
-            errorMsg.style.display = 'block';
-        }
-    }
-
-    // Check if already logged in
-    window.addEventListener('load', () => {
-        const assistantEmail = localStorage.getItem('assistantEmail');
-        if (assistantEmail) {
-            window.location.href = 'assistant-dashboard.html';
+            showMessage('error', error.message || 'Unable to login right now.');
+        } finally {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-box-arrow-in-right"></i>Login to Portal';
         }
     });
+    window.addEventListener('load', () => {
+        if (localStorage.getItem('authToken') && localStorage.getItem('assistantEmail')) window.location.href = 'assistant-dashboard.html';
+    });
 </script>
-
-    <script src="mobile-responsive.js"></script>
 </body>
 </html>
-
