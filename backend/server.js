@@ -4375,7 +4375,7 @@ app.get('/hotel-details/:ownerEmail', async (req, res) => {
 
 
 
-app.post('/admin/add-room', verifyAdminOrAssistant('manageHotels'), (req, res) => {
+app.post(['/admin/add-room', '/api/admin/add-room'], verifyAdminOrAssistant('manageHotels'), (req, res) => {
 
     uploadRoomImages.array('roomImages', 12)(req, res, async (uploadErr) => {
 
