@@ -1800,13 +1800,44 @@
                 Swal.fire('Updated!', 'Room details updated successfully!', 'success');
                 editingRoomIndex = -1;
             } else {
-                const res = await fetch(`${API_URL}/admin/add-room`, {
+                const res = await fetch(`${API_URL}/api/admin/add-room`, {
                     method: 'POST',
                     headers: getHotelAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(roomData)
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message || 'Failed to add room.');
+
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Unauthorized',
+                            text: 'Your session has expired. Please log in again.',
+                            confirmButtonText: 'Log in'
+                        });
+                        window.location.href = '/hotel-auth.html';
+                        return;
+                    }
+
+                    const errorMessage = (res.status === 404 || res.status === 500)
+                        ? 'Server route unavailable. Please check backend deployment.'
+                        : `Failed to add room. (${res.status})`;
+
+                    const textBody = await res.text();
+                    let parsedMessage = errorMessage;
+                    try {
+                        const errorJson = JSON.parse(textBody);
+                        if (errorJson && errorJson.message) parsedMessage = errorJson.message;
+                    } catch (parseErr) {
+                        // ignore invalid JSON body
+                    }
+
+                    throw new Error(parsedMessage);
+                }
+
+                const data = await res.json().catch(() => {
+                    throw new Error('Invalid server response. Please try again.');
+                });
+                if (!data.success) throw new Error(data.message || 'Failed to add room.');
                 Swal.fire('Success!', 'Room added successfully!', 'success');
             }
 
