@@ -116,7 +116,7 @@ const validateBookingPayload = ({ userName, hotelName, roomType, price, checkIn,
 
 };
 
-const publicHotelQuery = (query) => query.select('-password');
+const publicHotelQuery = (query) => query.where({ isLocked: { $ne: true }, isAvailable: { $ne: false } }).select('-password');
 
 const publicUserQuery = (query) => query.select('-password');
 
@@ -4099,7 +4099,7 @@ app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
 
 app.get('/all-hotels', async (req, res) => {
 
-    try { res.json(await publicHotelQuery(Hotel.find({ isLocked: { $ne: true } }))); } catch (err) { res.status(500).send(err.message); }
+    try { res.json(await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false } }))); } catch (err) { res.status(500).send(err.message); }
 
 });
 
@@ -4115,7 +4115,7 @@ app.get('/api/hotels/:id', async (req, res) => {
 
         }
 
-        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true } }));
+        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false } }));
 
         if (!hotel) {
 
@@ -4155,7 +4155,7 @@ app.get('/api/hotels/:id/availability', async (req, res) => {
         });
         if (validationError) return res.status(400).json({ success: false, message: validationError });
 
-        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true } }));
+        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false } }));
         if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
 
         const checkInDate = new Date(`${checkIn}T00:00:00`);
@@ -4311,7 +4311,7 @@ app.post('/api/hotels/:id/reviews', async (req, res) => {
 
         }
 
-        const hotel = await Hotel.findOne({ _id: hotelId, isLocked: { $ne: true } }).select('-password');
+        const hotel = await Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false } }).select('-password');
 
         if (!hotel) {
 
@@ -4349,7 +4349,7 @@ app.get('/hotel-details/:ownerEmail', async (req, res) => {
 
     try {
 
-        const hotel = await publicHotelQuery(Hotel.findOne({ ownerEmail: normalizeEmail(req.params.ownerEmail), isLocked: { $ne: true } }));
+        const hotel = await publicHotelQuery(Hotel.findOne({ ownerEmail: normalizeEmail(req.params.ownerEmail), isLocked: { $ne: true }, isAvailable: { $ne: false } }));
 
         if (!hotel) {
 
@@ -5223,6 +5223,200 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
 
 
+// Assistant ground-operations APIs
+const normalizeAssistantPaymentStatus = (booking) => {
+    const raw = String(booking?.paymentStatus || '').toLowerCase();
+    return /paid|online|success|complete/.test(raw) ? 'Online Paid' : 'Cash on Arrival';
+};
+
+const normalizeAssistantBookingProgress = (booking) => {
+    if (booking?.status === 'Cancelled') return 'Cancelled';
+    if (booking?.status === 'Completed') return 'Completed';
+    if (booking?.checkedIn) return 'Checked-In';
+    if (booking?.status === 'Confirmed') return 'Hotel Accepted';
+    return 'Pending';
+};
+
+const bookingProgressToUpdate = (progress) => {
+    const value = String(progress || '').trim();
+    if (value === 'Hotel Accepted') return { status: 'Confirmed', checkedIn: false };
+    if (value === 'Checked-In') return { status: 'Confirmed', checkedIn: true };
+    if (value === 'Completed') return { status: 'Completed', checkedIn: true };
+    if (value === 'Cancelled') return { status: 'Cancelled', checkedIn: false, cancelledAt: new Date(), cancellationReason: 'Cancelled by assistant operations' };
+    return { status: 'Pending', checkedIn: false };
+};
+
+const buildAssistantBooking = (booking) => ({
+    _id: booking._id,
+    customerName: booking.userName,
+    customerEmail: booking.userEmail,
+    hotelName: booking.hotelName,
+    hotelId: booking.hotelId,
+    roomType: booking.roomType,
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    paymentStatus: normalizeAssistantPaymentStatus(booking),
+    rawPaymentStatus: booking.paymentStatus,
+    progress: normalizeAssistantBookingProgress(booking),
+    status: booking.status,
+    checkedIn: booking.checkedIn,
+    totalPrice: booking.totalPrice || booking.price,
+    createdAt: booking.createdAt
+});
+
+const buildComplaintHotelQuery = (hotel) => {
+    const terms = [hotel?._id, hotel?.hotelName, hotel?.ownerEmail].filter(Boolean).map((value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!terms.length) return null;
+    const pattern = new RegExp(terms.join('|'), 'i');
+    return { $or: [{ subject: pattern }, { description: pattern }, { assignedTo: pattern }] };
+};
+
+const getHotelComplaintCount = async (hotel) => {
+    const query = buildComplaintHotelQuery(hotel);
+    return query ? SupportTicket.countDocuments(query) : 0;
+};
+
+app.get(['/api/assistants/dashboard-stats', '/api/reports'], verifyAssistantToken(), async (req, res) => {
+    try {
+        const [totalHotels, totalBookings, confirmedBookings, pendingBookings, totalCustomers, activeMitras, totalComplaints] = await Promise.all([
+            Hotel.countDocuments(),
+            Booking.countDocuments(),
+            Booking.countDocuments({ status: 'Confirmed' }),
+            Booking.countDocuments({ status: 'Pending' }),
+            Enquiry.countDocuments(),
+            User.countDocuments(mitraUserFilter),
+            SupportTicket.countDocuments({ status: { $nin: ['resolved', 'closed'] } })
+        ]);
+        const recentBookings = await Booking.find().sort({ createdAt: -1 }).limit(5);
+        const recentEnquiries = await Enquiry.find().sort({ createdAt: -1 }).limit(5);
+        res.json({
+            success: true,
+            stats: { totalHotels, totalBookings, confirmedBookings, pendingBookings, totalCustomers, activeMitras, totalComplaints, pendingTasks: pendingBookings + totalComplaints },
+            recentBookings,
+            recentEnquiries
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/api/assistants/bookings', verifyAssistantToken(), async (req, res) => {
+    try {
+        const bookings = await Booking.find().sort({ createdAt: -1 }).limit(300);
+        res.json({ success: true, bookings: bookings.map(buildAssistantBooking) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/assistants/bookings/:id/progress', verifyAssistantToken(), async (req, res) => {
+    try {
+        const bookingId = String(req.params.id || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
+        const progress = ['Pending', 'Hotel Accepted', 'Checked-In', 'Completed', 'Cancelled'].includes(req.body.progress) ? req.body.progress : 'Pending';
+        const booking = await Booking.findByIdAndUpdate(bookingId, bookingProgressToUpdate(progress), { new: true, runValidators: true });
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+        await logActivity('UPDATE', 'Booking', booking._id, booking.hotelName, req.actor.email, 'assistant', { progress, status: booking.status, checkedIn: booking.checkedIn });
+        emitRealtime('booking-progress-updated', { bookingId: booking._id, hotelName: booking.hotelName, progress, updatedBy: req.actor.email });
+        res.json({ success: true, message: 'Booking progress updated', booking: buildAssistantBooking(booking) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/api/assistants/complaints', verifyAssistantToken(), async (req, res) => {
+    try {
+        const tickets = await SupportTicket.find({ status: { $nin: ['closed'] } }).sort({ priority: -1, updatedAt: -1 }).limit(300);
+        const complaints = tickets.map((ticket) => ({
+            _id: ticket._id,
+            customerName: ticket.customerName,
+            customerEmail: ticket.customerEmail,
+            subject: ticket.subject,
+            description: ticket.description,
+            category: ticket.category,
+            urgency: ticket.priority,
+            status: ticket.status,
+            assignedTo: ticket.assignedTo,
+            timeline: ticket.timeline,
+            createdAt: ticket.createdAt,
+            updatedAt: ticket.updatedAt
+        }));
+        res.json({ success: true, complaints });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/assistants/complaints/:id/warning', verifyAssistantToken(), async (req, res) => {
+    try {
+        const ticketId = String(req.params.id || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(ticketId)) return res.status(400).json({ success: false, message: 'Valid complaint ID is required' });
+        const note = String(req.body.note || 'Warning issued by assistant operations.').trim();
+        const hotelId = String(req.body.hotelId || '').trim();
+        const hotelName = String(req.body.hotelName || '').trim();
+        const hotel = mongoose.Types.ObjectId.isValid(hotelId)
+            ? await Hotel.findById(hotelId).select('hotelName ownerEmail')
+            : hotelName
+                ? await Hotel.findOne({ hotelName: hotelName }).select('hotelName ownerEmail')
+                : null;
+        const ticket = await SupportTicket.findByIdAndUpdate(
+            ticketId,
+            {
+                status: 'in_progress',
+                tier: 'assistant',
+                assignedTo: hotel?.ownerEmail || hotelName || req.body.assignedTo || '',
+                $push: { timeline: { action: 'hotel_warning_sent', note, performedBy: req.actor.email, performedByRole: 'assistant' } }
+            },
+            { new: true }
+        );
+        if (!ticket) return res.status(404).json({ success: false, message: 'Complaint not found' });
+        await logActivity('SECURITY', 'Warning', ticket._id, hotel?.hotelName || ticket.subject, req.actor.email, 'assistant', {
+            complaintId: ticket._id,
+            hotelId: hotel?._id || null,
+            hotelName: hotel?.hotelName || hotelName,
+            note
+        });
+        emitRealtime('hotel-warning-issued', { ticketId: ticket._id, hotelId: hotel?._id || null, hotelName: hotel?.hotelName || hotelName, note, issuedBy: req.actor.email });
+        res.json({ success: true, message: 'Warning sent to hotel panel and logged', complaint: ticket });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/api/assistants/hotel-operations', verifyAssistantToken('manageHotels'), async (req, res) => {
+    try {
+        const hotels = await Hotel.find().select('-password').sort({ updatedAt: -1 });
+        const enriched = await Promise.all(hotels.map(async (hotel) => ({
+            ...hotel.toObject(),
+            isActive: hotel.isAvailable !== false && hotel.isLocked !== true,
+            complaintsCount: await getHotelComplaintCount(hotel),
+            feedbackLogs: (hotel.reviews || []).slice(-5).reverse(),
+            displayRating: hotel.averageRating || hotel.rating || 0
+        })));
+        res.json({ success: true, hotels: enriched });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/assistants/hotels/:id/active', verifyAssistantToken('manageHotels'), async (req, res) => {
+    try {
+        const hotelId = String(req.params.id || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) return res.status(400).json({ success: false, message: 'Valid hotel ID is required' });
+        const isActive = req.body.isActive === true;
+        const hotel = await Hotel.findByIdAndUpdate(
+            hotelId,
+            { isAvailable: isActive, isLocked: !isActive, updatedBy: req.actor.email, updatedAt: new Date() },
+            { new: true }
+        ).select('-password');
+        if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
+        await logActivity('TOGGLE_STATUS', 'Hotel', hotel._id, hotel.hotelName, req.actor.email, 'assistant', { isActive, isAvailable: hotel.isAvailable, isLocked: hotel.isLocked });
+        emitRealtime('hotel-active-status-updated', { hotelId: hotel._id, hotelName: hotel.hotelName, isActive, updatedBy: req.actor.email });
+        res.json({ success: true, message: `Hotel ${isActive ? 'activated' : 'inactivated'} successfully`, hotel });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 // Assistant Login
 
 app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/assistants/login', '/api/auth/assistant-login'], async (req, res) => {
