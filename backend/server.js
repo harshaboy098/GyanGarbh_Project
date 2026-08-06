@@ -1518,7 +1518,7 @@ mongoose.connect(MONGO_URI, mongooseOptions)
 
   .then(async () => {
 
-      console.log('🚀 Connected to Gyan Garbh Database!');
+      console.log('MongoDB connected successfully for Gyan Garbh Database.');
 
       await ensureAdminUser();
 
@@ -5584,6 +5584,7 @@ app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
     try {
 
         const { assistantId, deletedBy, deletedByRole } = req.body;
+        const primaryAdminEmail = 'sirsonu122@gmail.com';
 
 
 
@@ -5602,6 +5603,22 @@ app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
         }
 
 
+
+        const assistant = await Assistant.findById(assistantId);
+
+        if (!assistant) {
+
+            return res.status(404).json({ success: false, message: 'Assistant not found' });
+
+        }
+
+        const isPrimaryAdmin = assistant.role === 'admin' || String(assistant.email || '').trim().toLowerCase() === primaryAdminEmail;
+
+        if (isPrimaryAdmin) {
+
+            return res.status(403).json({ success: false, message: 'Primary Admin account cannot be deleted.' });
+
+        }
 
         const deletedAssistant = await Assistant.findByIdAndDelete(assistantId);
 

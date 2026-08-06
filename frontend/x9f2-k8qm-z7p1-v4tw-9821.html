@@ -427,6 +427,13 @@
             color: #721c24;
         }
 
+        .badge-protected {
+            background: #e9ecef;
+            color: #495057;
+            border: 1px solid #ced4da;
+            cursor: not-allowed;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -853,12 +860,14 @@
     const ADMIN_SHIELD_HEADER = 'x-gyangarbh-admin-shield';
     const ADMIN_SHIELD_SECRET = window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821';
     const ADMIN_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+    const PRIMARY_ADMIN_EMAIL = 'sirsonu122@gmail.com';
     const FAKE_404_PATH = '404.html';
     const nativeFetch = window.fetch.bind(window);
     let adminEmail = localStorage.getItem('adminEmail');
     let adminOtpPhase = false;
     let adminIdleTimer = null;
     let currentDeleteData = null;
+    let assistantsCache = [];
     let hotelsCache = [];
     let customersCache = [];
     let mitrasCache = [];
@@ -1133,20 +1142,34 @@
     });
 
     // LOAD ASSISTANTS
+    function isProtectedAssistant(assistant) {
+        return String(assistant?.role || '').toLowerCase() === 'admin'
+            || String(assistant?.email || '').trim().toLowerCase() === PRIMARY_ADMIN_EMAIL;
+    }
+
+    function renderAssistantActions(assistant) {
+        if (isProtectedAssistant(assistant)) {
+            return '<span class="badge badge-protected">Protected</span>';
+        }
+
+        return `<button class="action-btn delete-btn" onclick="deleteAssistant('${assistant._id}')">Delete</button>`;
+    }
+
     async function loadAssistants() {
         try {
             const response = await fetch(`${API_URL}/admin/all-assistants?userEmail=${encodeURIComponent(adminEmail)}&userRole=admin`);
             const data = await response.json();
+            assistantsCache = data.assistants || [];
 
             const tbody = document.querySelector('#assistantsTable tbody');
-            tbody.innerHTML = data.assistants.map(assistant => `
+            tbody.innerHTML = assistantsCache.map(assistant => `
                 <tr>
                     <td>${assistant.name}</td>
                     <td>${assistant.email}</td>
                     <td>${assistant.role}</td>
                     <td><span class="badge ${assistant.isActive ? 'badge-success' : 'badge-danger'}">${assistant.isActive ? 'Active' : 'Inactive'}</span></td>
                     <td>
-                        <button class="action-btn delete-btn" onclick="deleteAssistant('${assistant._id}')">Delete</button>
+                        ${renderAssistantActions(assistant)}
                     </td>
                 </tr>
             `).join('');
@@ -1157,6 +1180,13 @@
 
     // DELETE ASSISTANT
     function deleteAssistant(id) {
+        const assistant = assistantsCache.find(item => item._id === id);
+
+        if (assistant && isProtectedAssistant(assistant)) {
+            alert('Primary Admin account cannot be deleted.');
+            return;
+        }
+
         currentDeleteData = { type: 'assistant', id };
         document.getElementById('deleteModal').classList.add('show');
     }
