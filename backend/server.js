@@ -338,6 +338,7 @@ const hotelImageStorage = createCloudinaryStorage({
 
 
 const uploadHotelImages = multer({ storage: hotelImageStorage });
+const uploadRoomImages = multer({ storage: hotelImageStorage });
 
 const uploadProfilePic = multer({ storage: hotelImageStorage });
 
@@ -3049,7 +3050,12 @@ app.post('/admin/upload-hotel-images', requireSession(['hotel', 'admin', 'assist
 
             if (uploadErr) {
 
-                throw uploadErr;
+                const isMulterError = uploadErr instanceof multer.MulterError;
+                const message = isMulterError
+                    ? 'Hotel image upload failed. Please check image size/count and try again.'
+                    : 'Hotel image upload failed. Please check image formats and try again.';
+
+                return res.status(400).json({ success: false, message });
 
             }
 
@@ -4369,66 +4375,99 @@ app.get('/hotel-details/:ownerEmail', async (req, res) => {
 
 
 
-app.post('/admin/add-room', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
+app.post('/admin/add-room', verifyAdminOrAssistant('manageHotels'), (req, res) => {
 
-    try {
+    uploadRoomImages.array('roomImages', 12)(req, res, async (uploadErr) => {
 
-        const roomData = req.body;
+        try {
 
-        if (!roomData) {
+            if (uploadErr) {
 
-            return res.status(400).json({ success: false, message: 'Room data is required' });
+                const isMulterError = uploadErr instanceof multer.MulterError;
+                const message = isMulterError
+                    ? 'Room image upload failed. Please check image size/count and try again.'
+                    : 'Room image upload failed. Please check image formats and try again.';
+
+                return res.status(400).json({ success: false, message });
+
+            }
+
+            const rawRoomData = req.body?.roomData ? JSON.parse(req.body.roomData) : req.body;
+            const roomData = rawRoomData && typeof rawRoomData === 'object' ? rawRoomData : null;
+
+            if (!roomData) {
+
+                return res.status(400).json({ success: false, message: 'Room data is required.' });
+
+            }
+
+            const uploadedUrls = (req.files || [])
+                .map((file) => file.path || file.secure_url || file.url)
+                .filter(Boolean)
+                .map((url) => String(url).trim())
+                .filter(Boolean);
+
+            if (uploadedUrls.length) {
+                const existingImages = Array.isArray(roomData.images) ? roomData.images : [];
+                roomData.images = [...new Set([...existingImages, ...uploadedUrls])];
+            }
+
+            let hotel;
+
+            if (req.session?.role === 'hotel') {
+
+                hotel = await Hotel.findOne({ ownerEmail: normalizeEmail(req.session.email) });
+
+            } else if (roomData.hotelId) {
+
+                hotel = await Hotel.findById(roomData.hotelId);
+
+            } else if (roomData.ownerEmail) {
+
+                hotel = await Hotel.findOne({ ownerEmail: normalizeEmail(roomData.ownerEmail) });
+
+            }
+
+            if (hotel) {
+
+                const { ownerEmail, hotelId, roomData: ignoredRoomData, ...roomToAdd } = roomData;
+
+                hotel.rooms.push({
+                    roomType: String(roomToAdd.roomType || 'Room').trim(),
+                    price: Number(roomToAdd.price) || 0,
+                    roomsAvailable: Number(roomToAdd.roomsAvailable) || 1,
+                    amenities: Array.isArray(roomToAdd.amenities) ? roomToAdd.amenities : [],
+                    images: Array.isArray(roomToAdd.images) ? roomToAdd.images : [],
+                    status: roomToAdd.status || 'Available',
+                    isAC: roomToAdd.isAC === true || roomToAdd.roomType === 'AC',
+                    acType: roomToAdd.acType || roomToAdd.roomType || 'Room'
+                });
+
+                await hotel.save();
+
+                emitRealtime('hotel-room-added', { hotelId: hotel._id, hotelName: hotel.hotelName, ownerEmail: hotel.ownerEmail });
+
+                return res.status(200).json({ success: true, message: 'Room added to hotel.', hotel });
+
+            }
+
+            return res.status(404).json({ success: false, message: 'Hotel account was not found for this room.' });
+
+        } catch (err) {
+
+            console.error('admin/add-room error:', err);
+
+            const message = err instanceof SyntaxError
+                ? 'Invalid room details submitted. Please refresh and try again.'
+                : 'Failed to save room details. Please check image formats and try again.';
+
+            return res.status(500).json({ success: false, message });
 
         }
 
-
-
-        let hotel;
-
-        if (req.session.role === 'hotel') {
-
-            hotel = await Hotel.findOne({ ownerEmail: req.session.email });
-
-        } else if (roomData.hotelId) {
-
-            hotel = await Hotel.findById(roomData.hotelId);
-
-        } else if (roomData.ownerEmail) {
-
-            hotel = await Hotel.findOne({ ownerEmail: roomData.ownerEmail });
-
-        }
-
-
-
-        if (hotel) {
-
-            const { ownerEmail, ...roomToAdd } = roomData;
-
-            hotel.rooms.push(roomToAdd);
-
-            await hotel.save();
-
-            return res.status(200).json({ success: true, message: 'Room added to hotel.' });
-
-        }
-
-
-
-        return res.status(200).json({ success: true, message: 'Room data received by backend.' });
-
-    } catch (err) {
-
-        console.error('admin/add-room error:', err);
-
-        res.status(500).json({ success: false, message: 'Unable to save room data' });
-
-    }
+    });
 
 });
-
-
-
 // ---------------------------------------------------------
 
 // --- 🛠️ PASSWORD RESET ---
