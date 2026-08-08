@@ -116,7 +116,7 @@ const validateBookingPayload = ({ userName, hotelName, roomType, price, checkIn,
 
 };
 
-const publicHotelQuery = (query) => query.where({ isLocked: { $ne: true }, isAvailable: { $ne: false } }).select('-password');
+const publicHotelQuery = (query) => query.where({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }).select('-password');
 
 const publicUserQuery = (query) => query.select('-password');
 
@@ -1782,7 +1782,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
     try {
 
-        const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, village, villageCity, city, pinCode, pincode, pin, address, hotelName } = req.body;
+        const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, village, villageCity, city, pinCode, pincode, pin, address, hotelName, tradeLicense, gstNumber, aadhaarPan, policeNoc, bankDetails } = req.body;
 
         normalizedEmail = String(email || '').trim().toLowerCase();
 
@@ -1894,7 +1894,21 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
                     ownerEmail: normalizedEmail,
 
-                    location: resolvedVillageCity || hotelName || "Bodhgaya"
+                    location: resolvedVillageCity || hotelName || "Bodhgaya",
+
+                    kycDocuments: {
+
+                        tradeLicense: String(tradeLicense || '').trim(),
+
+                        gstNumber: String(gstNumber || '').trim(),
+
+                        aadhaarPan: String(aadhaarPan || '').trim(),
+
+                        policeNoc: String(policeNoc || '').trim(),
+
+                        bankDetails: String(bankDetails || '').trim()
+
+                    }
 
                 };
 
@@ -2049,11 +2063,23 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
                 rating: 4.0,
 
-                description: `Welcome to ${pending.hotelName}`
+                description: `Welcome to ${pending.hotelName}`,
+
+                isLocked: true,
+
+                isAvailable: false
 
             });
 
             await newHotel.save();
+
+            await Hotel.collection.updateOne(
+
+                { _id: newHotel._id },
+
+                { $set: { isVerified: false, verificationStatus: 'Pending Verification', kycDocuments: pending.kycDocuments || {}, updatedAt: new Date() } }
+
+            );
 
             
 
@@ -2067,7 +2093,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
             
 
-            return res.json({ success: true, message: 'Hotel owner registered successfully.', role: 'hotel', name: pending.name, email: pending.email, sessionToken: createSessionToken('hotel', pending.email) });
+            return res.json({ success: true, message: 'Hotel owner registered successfully. Your account is pending assistant verification.', role: 'hotel', name: pending.name, email: pending.email, verificationStatus: 'Pending Verification' });
 
         }
 
@@ -4105,7 +4131,7 @@ app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
 
 app.get('/all-hotels', async (req, res) => {
 
-    try { res.json(await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false } }))); } catch (err) { res.status(500).send(err.message); }
+    try { res.json(await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }))); } catch (err) { res.status(500).send(err.message); }
 
 });
 
@@ -4121,7 +4147,7 @@ app.get('/api/hotels/:id', async (req, res) => {
 
         }
 
-        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false } }));
+        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
 
         if (!hotel) {
 
@@ -4161,7 +4187,7 @@ app.get('/api/hotels/:id/availability', async (req, res) => {
         });
         if (validationError) return res.status(400).json({ success: false, message: validationError });
 
-        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false } }));
+        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
         if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
 
         const checkInDate = new Date(`${checkIn}T00:00:00`);
@@ -4317,7 +4343,7 @@ app.post('/api/hotels/:id/reviews', async (req, res) => {
 
         }
 
-        const hotel = await Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false } }).select('-password');
+        const hotel = await Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }).select('-password');
 
         if (!hotel) {
 
@@ -4355,7 +4381,7 @@ app.get('/hotel-details/:ownerEmail', async (req, res) => {
 
     try {
 
-        const hotel = await publicHotelQuery(Hotel.findOne({ ownerEmail: normalizeEmail(req.params.ownerEmail), isLocked: { $ne: true }, isAvailable: { $ne: false } }));
+        const hotel = await publicHotelQuery(Hotel.findOne({ ownerEmail: normalizeEmail(req.params.ownerEmail), isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
 
         if (!hotel) {
 
@@ -5453,15 +5479,53 @@ app.post('/api/assistants/complaints/:id/warning', verifyAssistantToken(), async
 
 app.get('/api/assistants/hotel-operations', verifyAssistantToken('manageHotels'), async (req, res) => {
     try {
-        const hotels = await Hotel.find().select('-password').sort({ updatedAt: -1 });
+        const hotels = await Hotel.find().select('-password').sort({ updatedAt: -1 }).lean();
         const enriched = await Promise.all(hotels.map(async (hotel) => ({
-            ...hotel.toObject(),
+            ...hotel,
+            verificationStatus: hotel.verificationStatus || (hotel.isVerified === false ? 'Pending Verification' : 'Verified'),
             isActive: hotel.isAvailable !== false && hotel.isLocked !== true,
             complaintsCount: await getHotelComplaintCount(hotel),
             feedbackLogs: (hotel.reviews || []).slice(-5).reverse(),
             displayRating: hotel.averageRating || hotel.rating || 0
         })));
         res.json({ success: true, hotels: enriched });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/api/assistants/hotels/:id/profile', verifyAssistantToken('manageHotels'), async (req, res) => {
+    try {
+        const hotelId = String(req.params.id || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) return res.status(400).json({ success: false, message: 'Valid hotel ID is required' });
+        const hotel = await Hotel.findById(hotelId).select('-password').lean();
+        if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
+        const bookings = await Booking.find({ $or: [{ hotelId: hotel._id }, { hotelName: hotel.hotelName }] }).sort({ createdAt: -1 }).limit(100).lean();
+        res.json({ success: true, hotel: { ...hotel, verificationStatus: hotel.verificationStatus || (hotel.isVerified === false ? 'Pending Verification' : 'Verified') }, bookings });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/assistants/hotels/:id/verification', verifyAssistantToken('manageHotels'), async (req, res) => {
+    try {
+        const hotelId = String(req.params.id || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) return res.status(400).json({ success: false, message: 'Valid hotel ID is required' });
+        const action = String(req.body.action || '').trim().toLowerCase();
+        if (!['approve', 'reject'].includes(action)) return res.status(400).json({ success: false, message: 'Action must be approve or reject' });
+        const update = action === 'approve'
+            ? { isVerified: true, verificationStatus: 'Verified', isLocked: false, isAvailable: true, rejectionReason: '', verifiedBy: req.actor.email, verifiedAt: new Date(), updatedBy: req.actor.email, updatedAt: new Date() }
+            : { isVerified: false, verificationStatus: 'Rejected', isLocked: true, isAvailable: false, rejectionReason: String(req.body.reason || 'KYC verification rejected by assistant.').trim(), verifiedBy: req.actor.email, verifiedAt: new Date(), updatedBy: req.actor.email, updatedAt: new Date() };
+        const result = await Hotel.collection.findOneAndUpdate(
+            { _id: new mongoose.Types.ObjectId(hotelId) },
+            { $set: update },
+            { returnDocument: 'after', projection: { password: 0 } }
+        );
+        const hotel = result?.value || result;
+        if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
+        await logActivity(action === 'approve' ? 'APPROVE' : 'REJECT', 'Hotel', hotel._id, hotel.hotelName, req.actor.email, 'assistant', { verificationStatus: update.verificationStatus, reason: update.rejectionReason || '' });
+        emitRealtime('hotel-verification-updated', { hotelId: hotel._id, hotelName: hotel.hotelName, verificationStatus: update.verificationStatus, updatedBy: req.actor.email });
+        res.json({ success: true, message: `Hotel ${action === 'approve' ? 'approved' : 'rejected'} successfully`, hotel });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
