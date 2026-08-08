@@ -5303,6 +5303,26 @@ const buildAssistantBooking = (booking) => ({
     createdAt: booking.createdAt
 });
 
+const normalizeOrderPaymentMode = (booking) => {
+    const raw = String(booking?.paymentStatus || '').toLowerCase();
+    return /paid|online|success|complete/.test(raw) ? 'Online Paid' : 'Cash at Hotel';
+};
+
+const normalizeOrderStatus = (booking) => {
+    if (booking?.status === 'Completed') return 'Completed';
+    if (booking?.status === 'Confirmed' || booking?.checkedIn) return 'Accepted';
+    return 'Pending';
+};
+
+const buildOrderBooking = (booking) => ({
+    _id: booking._id,
+    customerName: booking.userName,
+    hotelBooked: booking.hotelName,
+    paymentMode: normalizeOrderPaymentMode(booking),
+    status: normalizeOrderStatus(booking),
+    createdAt: booking.createdAt
+});
+
 const buildComplaintHotelQuery = (hotel) => {
     const terms = [hotel?._id, hotel?.hotelName, hotel?.ownerEmail].filter(Boolean).map((value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     if (!terms.length) return null;
@@ -5343,6 +5363,15 @@ app.get('/api/assistants/bookings', verifyAssistantToken(), async (req, res) => 
     try {
         const bookings = await Booking.find().sort({ createdAt: -1 }).limit(300);
         res.json({ success: true, bookings: bookings.map(buildAssistantBooking) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get(['/api/assistants/orders-bookings', '/admin/orders-bookings'], verifyAdminOrAssistant('manageBookings'), async (req, res) => {
+    try {
+        const bookings = await Booking.find({ status: { $ne: 'Cancelled' } }).sort({ createdAt: -1 }).limit(300);
+        res.json({ success: true, bookings: bookings.map(buildOrderBooking) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
