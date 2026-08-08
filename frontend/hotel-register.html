@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        :root { --ink:#102033; --muted:#64748b; --line:#dbe5f0; --blue:#075985; --cyan:#0891b2; --gold:#f59e0b; --green:#059669; --panel:#ffffff; }
+        :root { --ink:#102033; --muted:#64748b; --line:#dbe5f0; --blue:#075985; --cyan:#0891b2; --gold:#f59e0b; --green:#059669; --panel:#ffffff; --danger:#dc2626; }
         * { box-sizing:border-box; }
         body { margin:0; min-height:100vh; font-family:Inter, "Segoe UI", system-ui, sans-serif; color:var(--ink); background:linear-gradient(135deg,#eef7fb 0%,#f8fafc 48%,#fff7ed 100%); }
         .page { min-height:100vh; display:grid; place-items:center; padding:32px 18px; }
@@ -37,9 +37,11 @@
         .wizard-step { display:none; padding:24px; }
         .wizard-step.active { display:block; }
         .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+        .grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
         label { display:block; color:#475569; font-size:12px; font-weight:900; text-transform:uppercase; margin-bottom:7px; }
-        .form-control { border:1px solid #cbd5e1; border-radius:10px; padding:12px 13px; box-shadow:none; }
-        .form-control:focus { border-color:var(--cyan); box-shadow:0 0 0 4px rgba(8,145,178,.13); }
+        .required-star { color:var(--danger); margin-left:3px; }
+        .form-control, .form-select { border:1px solid #cbd5e1; border-radius:10px; padding:12px 13px; box-shadow:none; }
+        .form-control:focus, .form-select:focus { border-color:var(--cyan); box-shadow:0 0 0 4px rgba(8,145,178,.13); }
         .password-wrapper { position:relative; }
         .toggle-password { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#64748b; cursor:pointer; }
         .dropzone { position:relative; min-height:132px; display:grid; place-items:center; gap:10px; padding:18px; border:1.5px dashed #94a3b8; border-radius:14px; background:#f8fafc; cursor:pointer; transition:.2s ease; text-align:center; }
@@ -49,19 +51,26 @@
         .dropzone strong { display:block; }
         .upload-status { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; color:#92400e; background:#fef3c7; font-size:12px; font-weight:900; }
         .dropzone.uploaded .upload-status { color:#047857; background:#d1fae5; }
+        .section-title { margin:0 0 14px; font-size:15px; font-weight:900; color:#0f172a; }
+        .section-title:not(:first-child) { margin-top:22px; }
+        .terms-box { display:flex; gap:10px; align-items:flex-start; padding:14px; border:1px solid #cbd5e1; border-radius:12px; background:#f8fafc; color:#334155; font-weight:800; }
+        .terms-box input { margin-top:3px; width:18px; height:18px; flex:0 0 auto; }
+        .terms-box label { margin:0; text-transform:none; font-size:13px; line-height:1.5; }
         .review-grid { display:grid; gap:12px; }
         .review-row { display:flex; justify-content:space-between; gap:16px; padding:13px 0; border-bottom:1px solid #e2e8f0; }
         .review-row span { color:var(--muted); font-weight:800; }
         .wizard-actions { display:flex; justify-content:space-between; gap:12px; padding:18px 24px; border-top:1px solid var(--line); background:#f8fafc; }
         .btn-main, .btn-secondary-soft { border:0; border-radius:10px; padding:12px 18px; font-weight:900; display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
         .btn-main { color:white; background:linear-gradient(135deg,var(--blue),var(--cyan)); box-shadow:0 12px 28px rgba(8,145,178,.24); }
+        .btn-main:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
         .btn-secondary-soft { color:#334155; background:#e2e8f0; }
         .trust-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px; }
         .trust { display:flex; align-items:center; gap:9px; padding:12px; border:1px solid var(--line); border-radius:12px; background:white; color:#334155; font-size:13px; font-weight:900; }
         .trust i { color:var(--green); font-size:18px; }
+        .request-id { display:inline-flex; padding:10px 14px; border-radius:10px; background:#f8fafc; border:1px solid #dbe5f0; color:#075985; font-size:20px; font-weight:900; letter-spacing:.04em; }
         #regOTPStep { display:none; }
         @media (max-width: 980px) { .shell { grid-template-columns:1fr; } .brand-panel { min-height:auto; gap:48px; } }
-        @media (max-width: 680px) { .page { padding:0; } .shell { border-radius:0; } .brand-panel,.form-panel { padding:24px; } .grid-2,.steps,.trust-row,.metric-strip { grid-template-columns:1fr; } .hero-copy h1 { font-size:32px; } .topline { flex-direction:column; } }
+        @media (max-width: 680px) { .page { padding:0; } .shell { border-radius:0; } .brand-panel,.form-panel { padding:24px; } .grid-2,.grid-3,.steps,.trust-row,.metric-strip { grid-template-columns:1fr; } .hero-copy h1 { font-size:32px; } .topline { flex-direction:column; } }
     </style>
     <link rel="stylesheet" href="mobile-responsive.css">
 </head>
@@ -70,52 +79,56 @@
     <div class="shell">
         <aside class="brand-panel">
             <div class="logo"><span><i class="bi bi-building-check"></i></span>Gyan Garbh Partner</div>
-            <div class="hero-copy">
-                <h1>List your stay with a trusted pilgrimage travel network.</h1>
-                <p>Complete a guided onboarding review built for hotels, lodges, guest houses, and premium partner stays around Bodhgaya.</p>
-            </div>
-            <div class="metric-strip">
-                <div class="metric"><strong>4-step</strong><small>guided review</small></div>
-                <div class="metric"><strong>KYC</strong><small>verified partners</small></div>
-                <div class="metric"><strong>24x7</strong><small>support desk</small></div>
-            </div>
+            <div class="hero-copy"><h1>List your stay with a trusted pilgrimage travel network.</h1><p>Complete a guided onboarding review built for hotels, lodges, guest houses, and premium partner stays around Bodhgaya.</p></div>
+            <div class="metric-strip"><div class="metric"><strong>4-step</strong><small>guided review</small></div><div class="metric"><strong>KYC</strong><small>verified partners</small></div><div class="metric"><strong>24x7</strong><small>support desk</small></div></div>
         </aside>
         <main class="form-panel">
             <div id="regInitial">
-                <div class="topline">
-                    <div><h2>Property onboarding</h2><p>Create your partner profile and submit documents for verification.</p></div>
-                    <a class="login-link" href="hotel-auth.html">Partner login</a>
-                </div>
-                <div class="progress-wrap">
-                    <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
-                    <div class="steps"><div class="step-label active">1. Basic Info</div><div class="step-label">2. Legal Details</div><div class="step-label">3. KYC Documents</div><div class="step-label">4. Review</div></div>
-                </div>
+                <div class="topline"><div><h2>Property onboarding</h2><p>Create your partner profile and submit documents for verification.</p></div><a class="login-link" href="hotel-auth.html">Partner login</a></div>
+                <div class="progress-wrap"><div class="progress-track"><div id="progressFill" class="progress-fill"></div></div><div class="steps"><div class="step-label active">1. Basic Info</div><div class="step-label">2. ID & Bank</div><div class="step-label">3. Property KYC</div><div class="step-label">4. Review</div></div></div>
                 <form class="wizard-card" onsubmit="return false;">
                     <section class="wizard-step active" data-step="0">
                         <div class="grid-2">
-                            <div><label>Hotel Name</label><input type="text" id="hName" class="form-control" placeholder="Royal Heritage Bodhgaya" required></div>
-                            <div><label>Owner Email</label><input type="email" id="hEmail" class="form-control" placeholder="partner@gmail.com" required></div>
-                            <div><label>Create Password</label><div class="password-wrapper"><input type="password" id="hPass" class="form-control" placeholder="Minimum 8 characters" minlength="8" required><i class="bi bi-eye-slash toggle-password" id="toggleEye" onclick="togglePassView()"></i></div></div>
-                            <div><label>Property Location</label><input type="text" id="hLocation" class="form-control" placeholder="Bodhgaya" value="Bodhgaya"></div>
+                            <div><label>Hotel Name<span class="required-star">*</span></label><input type="text" id="hName" class="form-control" placeholder="Royal Heritage Bodhgaya" required></div>
+                            <div><label>Owner Email<span class="required-star">*</span></label><input type="email" id="hEmail" class="form-control" placeholder="partner@gmail.com" required></div>
+                            <div><label>Create Password<span class="required-star">*</span></label><div class="password-wrapper"><input type="password" id="hPass" class="form-control" placeholder="Minimum 8 characters" minlength="8" required><i class="bi bi-eye-slash toggle-password" id="toggleEye" onclick="togglePassView()"></i></div></div>
+                            <div><label>Property Location<span class="required-star">*</span></label><input type="text" id="hLocation" class="form-control" placeholder="Bodhgaya" value="Bodhgaya" required></div>
+                            <div><label>Owner Phone</label><input type="tel" id="hPhone" class="form-control" placeholder="Optional contact number"></div>
+                            <div><label>GST Details<span class="required-star">*</span></label><input type="text" id="gstNumber" class="form-control" placeholder="GSTIN or NA" required></div>
                         </div>
                     </section>
                     <section class="wizard-step" data-step="1">
+                        <h3 class="section-title">Identity Verification</h3>
                         <div class="grid-2">
-                            <div><label>GST Details</label><input type="text" id="gstNumber" class="form-control" placeholder="GSTIN or NA" required></div>
-                            <div><label>Aadhaar / PAN</label><input type="text" id="aadhaarPan" class="form-control" placeholder="Owner Aadhaar/PAN reference" required></div>
-                            <div><label>Bank Details</label><input type="text" id="bankDetails" class="form-control" placeholder="Account holder, bank, last 4 digits" required></div>
-                            <div><label>Owner Phone</label><input type="tel" id="hPhone" class="form-control" placeholder="Optional contact number"></div>
+                            <div><label>ID Document Type<span class="required-star">*</span></label><select id="idDocumentType" class="form-select" onchange="updateIdField()" required><option value="Aadhaar Card">Aadhaar Card</option><option value="PAN Card">PAN Card</option></select></div>
+                            <div><label id="idNumberLabel">Aadhaar Number<span class="required-star">*</span></label><input type="text" id="idNumber" class="form-control" placeholder="12 digit Aadhaar number" inputmode="numeric" maxlength="12" required></div>
+                            <label class="dropzone" id="idFrontPhotoZone"><input type="file" id="idFrontPhoto" accept="image/*,.pdf" onchange="markUploaded('idFrontPhoto')" required><i class="bi bi-person-vcard"></i><strong>ID Front Side <span class="required-star">*</span></strong><small>JPG, PNG, or PDF</small><span class="upload-status">Pending</span></label>
+                            <label class="dropzone" id="idBackPhotoZone"><input type="file" id="idBackPhoto" accept="image/*,.pdf" onchange="markUploaded('idBackPhoto')" required><i class="bi bi-card-image"></i><strong>ID Back Side <span class="required-star">*</span></strong><small>JPG, PNG, or PDF</small><span class="upload-status">Pending</span></label>
+                        </div>
+                        <h3 class="section-title">Bank Details</h3>
+                        <div class="grid-2">
+                            <div><label>Bank Name<span class="required-star">*</span></label><select id="bankName" class="form-select" required><option value="">Select bank</option><option>State Bank of India</option><option>HDFC Bank</option><option>ICICI Bank</option><option>Axis Bank</option><option>Punjab National Bank</option><option>Bank of Baroda</option><option>Canara Bank</option><option>Union Bank of India</option><option>Kotak Mahindra Bank</option><option>IndusInd Bank</option><option>Other</option></select></div>
+                            <div><label>Account Holder Name<span class="required-star">*</span></label><input type="text" id="accountHolderName" class="form-control" placeholder="As per bank record" required></div>
+                            <div><label>Account Number<span class="required-star">*</span></label><input type="text" id="accountNumber" class="form-control" placeholder="Bank account number" inputmode="numeric" required></div>
+                            <div><label>IFSC Code<span class="required-star">*</span></label><input type="text" id="ifscCode" class="form-control" placeholder="SBIN0000000" maxlength="11" required></div>
+                            <label class="dropzone" id="cancelledChequeImageZone"><input type="file" id="cancelledChequeImage" accept="image/*,.pdf" onchange="markUploaded('cancelledChequeImage')" required><i class="bi bi-bank"></i><strong>Cancelled Cheque / Passbook <span class="required-star">*</span></strong><small>JPG, PNG, or PDF</small><span class="upload-status">Pending</span></label>
+                            <label class="dropzone" id="paymentQrImageZone"><input type="file" id="paymentQrImage" accept="image/*" onchange="markUploaded('paymentQrImage')"><i class="bi bi-qr-code"></i><strong>Hotel Payment QR / Scanner</strong><small>Optional direct guest payment QR</small><span class="upload-status">Optional</span></label>
                         </div>
                     </section>
                     <section class="wizard-step" data-step="2">
+                        <h3 class="section-title">Compliance Documents</h3>
                         <div class="grid-2">
-                            <label class="dropzone" id="tradeLicenseZone"><input type="file" id="tradeLicense" onchange="markUploaded('tradeLicense')"><i class="bi bi-cloud-arrow-up"></i><strong>Trade License</strong><small>PDF, JPG, or PNG</small><span class="upload-status">Pending</span></label>
-                            <label class="dropzone" id="policeNocZone"><input type="file" id="policeNoc" onchange="markUploaded('policeNoc')"><i class="bi bi-shield-check"></i><strong>Police NOC</strong><small>PDF, JPG, or PNG</small><span class="upload-status">Pending</span></label>
+                            <label class="dropzone" id="tradeLicenseZone"><input type="file" id="tradeLicense" accept="image/*,.pdf" onchange="markUploaded('tradeLicense')"><i class="bi bi-cloud-arrow-up"></i><strong>Trade License <span class="required-star">*</span></strong><small>PDF, JPG, or PNG</small><span class="upload-status">Pending</span></label>
+                            <label class="dropzone" id="policeNocZone"><input type="file" id="policeNoc" accept="image/*,.pdf" onchange="markUploaded('policeNoc')"><i class="bi bi-shield-check"></i><strong>Police NOC <span class="required-star">*</span></strong><small>PDF, JPG, or PNG</small><span class="upload-status">Pending</span></label>
+                        </div>
+                        <h3 class="section-title">Property Photos</h3>
+                        <div class="grid-3">
+                            <label class="dropzone" id="propertyFrontPhotoZone"><input type="file" id="propertyFrontPhoto" accept="image/*" onchange="markUploaded('propertyFrontPhoto')"><i class="bi bi-building"></i><strong>Front View Photo <span class="required-star">*</span></strong><small>Exterior entrance photo</small><span class="upload-status">Pending</span></label>
+                            <label class="dropzone" id="receptionPhotoZone"><input type="file" id="receptionPhoto" accept="image/*" onchange="markUploaded('receptionPhoto')"><i class="bi bi-pc-display"></i><strong>Reception / Desk Photo <span class="required-star">*</span></strong><small>Front desk or reception</small><span class="upload-status">Pending</span></label>
+                            <label class="dropzone" id="roomPhotosZone"><input type="file" id="roomPhotos" accept="image/*" multiple onchange="markUploaded('roomPhotos')"><i class="bi bi-door-open"></i><strong>Room Photos <span class="required-star">*</span></strong><small>Upload one or more room images</small><span class="upload-status">Pending</span></label>
                         </div>
                     </section>
-                    <section class="wizard-step" data-step="3">
-                        <div class="review-grid" id="reviewPanel"></div>
-                    </section>
+                    <section class="wizard-step" data-step="3"><div class="review-grid" id="reviewPanel"></div><div class="terms-box mt-3"><input type="checkbox" id="termsAccepted" onchange="syncTermsGate()"><label for="termsAccepted">I declare all documents and details are authentic and submitted voluntarily.<span class="required-star">*</span></label></div></section>
                     <div class="wizard-actions"><button type="button" id="backBtn" class="btn-secondary-soft" onclick="prevStep()"><i class="bi bi-arrow-left"></i>Back</button><button type="button" id="nextBtn" class="btn-main" onclick="nextStep()">Continue<i class="bi bi-arrow-right"></i></button></div>
                 </form>
                 <div class="trust-row"><div class="trust"><i class="bi bi-lock-fill"></i>256-Bit Encrypted</div><div class="trust"><i class="bi bi-patch-check-fill"></i>Verified Partner Network</div><div class="trust"><i class="bi bi-headset"></i>24x7 Partner Support</div></div>
@@ -135,19 +148,27 @@
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
     let currentStep = 0;
-    const uploadState = { tradeLicense: '', policeNoc: '' };
+    const uploadState = { tradeLicense:'', policeNoc:'', idFrontPhoto:'', idBackPhoto:'', cancelledChequeImage:'', paymentQrImage:'', propertyFrontPhoto:'', receptionPhoto:'', roomPhotos:'' };
+    const requiredUploads = ['idFrontPhoto','idBackPhoto','cancelledChequeImage','tradeLicense','policeNoc','propertyFrontPhoto','receptionPhoto','roomPhotos'];
     function togglePassView() { const passInput = document.getElementById('hPass'); const eyeIcon = document.getElementById('toggleEye'); const show = passInput.type === 'password'; passInput.type = show ? 'text' : 'password'; eyeIcon.classList.toggle('bi-eye', show); eyeIcon.classList.toggle('bi-eye-slash', !show); }
-    function markUploaded(id) { const input = document.getElementById(id); const zone = document.getElementById(`${id}Zone`); uploadState[id] = input.files?.[0]?.name || ''; zone.classList.toggle('uploaded', Boolean(uploadState[id])); zone.querySelector('.upload-status').textContent = uploadState[id] ? 'Uploaded' : 'Pending'; }
-    function setStep(step) { currentStep = Math.max(0, Math.min(3, step)); document.querySelectorAll('.wizard-step').forEach((s, i) => s.classList.toggle('active', i === currentStep)); document.querySelectorAll('.step-label').forEach((s, i) => s.classList.toggle('active', i <= currentStep)); document.getElementById('progressFill').style.width = `${(currentStep + 1) * 25}%`; document.getElementById('backBtn').style.visibility = currentStep === 0 ? 'hidden' : 'visible'; document.getElementById('nextBtn').innerHTML = currentStep === 3 ? 'Verify Email & Continue<i class="bi bi-arrow-right"></i>' : 'Continue<i class="bi bi-arrow-right"></i>'; if (currentStep === 3) renderReview(); }
+    function uploadNames(id) { return Array.from(document.getElementById(id)?.files || []).map(file => file.name).join(', '); }
+    function markUploaded(id) { const zone = document.getElementById(`${id}Zone`); uploadState[id] = uploadNames(id); zone?.classList.toggle('uploaded', Boolean(uploadState[id])); const status = zone?.querySelector('.upload-status'); if (status) status.textContent = uploadState[id] ? 'Uploaded' : (id === 'paymentQrImage' ? 'Optional' : 'Pending'); }
+    function updateIdField() { const type = document.getElementById('idDocumentType').value; const label = document.getElementById('idNumberLabel'); const input = document.getElementById('idNumber'); if (type === 'PAN Card') { label.innerHTML = 'PAN Number<span class="required-star">*</span>'; input.placeholder = 'ABCDE1234F'; input.maxLength = 10; input.inputMode = 'text'; } else { label.innerHTML = 'Aadhaar Number<span class="required-star">*</span>'; input.placeholder = '12 digit Aadhaar number'; input.maxLength = 12; input.inputMode = 'numeric'; } input.value = ''; }
+    function setStep(step) { currentStep = Math.max(0, Math.min(3, step)); document.querySelectorAll('.wizard-step').forEach((s, i) => s.classList.toggle('active', i === currentStep)); document.querySelectorAll('.step-label').forEach((s, i) => s.classList.toggle('active', i <= currentStep)); document.getElementById('progressFill').style.width = `${(currentStep + 1) * 25}%`; document.getElementById('backBtn').style.visibility = currentStep === 0 ? 'hidden' : 'visible'; document.getElementById('nextBtn').innerHTML = currentStep === 3 ? 'Send OTP<i class="bi bi-arrow-right"></i>' : 'Continue<i class="bi bi-arrow-right"></i>'; if (currentStep === 3) renderReview(); syncTermsGate(); }
+    function syncTermsGate() { const btn = document.getElementById('nextBtn'); if (!btn) return; btn.disabled = currentStep === 3 && !document.getElementById('termsAccepted')?.checked; }
     function requireFields(ids) { for (const id of ids) { const el = document.getElementById(id); if (!String(el?.value || '').trim()) { el?.focus(); Swal.fire('Missing details', 'Please complete the highlighted onboarding fields.', 'warning'); return false; } } return true; }
-    function nextStep() { if (currentStep === 0 && !requireFields(['hName','hEmail','hPass','hLocation'])) return; if (currentStep === 1 && !requireFields(['gstNumber','aadhaarPan','bankDetails'])) return; if (currentStep === 2 && (!uploadState.tradeLicense || !uploadState.policeNoc)) return Swal.fire('Documents pending', 'Please upload Trade License and Police NOC.', 'warning'); if (currentStep === 3) return sendPartnerOTP(); setStep(currentStep + 1); }
+    function validateIdNumber() { const type = document.getElementById('idDocumentType').value; const value = document.getElementById('idNumber').value.trim().toUpperCase(); const ok = type === 'PAN Card' ? /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value) : /^\d{12}$/.test(value); if (!ok) { Swal.fire('Check ID number', `Please enter a valid ${type === 'PAN Card' ? 'PAN' : '12 digit Aadhaar'} number.`, 'warning'); return false; } document.getElementById('idNumber').value = value; return true; }
+    function requireUploads(ids) { const missing = ids.filter(id => !uploadState[id]); if (missing.length) { Swal.fire('Documents pending', 'Please upload all required KYC and property photos.', 'warning'); return false; } return true; }
+    function nextStep() { if (currentStep === 0 && !requireFields(['hName','hEmail','hPass','hLocation','gstNumber'])) return; if (currentStep === 1 && (!requireFields(['idDocumentType','idNumber','bankName','accountHolderName','accountNumber','ifscCode']) || !validateIdNumber() || !requireUploads(['idFrontPhoto','idBackPhoto','cancelledChequeImage']))) return; if (currentStep === 2 && !requireUploads(['tradeLicense','policeNoc','propertyFrontPhoto','receptionPhoto','roomPhotos'])) return; if (currentStep === 3) { if (!document.getElementById('termsAccepted').checked) return Swal.fire('Declaration required', 'Please accept the declaration before requesting OTP.', 'warning'); return sendPartnerOTP(); } setStep(currentStep + 1); }
     function prevStep() { setStep(currentStep - 1); }
     function row(label, value) { return `<div class="review-row"><span>${label}</span><strong>${String(value || '-')}</strong></div>`; }
-    function renderReview() { document.getElementById('reviewPanel').innerHTML = row('Hotel', hName.value) + row('Owner Email', hEmail.value) + row('Location', hLocation.value) + row('GST', gstNumber.value) + row('Aadhaar/PAN', aadhaarPan.value) + row('Bank', bankDetails.value) + row('Trade License', uploadState.tradeLicense) + row('Police NOC', uploadState.policeNoc); }
+    function renderReview() { document.getElementById('reviewPanel').innerHTML = row('Hotel', hName.value) + row('Owner Email', hEmail.value) + row('Location', hLocation.value) + row('GST', gstNumber.value) + row('ID Document', idDocumentType.value) + row('ID Number', idNumber.value) + row('ID Front', uploadState.idFrontPhoto) + row('ID Back', uploadState.idBackPhoto) + row('Bank', bankName.value) + row('Account Holder', accountHolderName.value) + row('Account Number', accountNumber.value) + row('IFSC', ifscCode.value) + row('Cheque / Passbook', uploadState.cancelledChequeImage) + row('Payment QR', uploadState.paymentQrImage || 'Optional') + row('Trade License', uploadState.tradeLicense) + row('Police NOC', uploadState.policeNoc) + row('Front View', uploadState.propertyFrontPhoto) + row('Reception / Desk', uploadState.receptionPhoto) + row('Room Photos', uploadState.roomPhotos); }
+    function kycPayload() { return { tradeLicense: uploadState.tradeLicense, policeNoc: uploadState.policeNoc, gstNumber: gstNumber.value.trim(), idDocumentType: idDocumentType.value, idNumber: idNumber.value.trim().toUpperCase(), aadhaarPan: `${idDocumentType.value}: ${idNumber.value.trim().toUpperCase()}`, idFrontPhoto: uploadState.idFrontPhoto, idBackPhoto: uploadState.idBackPhoto, bankName: bankName.value, accountHolderName: accountHolderName.value.trim(), accountNumber: accountNumber.value.trim(), ifscCode: ifscCode.value.trim().toUpperCase(), bankDetails: `${accountHolderName.value.trim()} | ${bankName.value} | ${accountNumber.value.trim()} | ${ifscCode.value.trim().toUpperCase()}`, cancelledChequeImage: uploadState.cancelledChequeImage, paymentQrImage: uploadState.paymentQrImage, propertyFrontPhoto: uploadState.propertyFrontPhoto, receptionPhoto: uploadState.receptionPhoto, roomPhotos: uploadState.roomPhotos, termsAccepted: document.getElementById('termsAccepted').checked, termsDeclaration: 'I declare all documents and details are authentic and submitted voluntarily.' }; }
     async function handleHotelForgot() { const { value: email } = await Swal.fire({ title: 'Partner Password Reset', text: 'Enter your registered owner email:', input: 'email', showCancelButton: true }); if (!email) return; try { const res = await fetch(`${API_URL}/send-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, isReset:true }) }); const data = await res.json(); if (res.ok) Swal.fire('OTP Sent', 'Please continue from the login reset flow.', 'success'); else Swal.fire('Wait', data.message, 'warning'); } catch { Swal.fire('Error', 'Server Error!', 'error'); } }
-    async function sendPartnerOTP() { const btn = document.getElementById('nextBtn'); btn.textContent = 'Checking...'; btn.disabled = true; const hEmail = document.getElementById('hEmail').value.trim(); const hName = document.getElementById('hName').value.trim(); const hPass = document.getElementById('hPass').value; try { const res = await fetch(`${API_URL}/send-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:hEmail, isReset:false, name:hName, password:hPass, role:'hotel', hotelName:hName, address:document.getElementById('hLocation').value.trim() || 'Bodhgaya', tradeLicense: uploadState.tradeLicense, gstNumber: document.getElementById('gstNumber').value.trim(), aadhaarPan: document.getElementById('aadhaarPan').value.trim(), policeNoc: uploadState.policeNoc, bankDetails: document.getElementById('bankDetails').value.trim(), phone: document.getElementById('hPhone').value.trim() }) }); const data = await res.json(); if (res.ok) { document.getElementById('displayEmail').innerText = hEmail; document.getElementById('regInitial').style.display = 'none'; document.getElementById('regOTPStep').style.display = 'block'; Swal.fire('Sent!', 'Please check your email for the OTP.', 'success'); } else { Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error'); btn.innerHTML = 'Verify Email & Continue<i class="bi bi-arrow-right"></i>'; btn.disabled = false; } } catch { Swal.fire('Error', 'OTP failed.', 'error'); btn.innerHTML = 'Verify Email & Continue<i class="bi bi-arrow-right"></i>'; btn.disabled = false; } }
-    async function verifyAndSaveHotel() { const hEmail = document.getElementById('hEmail').value.trim(); const otp = document.getElementById('hOTPInput').value; try { const otpRes = await fetch(`${API_URL}/verify-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:hEmail, otp }) }); if (otpRes.ok) { const data = await otpRes.json(); localStorage.setItem('hotelOwnerEmail', data.email || hEmail); localStorage.setItem('hotelName', data.name || document.getElementById('hName').value.trim()); localStorage.setItem('userRole', 'hotel'); localStorage.removeItem('authToken'); Swal.fire('Pending Verification', 'Registration submitted. An assistant will review your KYC before dashboard access is enabled.', 'success').then(() => window.location.href = 'hotel-auth.html'); } else Swal.fire('Wrong OTP', 'The verification code is invalid.', 'error'); } catch { Swal.fire('Error', 'Process failed!', 'error'); } }
-    window.addEventListener('load', () => setStep(0));
+    async function sendPartnerOTP() { const btn = document.getElementById('nextBtn'); btn.textContent = 'Checking...'; btn.disabled = true; const hotelEmail = hEmail.value.trim(); const hotelName = hName.value.trim(); const payload = { email: hotelEmail, isReset:false, name: hotelName, password: hPass.value, role:'hotel', hotelName, address:hLocation.value.trim() || 'Bodhgaya', phone:hPhone.value.trim(), ...kycPayload() }; try { const res = await fetch(`${API_URL}/send-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const data = await res.json(); if (res.ok) { displayEmail.innerText = hotelEmail; regInitial.style.display = 'none'; regOTPStep.style.display = 'block'; Swal.fire('OTP Sent', 'Please check your email for the verification code.', 'success'); } else { Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error'); btn.innerHTML = 'Send OTP<i class="bi bi-arrow-right"></i>'; btn.disabled = false; } } catch { Swal.fire('Error', 'OTP failed.', 'error'); btn.innerHTML = 'Send OTP<i class="bi bi-arrow-right"></i>'; btn.disabled = false; } }
+    function localRequestId() { return `GG-REQ-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`; }
+    async function verifyAndSaveHotel() { const hotelEmail = hEmail.value.trim(); const otp = hOTPInput.value.replace(/\D/g, ''); try { const otpRes = await fetch(`${API_URL}/verify-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:hotelEmail, otp }) }); const data = await otpRes.json().catch(() => ({})); if (otpRes.ok) { const requestId = data.requestId || data.applicationRequestId || localRequestId(); const trackingUrl = `${window.location.origin}${window.location.pathname.replace('hotel-register.html', 'hotel-auth.html')}?requestId=${encodeURIComponent(requestId)}`; localStorage.setItem('hotelOwnerEmail', data.email || hotelEmail); localStorage.setItem('hotelName', data.name || hName.value.trim()); localStorage.setItem('hotelApplicationRequestId', requestId); localStorage.setItem('userRole', 'hotel'); localStorage.removeItem('authToken'); Swal.fire({ title: 'Application Submitted', icon: 'success', html: `<div style="display:grid;gap:14px;text-align:center"><p>Your hotel onboarding dossier is now queued for assistant review.</p><div class="request-id">${requestId}</div><a href="${trackingUrl}" style="color:#075985;font-weight:900;text-decoration:none">Track application</a></div>`, confirmButtonText: 'Go to Partner Login' }).then(() => window.location.href = 'hotel-auth.html'); } else Swal.fire('Wrong OTP', data.message || 'The verification code is invalid.', 'error'); } catch { Swal.fire('Error', 'Process failed!', 'error'); } }
+    window.addEventListener('load', () => { updateIdField(); setStep(0); });
 </script>
 <script src="mobile-responsive.js"></script>
 </body>
