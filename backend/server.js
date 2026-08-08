@@ -1321,6 +1321,46 @@ app.get('/api/events', requireSession(), (req, res) => {
 
 
 
+function hotelTrackingBaseUrl() {
+    return String(process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || process.env.APP_URL || 'https://gyangarbh-project-1.onrender.com').replace(/\/$/, '');
+}
+
+async function createUniqueHotelRequestId() {
+    const year = new Date().getFullYear();
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+        const suffix = String(Math.floor(1000 + Math.random() * 9000));
+        const requestId = `GG-REQ-${year}-${suffix}`;
+        const exists = await Hotel.exists({ applicationRequestId: requestId });
+        if (!exists) return requestId;
+    }
+    return `GG-REQ-${year}-${Date.now().toString().slice(-6)}`;
+}
+
+async function sendHotelApplicationConfirmationEmail({ to, hotelName, requestId, trackingLink, brevoApiKey }) {
+    if (!SMTP_USER || !brevoApiKey) {
+        const error = new Error('Brevo API credentials are missing.');
+        error.code = 'BREVO_CONFIG_MISSING';
+        throw error;
+    }
+    const safeHotelName = String(hotelName || 'Partner Hotel');
+    const payload = {
+        sender: { name: 'Gyan Garbh', email: SMTP_USER },
+        to: [{ email: to }],
+        subject: `Hotel Application Received - ${requestId}`,
+        htmlContent: `<div style="font-family:Arial,sans-serif;padding:24px;border:1px solid #e5e7eb;border-radius:12px;color:#102033;max-width:620px">
+            <h2 style="margin:0 0 10px;color:#075985">Gyan Garbh Partner Application</h2>
+            <p>Dear ${safeHotelName},</p>
+            <p>Your hotel onboarding dossier has been submitted successfully and is pending assistant verification.</p>
+            <p style="margin:18px 0;padding:14px;border-radius:10px;background:#f8fafc;border:1px solid #dbe5f0"><strong>Request ID:</strong><br><span style="font-size:22px;color:#075985;letter-spacing:1px">${requestId}</span></p>
+            <p>You can track or reference your application here: <a href="${trackingLink}" style="color:#075985;font-weight:700">${trackingLink}</a></p>
+            <p style="color:#64748b;font-size:13px">Please keep this Request ID for all support conversations.</p>
+        </div>`
+    };
+    const response = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
+        headers: { accept: 'application/json', 'api-key': brevoApiKey, 'content-type': 'application/json' }
+    });
+    return response.data;
+}
 async function sendOtpEmail({ to, otp, isReset, brevoApiKey }) {
 
     if (!SMTP_USER || !brevoApiKey) {
@@ -1782,7 +1822,7 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
     try {
 
-        const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, village, villageCity, city, pinCode, pincode, pin, address, hotelName, tradeLicense, gstNumber, aadhaarPan, policeNoc, bankDetails } = req.body;
+        const { email, isReset, name, fullName, password, role, experience, phone, dob, dateOfBirth, village, villageCity, city, pinCode, pincode, pin, address, hotelName, tradeLicense, gstNumber, aadhaarPan, policeNoc, bankDetails, idDocumentType, idNumber, idFrontPhoto, idBackPhoto, bankName, accountHolderName, accountNumber, ifscCode, cancelledChequeImage, paymentQrImage, propertyFrontPhoto, receptionPhoto, roomPhotos, termsAccepted, termsDeclaration } = req.body;
 
         normalizedEmail = String(email || '').trim().toLowerCase();
 
@@ -1904,9 +1944,39 @@ app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
                         aadhaarPan: String(aadhaarPan || '').trim(),
 
+                        idDocumentType: String(idDocumentType || '').trim(),
+
+                        idNumber: String(idNumber || '').trim(),
+
+                        idFrontPhoto: String(idFrontPhoto || '').trim(),
+
+                        idBackPhoto: String(idBackPhoto || '').trim(),
+
                         policeNoc: String(policeNoc || '').trim(),
 
-                        bankDetails: String(bankDetails || '').trim()
+                        bankName: String(bankName || '').trim(),
+
+                        accountHolderName: String(accountHolderName || '').trim(),
+
+                        accountNumber: String(accountNumber || '').trim(),
+
+                        ifscCode: String(ifscCode || '').trim(),
+
+                        bankDetails: String(bankDetails || '').trim(),
+
+                        cancelledChequeImage: String(cancelledChequeImage || '').trim(),
+
+                        paymentQrImage: String(paymentQrImage || '').trim(),
+
+                        propertyFrontPhoto: String(propertyFrontPhoto || '').trim(),
+
+                        receptionPhoto: String(receptionPhoto || '').trim(),
+
+                        roomPhotos: String(roomPhotos || '').trim(),
+
+                        termsAccepted: termsAccepted === true || termsAccepted === 'true',
+
+                        termsDeclaration: String(termsDeclaration || '').trim()
 
                     }
 
@@ -2073,13 +2143,27 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
             await newHotel.save();
 
+            const requestId = await createUniqueHotelRequestId();
+
+            const trackingLink = `${hotelTrackingBaseUrl()}/hotel-auth.html?requestId=${encodeURIComponent(requestId)}`;
+
             await Hotel.collection.updateOne(
 
                 { _id: newHotel._id },
 
-                { $set: { isVerified: false, verificationStatus: 'Pending Verification', kycDocuments: pending.kycDocuments || {}, updatedAt: new Date() } }
+                { $set: { isVerified: false, verificationStatus: 'Pending Verification', kycDocuments: pending.kycDocuments || {}, applicationRequestId: requestId, applicationTrackingLink: trackingLink, applicationSubmittedAt: new Date(), updatedAt: new Date() } }
 
             );
+
+            try {
+
+                await sendHotelApplicationConfirmationEmail({ to: pending.ownerEmail, hotelName: pending.hotelName, requestId, trackingLink, brevoApiKey: String(process.env.BREVO_API_KEY || '').trim() });
+
+            } catch (mailError) {
+
+                console.warn('Hotel application confirmation email failed:', mailError.message);
+
+            }
 
             
 
@@ -2093,7 +2177,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
             
 
-            return res.json({ success: true, message: 'Hotel owner registered successfully. Your account is pending assistant verification.', role: 'hotel', name: pending.name, email: pending.email, verificationStatus: 'Pending Verification' });
+            return res.json({ success: true, message: 'Hotel owner registered successfully. Your account is pending assistant verification.', role: 'hotel', name: pending.name, email: pending.email, verificationStatus: 'Pending Verification', requestId, applicationRequestId: requestId, trackingLink });
 
         }
 

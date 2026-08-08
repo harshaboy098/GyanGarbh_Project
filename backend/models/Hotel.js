@@ -65,7 +65,10 @@ const HotelSchema = new mongoose.Schema({
         date: { type: Date, default: Date.now }
     }],
     averageRating: { type: Number, default: 4.0 },
-    totalReviews: { type: Number, default: 0 }
+    totalReviews: { type: Number, default: 0 },
+    applicationRequestId: { type: String, default: '' },
+    applicationTrackingLink: { type: String, default: '' },
+    applicationSubmittedAt: { type: Date, default: null }
 });
 
 HotelSchema.pre('save', async function() {
