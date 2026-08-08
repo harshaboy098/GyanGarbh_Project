@@ -3,235 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gyan Garbh Partner | Register</title>
+    <title>Gyan Garbh Partner Onboarding</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        :root { --brand-blue: #1e3c72; --brand-gold: #ffc107; }
-        body { background: #f4f7fb; min-height: 100vh; display: flex; align-items: center; font-family: 'Segoe UI', sans-serif; }
-        .auth-container { max-width: 850px; width: 100%; margin: auto; background: white; border-radius: 30px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
-        .info-side { background: linear-gradient(135deg, var(--brand-blue) 0%, #2a5298 100%); color: white; padding: 50px; display: flex; flex-direction: column; justify-content: center; }
-        .form-side { padding: 40px; background: white; }
-        .form-control { border-radius: 12px; border: 2px solid #edf2f7; padding: 12px; transition: 0.3s; }
-        .btn-auth { background: var(--brand-blue); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 700; width: 100%; transition: 0.3s; }
-        .btn-auth:hover { background: #152d56; transform: translateY(-2px); }
-        .choice-box { background: #f8fafc; padding: 15px; border-radius: 20px; border: 2px solid #e2e8f0; margin-bottom: 25px; }
-        .choice-btn { border-radius: 10px; padding: 10px; font-weight: 600; cursor: pointer; transition: 0.3s; border: 2px solid transparent; width: 48%; display: inline-block; }
-        .choice-btn.active { border-color: var(--brand-blue); background: white; color: var(--brand-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        
-        /* ⭐ Password Toggle Styling */
-        .password-wrapper { position: relative; }
-        .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; font-size: 1.2rem; z-index: 10; }
+        :root { --ink:#102033; --muted:#64748b; --line:#dbe5f0; --blue:#075985; --cyan:#0891b2; --gold:#f59e0b; --green:#059669; --panel:#ffffff; }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; font-family:Inter, "Segoe UI", system-ui, sans-serif; color:var(--ink); background:linear-gradient(135deg,#eef7fb 0%,#f8fafc 48%,#fff7ed 100%); }
+        .page { min-height:100vh; display:grid; place-items:center; padding:32px 18px; }
+        .shell { width:min(1180px,100%); display:grid; grid-template-columns:.86fr 1.14fr; background:rgba(255,255,255,.88); border:1px solid rgba(255,255,255,.75); border-radius:18px; overflow:hidden; box-shadow:0 28px 90px rgba(15,23,42,.16); backdrop-filter:blur(18px); }
+        .brand-panel { position:relative; padding:42px; color:white; background:linear-gradient(155deg,#0f172a 0%,#075985 58%,#0e7490 100%); display:flex; flex-direction:column; justify-content:space-between; min-height:720px; }
+        .brand-panel:after { content:""; position:absolute; inset:auto 28px 28px auto; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,.08); }
+        .logo { display:flex; align-items:center; gap:12px; font-weight:900; font-size:20px; }
+        .logo span { width:44px; height:44px; display:grid; place-items:center; border-radius:12px; color:#0f172a; background:linear-gradient(135deg,#fde68a,#f59e0b); }
+        .hero-copy h1 { margin:0 0 16px; font-size:42px; line-height:1.05; letter-spacing:0; }
+        .hero-copy p { margin:0; color:#dbeafe; line-height:1.7; font-size:16px; }
+        .metric-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; position:relative; z-index:1; }
+        .metric { padding:14px; border:1px solid rgba(255,255,255,.18); border-radius:12px; background:rgba(255,255,255,.1); }
+        .metric strong { display:block; font-size:22px; }
+        .metric small { color:#bfdbfe; }
+        .form-panel { padding:36px; background:linear-gradient(180deg,#fff,#f8fafc); }
+        .topline { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:24px; }
+        .topline h2 { margin:0; font-size:28px; font-weight:900; }
+        .topline p { margin:8px 0 0; color:var(--muted); }
+        .login-link { color:var(--blue); font-weight:800; text-decoration:none; white-space:nowrap; }
+        .progress-wrap { margin-bottom:24px; }
+        .progress-track { height:8px; border-radius:999px; background:#e2e8f0; overflow:hidden; }
+        .progress-fill { height:100%; width:25%; background:linear-gradient(90deg,var(--blue),var(--cyan),var(--gold)); transition:.25s ease; }
+        .steps { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+        .step-label { color:var(--muted); font-size:12px; font-weight:800; text-align:center; }
+        .step-label.active { color:var(--blue); }
+        .wizard-card { border:1px solid var(--line); border-radius:14px; background:white; box-shadow:0 18px 50px rgba(15,23,42,.08); }
+        .wizard-step { display:none; padding:24px; }
+        .wizard-step.active { display:block; }
+        .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+        label { display:block; color:#475569; font-size:12px; font-weight:900; text-transform:uppercase; margin-bottom:7px; }
+        .form-control { border:1px solid #cbd5e1; border-radius:10px; padding:12px 13px; box-shadow:none; }
+        .form-control:focus { border-color:var(--cyan); box-shadow:0 0 0 4px rgba(8,145,178,.13); }
+        .password-wrapper { position:relative; }
+        .toggle-password { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#64748b; cursor:pointer; }
+        .dropzone { position:relative; min-height:132px; display:grid; place-items:center; gap:10px; padding:18px; border:1.5px dashed #94a3b8; border-radius:14px; background:#f8fafc; cursor:pointer; transition:.2s ease; text-align:center; }
+        .dropzone:hover { border-color:var(--cyan); background:#ecfeff; }
+        .dropzone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+        .dropzone i { font-size:30px; color:var(--blue); }
+        .dropzone strong { display:block; }
+        .upload-status { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; color:#92400e; background:#fef3c7; font-size:12px; font-weight:900; }
+        .dropzone.uploaded .upload-status { color:#047857; background:#d1fae5; }
+        .review-grid { display:grid; gap:12px; }
+        .review-row { display:flex; justify-content:space-between; gap:16px; padding:13px 0; border-bottom:1px solid #e2e8f0; }
+        .review-row span { color:var(--muted); font-weight:800; }
+        .wizard-actions { display:flex; justify-content:space-between; gap:12px; padding:18px 24px; border-top:1px solid var(--line); background:#f8fafc; }
+        .btn-main, .btn-secondary-soft { border:0; border-radius:10px; padding:12px 18px; font-weight:900; display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
+        .btn-main { color:white; background:linear-gradient(135deg,var(--blue),var(--cyan)); box-shadow:0 12px 28px rgba(8,145,178,.24); }
+        .btn-secondary-soft { color:#334155; background:#e2e8f0; }
+        .trust-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px; }
+        .trust { display:flex; align-items:center; gap:9px; padding:12px; border:1px solid var(--line); border-radius:12px; background:white; color:#334155; font-size:13px; font-weight:900; }
+        .trust i { color:var(--green); font-size:18px; }
+        #regOTPStep { display:none; }
+        @media (max-width: 980px) { .shell { grid-template-columns:1fr; } .brand-panel { min-height:auto; gap:48px; } }
+        @media (max-width: 680px) { .page { padding:0; } .shell { border-radius:0; } .brand-panel,.form-panel { padding:24px; } .grid-2,.steps,.trust-row,.metric-strip { grid-template-columns:1fr; } .hero-copy h1 { font-size:32px; } .topline { flex-direction:column; } }
     </style>
     <link rel="stylesheet" href="mobile-responsive.css">
 </head>
 <body>
-
-<div class="auth-container shadow-lg">
-    <div class="row g-0">
-        <div class="col-md-5 info-side d-none d-md-flex text-center">
-            <i class="bi bi-building-fill-check display-3 text-warning mb-4"></i>
-            <h2 class="fw-bold">Gyan Garbh Partner</h2>
-            <p class="opacity-75">Bodhgaya ke sabse professional hotel network ka hissa baniye.</p>
-        </div>
-
-        <div class="col-md-7 form-side">
-            <div id="regInitial">
-                <h3 class="fw-bold mb-4">Partner Sign Up</h3>
-
-                <div class="choice-box text-center">
-                    <p class="small fw-bold text-muted mb-2 text-uppercase">Account Type</p>
-                    <div class="d-flex justify-content-between">
-                        <div class="choice-btn text-muted" onclick="location.href='index.html'">
-                            <i class="bi bi-person me-1"></i> Guest
-                        </div>
-                        <div class="choice-btn active">
-                            <i class="bi bi-building me-1"></i> Hotel Owner
-                        </div>
-                    </div>
-                </div>
-
-                <form>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted text-uppercase">Hotel Name</label>
-                        <input type="text" id="hName" class="form-control" placeholder="e.g. Royal Heritage" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted text-uppercase">Owner Email</label>
-                        <input type="email" id="hEmail" class="form-control" placeholder="partner@gmail.com" required>
-                    </div>
-                    <div class="mb-4">
-                        <label class="small fw-bold text-muted text-uppercase">Create Password</label>
-                        <div class="password-wrapper">
-                            <input type="password" id="hPass" class="form-control" placeholder="••••••••" minlength="8" required>
-                            <i class="bi bi-eye-slash toggle-password" id="toggleEye" onclick="togglePassView()"></i>
-                        </div>
-                    </div>
-                    <button type="button" id="regBtn" onclick="sendPartnerOTP()" class="btn btn-auth w-100 shadow-sm">VERIFY EMAIL & CONTINUE</button>
-                    
-                    <p class="text-center mt-3 mb-0">
-                        <a href="javascript:void(0)" onclick="handleHotelForgot()" class="small text-muted text-decoration-none">Forgot Password?</a>
-                    </p>
-                    <p class="text-center mt-3 small text-muted">
-                        Already a partner? <a href="hotel-auth.html" class="text-primary fw-bold text-decoration-none">Login here</a>
-                    </p>
-                </form>
+<div class="page">
+    <div class="shell">
+        <aside class="brand-panel">
+            <div class="logo"><span><i class="bi bi-building-check"></i></span>Gyan Garbh Partner</div>
+            <div class="hero-copy">
+                <h1>List your stay with a trusted pilgrimage travel network.</h1>
+                <p>Complete a guided onboarding review built for hotels, lodges, guest houses, and premium partner stays around Bodhgaya.</p>
             </div>
-
-            <div id="regOTPStep" style="display: none;" class="text-center">
-                <i class="bi bi-shield-lock-fill display-4 text-primary mb-3"></i>
-                <h4 class="fw-bold">Security Check</h4>
-                <p class="text-muted small">OTP sent to: <b><span id="displayEmail"></span></b></p>
-                <div class="mb-4">
-                    <input type="text" id="hOTPInput" class="form-control form-control-lg text-center fw-bold" placeholder="000000" inputmode="numeric" pattern="\d{6}" maxlength="6" style="letter-spacing: 10px;">
+            <div class="metric-strip">
+                <div class="metric"><strong>4-step</strong><small>guided review</small></div>
+                <div class="metric"><strong>KYC</strong><small>verified partners</small></div>
+                <div class="metric"><strong>24x7</strong><small>support desk</small></div>
+            </div>
+        </aside>
+        <main class="form-panel">
+            <div id="regInitial">
+                <div class="topline">
+                    <div><h2>Property onboarding</h2><p>Create your partner profile and submit documents for verification.</p></div>
+                    <a class="login-link" href="hotel-auth.html">Partner login</a>
                 </div>
-                <button type="button" onclick="verifyAndSaveHotel()" class="btn btn-success w-100 py-3 rounded-4 fw-bold shadow">CONFIRM & REGISTER</button>
+                <div class="progress-wrap">
+                    <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+                    <div class="steps"><div class="step-label active">1. Basic Info</div><div class="step-label">2. Legal Details</div><div class="step-label">3. KYC Documents</div><div class="step-label">4. Review</div></div>
+                </div>
+                <form class="wizard-card" onsubmit="return false;">
+                    <section class="wizard-step active" data-step="0">
+                        <div class="grid-2">
+                            <div><label>Hotel Name</label><input type="text" id="hName" class="form-control" placeholder="Royal Heritage Bodhgaya" required></div>
+                            <div><label>Owner Email</label><input type="email" id="hEmail" class="form-control" placeholder="partner@gmail.com" required></div>
+                            <div><label>Create Password</label><div class="password-wrapper"><input type="password" id="hPass" class="form-control" placeholder="Minimum 8 characters" minlength="8" required><i class="bi bi-eye-slash toggle-password" id="toggleEye" onclick="togglePassView()"></i></div></div>
+                            <div><label>Property Location</label><input type="text" id="hLocation" class="form-control" placeholder="Bodhgaya" value="Bodhgaya"></div>
+                        </div>
+                    </section>
+                    <section class="wizard-step" data-step="1">
+                        <div class="grid-2">
+                            <div><label>GST Details</label><input type="text" id="gstNumber" class="form-control" placeholder="GSTIN or NA" required></div>
+                            <div><label>Aadhaar / PAN</label><input type="text" id="aadhaarPan" class="form-control" placeholder="Owner Aadhaar/PAN reference" required></div>
+                            <div><label>Bank Details</label><input type="text" id="bankDetails" class="form-control" placeholder="Account holder, bank, last 4 digits" required></div>
+                            <div><label>Owner Phone</label><input type="tel" id="hPhone" class="form-control" placeholder="Optional contact number"></div>
+                        </div>
+                    </section>
+                    <section class="wizard-step" data-step="2">
+                        <div class="grid-2">
+                            <label class="dropzone" id="tradeLicenseZone"><input type="file" id="tradeLicense" onchange="markUploaded('tradeLicense')"><i class="bi bi-cloud-arrow-up"></i><strong>Trade License</strong><small>PDF, JPG, or PNG</small><span class="upload-status">Pending</span></label>
+                            <label class="dropzone" id="policeNocZone"><input type="file" id="policeNoc" onchange="markUploaded('policeNoc')"><i class="bi bi-shield-check"></i><strong>Police NOC</strong><small>PDF, JPG, or PNG</small><span class="upload-status">Pending</span></label>
+                        </div>
+                    </section>
+                    <section class="wizard-step" data-step="3">
+                        <div class="review-grid" id="reviewPanel"></div>
+                    </section>
+                    <div class="wizard-actions"><button type="button" id="backBtn" class="btn-secondary-soft" onclick="prevStep()"><i class="bi bi-arrow-left"></i>Back</button><button type="button" id="nextBtn" class="btn-main" onclick="nextStep()">Continue<i class="bi bi-arrow-right"></i></button></div>
+                </form>
+                <div class="trust-row"><div class="trust"><i class="bi bi-lock-fill"></i>256-Bit Encrypted</div><div class="trust"><i class="bi bi-patch-check-fill"></i>Verified Partner Network</div><div class="trust"><i class="bi bi-headset"></i>24x7 Partner Support</div></div>
+                <p class="text-center mt-3 mb-0"><a href="javascript:void(0)" onclick="handleHotelForgot()" class="small text-muted text-decoration-none">Forgot Password?</a></p>
+            </div>
+            <div id="regOTPStep" class="text-center wizard-card p-4">
+                <i class="bi bi-shield-lock-fill display-4 text-primary mb-3"></i><h4 class="fw-bold">Security Check</h4><p class="text-muted small">OTP sent to: <b><span id="displayEmail"></span></b></p>
+                <input type="text" id="hOTPInput" class="form-control form-control-lg text-center fw-bold mb-3" placeholder="000000" inputmode="numeric" pattern="\d{6}" maxlength="6" style="letter-spacing: 10px;">
+                <button type="button" onclick="verifyAndSaveHotel()" class="btn-main w-100 justify-content-center">Confirm & Register</button>
                 <p class="mt-3"><a href="#" onclick="location.reload()" class="text-muted small">Go Back / Edit Details</a></p>
             </div>
-        </div>
+        </main>
     </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
-
-    function togglePassView() {
-        const passInput = document.getElementById('hPass');
-        const eyeIcon = document.getElementById('toggleEye');
-        if (passInput.type === 'password') {
-            passInput.type = 'text';
-            eyeIcon.classList.replace('bi-eye-slash', 'bi-eye');
-        } else {
-            passInput.type = 'password';
-            eyeIcon.classList.replace('bi-eye', 'bi-eye-slash');
-        }
-    }
-
-    // ⭐ FORGOT PASSWORD FOR HOTEL
-    async function handleHotelForgot() {
-        const { value: email } = await Swal.fire({
-            title: 'Partner Password Reset',
-            text: 'Enter your registered owner email:',
-            input: 'email',
-            showCancelButton: true
-        });
-
-        if (!email) return;
-
-        try {
-            const res = await fetch(`${API_URL}/send-otp`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email, isReset: true })
-            });
-            const data = await res.json();
-
-            if (res.ok) {
-                const { value: formValues } = await Swal.fire({
-                    title: 'Reset Credentials',
-                    html: '<input id="otp-h" class="swal2-input" placeholder="Enter OTP"><input id="pass-h" type="password" class="swal2-input" placeholder="New Password">',
-                    preConfirm: () => [document.getElementById('otp-h').value, document.getElementById('pass-h').value]
-                });
-
-                if (formValues) {
-                    const [otp, newPassword] = formValues;
-                    const vRes = await fetch(`${API_URL}/verify-otp`, {
-                        method: 'POST', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ email, otp })
-                    });
-
-                    if (vRes.ok) {
-                        const verifyData = await vRes.json();
-                        const rRes = await fetch(`${API_URL}/reset-password`, {
-                            method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ email, newPassword, userType: 'hotel', resetToken: verifyData.resetToken })
-                        });
-                        if (rRes.ok) Swal.fire('Done!', 'Password updated. Please log in.', 'success').then(() => { window.location.href='hotel-auth.html'; });
-                    } else { Swal.fire('Error', 'OTP invalid!', 'error'); }
-                }
-            } else { Swal.fire('Wait!', data.message, 'warning'); }
-        } catch (e) { Swal.fire('Error', 'Server Error!', 'error'); }
-    }
-
-    async function sendPartnerOTP() {
-        const hEmail = document.getElementById('hEmail').value.trim();
-        const hName = document.getElementById('hName').value.trim();
-        const hPass = document.getElementById('hPass').value;
-
-        if(!hEmail || !hName || !hPass) return Swal.fire('Please Wait...', 'Please complete every required field.', 'warning');
-
-        const btn = document.getElementById('regBtn');
-        btn.innerText = "Checking..."; btn.disabled = true;
-
-        try {
-            const res = await fetch(`${API_URL}/send-otp`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    email: hEmail,
-                    isReset: false,
-                    name: hName,
-                    password: hPass,
-                    role: 'hotel',
-                    hotelName: hName,
-                    address: 'Bodhgaya'
-                })
-            });
-            const data = await res.json();
-
-            if(res.ok) {
-                document.getElementById('displayEmail').innerText = hEmail;
-                document.getElementById('regInitial').style.display = 'none';
-                document.getElementById('regOTPStep').style.display = 'block';
-                Swal.fire('Sent!', 'Please check your email for the OTP.', 'success');
-            } else {
-                const errorText = (data.message || '').toLowerCase();
-                const alreadyRegistered = /registered|already exists|already a member/i.test(errorText);
-
-                if (alreadyRegistered) {
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Already Registered!',
-                        text: data.message,
-                        confirmButtonText: 'Login Portal'
-                    }).then(() => window.location.href = "hotel-auth.html");
-                } else {
-                    Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error');
-                    btn.innerText = "VERIFY EMAIL & CONTINUE";
-                    btn.disabled = false;
-                }
-            }
-        } catch (err) {
-            Swal.fire('Error', 'OTP fail!', 'error');
-            btn.innerText = "VERIFY EMAIL & CONTINUE"; btn.disabled = false;
-        }
-    }
-
-    async function verifyAndSaveHotel() {
-        const hName = document.getElementById('hName').value.trim();
-        const hEmail = document.getElementById('hEmail').value.trim();
-        const otp = document.getElementById('hOTPInput').value;
-
-        try {
-            const otpRes = await fetch(`${API_URL}/verify-otp`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: hEmail, otp: otp })
-            });
-
-            if(otpRes.ok) {
-                const data = await otpRes.json();
-                localStorage.setItem('hotelOwnerEmail', data.email || hEmail);
-                localStorage.setItem('hotelName', data.name || hName);
-                localStorage.setItem('userRole', 'hotel');
-                localStorage.setItem('authToken', data.sessionToken);
-                Swal.fire('Success!', 'Registration Complete!', 'success').then(() => window.location.href = "hotel-auth.html");
-            } else { Swal.fire('Wrong OTP', 'The verification code is invalid.', 'error'); }
-        } catch (err) { Swal.fire('Error', 'Process failed!', 'error'); }
-    }
+    let currentStep = 0;
+    const uploadState = { tradeLicense: '', policeNoc: '' };
+    function togglePassView() { const passInput = document.getElementById('hPass'); const eyeIcon = document.getElementById('toggleEye'); const show = passInput.type === 'password'; passInput.type = show ? 'text' : 'password'; eyeIcon.classList.toggle('bi-eye', show); eyeIcon.classList.toggle('bi-eye-slash', !show); }
+    function markUploaded(id) { const input = document.getElementById(id); const zone = document.getElementById(`${id}Zone`); uploadState[id] = input.files?.[0]?.name || ''; zone.classList.toggle('uploaded', Boolean(uploadState[id])); zone.querySelector('.upload-status').textContent = uploadState[id] ? 'Uploaded' : 'Pending'; }
+    function setStep(step) { currentStep = Math.max(0, Math.min(3, step)); document.querySelectorAll('.wizard-step').forEach((s, i) => s.classList.toggle('active', i === currentStep)); document.querySelectorAll('.step-label').forEach((s, i) => s.classList.toggle('active', i <= currentStep)); document.getElementById('progressFill').style.width = `${(currentStep + 1) * 25}%`; document.getElementById('backBtn').style.visibility = currentStep === 0 ? 'hidden' : 'visible'; document.getElementById('nextBtn').innerHTML = currentStep === 3 ? 'Verify Email & Continue<i class="bi bi-arrow-right"></i>' : 'Continue<i class="bi bi-arrow-right"></i>'; if (currentStep === 3) renderReview(); }
+    function requireFields(ids) { for (const id of ids) { const el = document.getElementById(id); if (!String(el?.value || '').trim()) { el?.focus(); Swal.fire('Missing details', 'Please complete the highlighted onboarding fields.', 'warning'); return false; } } return true; }
+    function nextStep() { if (currentStep === 0 && !requireFields(['hName','hEmail','hPass','hLocation'])) return; if (currentStep === 1 && !requireFields(['gstNumber','aadhaarPan','bankDetails'])) return; if (currentStep === 2 && (!uploadState.tradeLicense || !uploadState.policeNoc)) return Swal.fire('Documents pending', 'Please upload Trade License and Police NOC.', 'warning'); if (currentStep === 3) return sendPartnerOTP(); setStep(currentStep + 1); }
+    function prevStep() { setStep(currentStep - 1); }
+    function row(label, value) { return `<div class="review-row"><span>${label}</span><strong>${String(value || '-')}</strong></div>`; }
+    function renderReview() { document.getElementById('reviewPanel').innerHTML = row('Hotel', hName.value) + row('Owner Email', hEmail.value) + row('Location', hLocation.value) + row('GST', gstNumber.value) + row('Aadhaar/PAN', aadhaarPan.value) + row('Bank', bankDetails.value) + row('Trade License', uploadState.tradeLicense) + row('Police NOC', uploadState.policeNoc); }
+    async function handleHotelForgot() { const { value: email } = await Swal.fire({ title: 'Partner Password Reset', text: 'Enter your registered owner email:', input: 'email', showCancelButton: true }); if (!email) return; try { const res = await fetch(`${API_URL}/send-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, isReset:true }) }); const data = await res.json(); if (res.ok) Swal.fire('OTP Sent', 'Please continue from the login reset flow.', 'success'); else Swal.fire('Wait', data.message, 'warning'); } catch { Swal.fire('Error', 'Server Error!', 'error'); } }
+    async function sendPartnerOTP() { const btn = document.getElementById('nextBtn'); btn.textContent = 'Checking...'; btn.disabled = true; const hEmail = document.getElementById('hEmail').value.trim(); const hName = document.getElementById('hName').value.trim(); const hPass = document.getElementById('hPass').value; try { const res = await fetch(`${API_URL}/send-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:hEmail, isReset:false, name:hName, password:hPass, role:'hotel', hotelName:hName, address:document.getElementById('hLocation').value.trim() || 'Bodhgaya', tradeLicense: uploadState.tradeLicense, gstNumber: document.getElementById('gstNumber').value.trim(), aadhaarPan: document.getElementById('aadhaarPan').value.trim(), policeNoc: uploadState.policeNoc, bankDetails: document.getElementById('bankDetails').value.trim(), phone: document.getElementById('hPhone').value.trim() }) }); const data = await res.json(); if (res.ok) { document.getElementById('displayEmail').innerText = hEmail; document.getElementById('regInitial').style.display = 'none'; document.getElementById('regOTPStep').style.display = 'block'; Swal.fire('Sent!', 'Please check your email for the OTP.', 'success'); } else { Swal.fire('Error', data.message || 'Unable to send OTP. Please try again.', 'error'); btn.innerHTML = 'Verify Email & Continue<i class="bi bi-arrow-right"></i>'; btn.disabled = false; } } catch { Swal.fire('Error', 'OTP failed.', 'error'); btn.innerHTML = 'Verify Email & Continue<i class="bi bi-arrow-right"></i>'; btn.disabled = false; } }
+    async function verifyAndSaveHotel() { const hEmail = document.getElementById('hEmail').value.trim(); const otp = document.getElementById('hOTPInput').value; try { const otpRes = await fetch(`${API_URL}/verify-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:hEmail, otp }) }); if (otpRes.ok) { const data = await otpRes.json(); localStorage.setItem('hotelOwnerEmail', data.email || hEmail); localStorage.setItem('hotelName', data.name || document.getElementById('hName').value.trim()); localStorage.setItem('userRole', 'hotel'); localStorage.removeItem('authToken'); Swal.fire('Pending Verification', 'Registration submitted. An assistant will review your KYC before dashboard access is enabled.', 'success').then(() => window.location.href = 'hotel-auth.html'); } else Swal.fire('Wrong OTP', 'The verification code is invalid.', 'error'); } catch { Swal.fire('Error', 'Process failed!', 'error'); } }
+    window.addEventListener('load', () => setStep(0));
 </script>
-    <script src="mobile-responsive.js"></script>
+<script src="mobile-responsive.js"></script>
 </body>
 </html>
