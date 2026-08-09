@@ -227,6 +227,10 @@ const app = express();
 const server = http.createServer(app);
 
 const PORT = Number.parseInt(process.env.PORT, 10) || 5000;
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
 const allowedOrigins = [
     'http://localhost:5173',
@@ -900,6 +904,36 @@ const verifyAssistant = (permission = null) => async (req, res, next) => {
 
 
 const verifyAssistantToken = (permission = null) => verifyAssistant(permission);
+
+app.get('/api/assistants/uploads/:filename', verifyAssistantToken('manageHotels'), (req, res) => {
+    const rawName = String(req.params.filename || '').trim();
+    let requestedName = '';
+
+    try {
+        requestedName = decodeURIComponent(rawName);
+    } catch {
+        return res.status(400).json({ success: false, message: 'Invalid file name' });
+    }
+
+    const decodedName = path.basename(requestedName);
+    if (!decodedName || decodedName !== requestedName || decodedName.includes('..')) {
+        return res.status(400).json({ success: false, message: 'Invalid file name' });
+    }
+
+    const filePath = path.resolve(uploadsDir, decodedName);
+    if (!filePath.startsWith(path.resolve(uploadsDir) + path.sep)) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, message: 'File not found' });
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', req.get('origin') || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    return res.sendFile(filePath);
+});
 
 const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => {
 
