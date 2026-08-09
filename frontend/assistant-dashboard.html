@@ -307,8 +307,9 @@
         const raw = String(value || '').trim();
         if (!raw || /^(data:|blob:)/i.test(raw)) return raw;
         const uploadsIndex = raw.toLowerCase().lastIndexOf('/uploads/');
-        const normalized = uploadsIndex >= 0 ? raw.slice(uploadsIndex + 9) : raw;
-        return normalized.replace(/^\/+/, '').replace(/^uploads\//i, '');
+        const withoutBase = uploadsIndex >= 0 ? raw.slice(uploadsIndex + 9) : raw;
+        const normalized = withoutBase.split('?')[0].split('#')[0].replace(/^\/+/, '').replace(/^uploads\//i, '');
+        try { return decodeURIComponent(normalized); } catch { return normalized; }
     }
     function resolveUploadUrl(value) {
         const raw = String(value || '').trim();
