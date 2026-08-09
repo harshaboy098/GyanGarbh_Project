@@ -907,31 +907,51 @@ const verifyAssistantToken = (permission = null) => verifyAssistant(permission);
 
 app.get('/api/assistants/uploads/:filename', verifyAssistantToken('manageHotels'), (req, res) => {
     const rawName = String(req.params.filename || '').trim();
-    let requestedName = '';
+    let decodedName = '';
 
     try {
-        requestedName = decodeURIComponent(rawName);
+        decodedName = decodeURIComponent(rawName);
     } catch {
         return res.status(400).json({ success: false, message: 'Invalid file name' });
     }
 
-    const decodedName = path.basename(requestedName);
-    if (!decodedName || decodedName !== requestedName || decodedName.includes('..')) {
+    decodedName = decodedName
+        .replace(/\0/g, '')
+        .replace(/\\/g, '/')
+        .replace(/^\/+/, '')
+        .replace(/^uploads\//i, '');
+
+    const safeFileName = path.basename(decodedName);
+    if (!safeFileName || safeFileName === '.' || safeFileName === '..' || safeFileName.includes('..')) {
         return res.status(400).json({ success: false, message: 'Invalid file name' });
     }
 
-    const filePath = path.resolve(uploadsDir, decodedName);
+    const filePath = path.resolve(uploadsDir, safeFileName);
     if (!filePath.startsWith(path.resolve(uploadsDir) + path.sep)) {
         return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
     if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ success: false, message: 'File not found' });
+        console.error(`[Uploads Route Error] File requested: ${safeFileName}, Checked path: ${filePath}`);
+        return res.status(404).json({ success: false, message: 'File not found on server storage' });
     }
+
+    const ext = path.extname(safeFileName).toLowerCase();
+    const contentTypes = {
+        '.pdf': 'application/pdf',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif',
+        '.bmp': 'image/bmp',
+        '.svg': 'image/svg+xml'
+    };
 
     res.setHeader('Access-Control-Allow-Origin', req.get('origin') || '*');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    if (contentTypes[ext]) res.setHeader('Content-Type', contentTypes[ext]);
     return res.sendFile(filePath);
 });
 
