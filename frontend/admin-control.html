@@ -37,6 +37,7 @@
         <nav class="nav">
             <button class="active" onclick="showSection('overview', this)"><i class="bi bi-speedometer2"></i>Overview</button>
             <button onclick="showSection('bodhi-path', this)"><i class="bi bi-temple"></i>Bodhi Path</button>
+            <button onclick="showSection('theme-studio', this)"><i class="bi bi-palette"></i>Theme Studio</button>
         </nav>
     </aside>
     <main>
@@ -53,12 +54,14 @@
             <div class="panel notice">Use the Bodhi Path section to add new temples or pilgrimage circuits, upload card images, manage route stops, switch Active/Inactive status, and inspect update history.</div>
         </section>
         <section id="bodhi-path" class="section"><div id="adminBodhiCatalog"></div></section>
+        <section id="theme-studio" class="section"><div id="adminThemeStudio"></div></section>
     </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script src="bodhi-path-manager.js"></script>
 <script src="dashboard-notifications.js"></script>
+<script src="theme-studio.js"></script>
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
     function token() { return localStorage.getItem('authToken') || localStorage.getItem('adminToken') || ''; }
@@ -68,10 +71,12 @@
         document.querySelectorAll('.nav button').forEach((item) => item.classList.remove('active'));
         btn.classList.add('active');
         if (id === 'bodhi-path') loadBodhiPath();
+        if (id === 'theme-studio') loadThemeStudio();
     }
     function loadBodhiPath() {
         window.GyanGarbhBodhiPath?.init({ containerId:'adminBodhiCatalog', role:'admin', actorName:'Admin', actorEmail: adminEmail(), token: token(), apiBase: API_URL, onCount: (count) => { document.getElementById('heritageCount').textContent = count; } });
     }
+    function loadThemeStudio() { window.GyanGarbhThemeStudio?.init({ containerId:'adminThemeStudio', role:'admin', actorEmail: adminEmail(), token: token(), apiBase: API_URL }); }
     function refreshAdminLiveData() { window.GyanGarbhBodhiPath?.load?.(true); }
     function initNotifications() { window.GyanGarbhNotifications?.init({ containerId:'adminNotifications', role:'admin', actorEmail: adminEmail(), token: token(), apiBase: API_URL, onPoll: refreshAdminLiveData }); }
     window.addEventListener('load', () => { document.getElementById('adminIdentity').textContent = adminEmail(); loadBodhiPath(); initNotifications(); setInterval(refreshAdminLiveData, 30000); });

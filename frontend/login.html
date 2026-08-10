@@ -10,15 +10,16 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="api-client.js"></script>
+    <script src="site-theme.js"></script>
     <style>
-        :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --brand:#ff6b00; --brand-dark:#df4f00; --teal:#0891b2; --green:#16a34a; --card:#ffffff; }
+        :root { --login-hero-image:url('https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1600&q=80'); --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --brand:#ff6b00; --brand-dark:#df4f00; --teal:#0891b2; --green:#16a34a; --card:#ffffff; }
         * { box-sizing:border-box; }
         body { margin:0; min-height:100vh; font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:var(--ink); background:#f4f7fb; }
         button, input { font:inherit; }
         a { color:inherit; }
         .auth-layout { min-height:100vh; display:grid; grid-template-columns:minmax(420px,1.08fr) minmax(360px,.92fr); }
         .hero-pane { position:relative; isolation:isolate; overflow:hidden; padding:34px; display:flex; flex-direction:column; justify-content:space-between; color:white; background:#0f172a; }
-        .hero-pane::before { content:""; position:absolute; inset:0; z-index:-2; background:linear-gradient(120deg,rgba(15,23,42,.88),rgba(8,47,73,.5)), url('https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1600&q=80') center/cover; transform:scale(1.02); }
+        .hero-pane::before { content:""; position:absolute; inset:0; z-index:-2; background:linear-gradient(120deg,rgba(15,23,42,.88),rgba(8,47,73,.5)), var(--login-hero-image) center/cover; transform:scale(1.02); }
         .hero-pane::after { content:""; position:absolute; inset:0; z-index:-1; background:radial-gradient(circle at 18% 16%, rgba(255,184,77,.34), transparent 32%), radial-gradient(circle at 86% 22%, rgba(6,182,212,.32), transparent 31%); }
         .brand-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
         .brand-lockup { display:flex; align-items:center; gap:12px; font-weight:900; letter-spacing:0; }
@@ -89,9 +90,9 @@
                 <div class="offer-pill"><i class="bi bi-stars"></i> Get 15% OFF on Bodhi Path Heritage Tours</div>
             </div>
             <div class="hero-copy">
-                <span class="hero-kicker"><i class="bi bi-shield-check"></i> Verified stays and sacred routes</span>
-                <h1>Book Bodhgaya journeys with calm confidence.</h1>
-                <p>Hotels, temple circuits, airport rides, and Bodhi Path experiences in one trusted travel account.</p>
+                <span class="hero-kicker" data-login-badge><i class="bi bi-shield-check"></i> Verified stays and sacred routes</span>
+                <h1 data-login-title>Book Bodhgaya journeys with calm confidence.</h1>
+                <p data-login-subtitle>Hotels, temple circuits, airport rides, and Bodhi Path experiences in one trusted travel account.</p>
             </div>
             <div class="trust-grid" aria-label="Trust highlights">
                 <div class="trust-card"><strong>50,000+</strong><span>Happy pilgrims planned stays and local travel with Gyan Garbh.</span></div>

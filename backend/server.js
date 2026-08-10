@@ -66,6 +66,7 @@ const SupportTicket = require('./models/SupportTicket');
 const Taxi = require('./models/Taxi');
 
 const RideRequest = require('./models/RideRequest');
+const SiteSettings = require('./models/SiteSettings');
 const templeRoutes = require('./routes/templeRoutes');
 
 
@@ -353,12 +354,19 @@ const hotelImageStorage = createCloudinaryStorage({
     transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
 });
 
+const siteBannerStorage = createCloudinaryStorage({
+    folder: 'GyanGarbh/SiteBanners',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 1920, height: 1080, crop: 'limit' }]
+});
+
 
 
 const uploadHotelImages = multer({ storage: hotelImageStorage });
 const uploadRoomImages = multer({ storage: hotelImageStorage });
 
 const uploadProfilePic = multer({ storage: hotelImageStorage });
+const uploadSiteBanner = multer({ storage: siteBannerStorage, limits: { fileSize: 8 * 1024 * 1024 } });
 
 
 const loginRateLimiter = rateLimit({
@@ -1195,7 +1203,8 @@ const normalizeAssistantPermissions = (permissions = {}) => {
         manageMitras: permissions.manageMitras === true || permissions.manageMitra === true,
         manageBookings: permissions.manageBookings === true,
         viewReports: permissions.viewReports === true,
-        manageHeritage: permissions.manageHeritage === true
+        manageHeritage: permissions.manageHeritage === true,
+        manageSettings: permissions.manageSettings !== false
     };
 
     return normalized;
@@ -1214,6 +1223,61 @@ const assistantHasPermission = (permissions = {}, permission = null) => {
 
     return normalized[permission] === true;
 
+};
+
+const DEFAULT_SITE_SETTINGS = {
+    key: 'global',
+    activeTheme: 'spiritual-gold',
+    heroLayout: 'centered',
+    heroBanners: [{
+        sectionId: 'home',
+        title: 'Discover Bodhgaya Stays',
+        subtitle: 'Verified hotels, trusted rooms, and peaceful stays for your Bodhgaya trip',
+        imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=2070',
+        badgeText: 'Verified Heritage Stays',
+        ctaLink: 'hotel.html',
+        active: true
+    }],
+    loginBanners: [{
+        title: 'Book Bodhgaya journeys with calm confidence.',
+        subtitle: 'Hotels, temple circuits, airport rides, and Bodhi Path experiences in one trusted travel account.',
+        imageUrl: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1600&q=80',
+        badgeText: 'Verified stays and sacred routes',
+        active: true
+    }]
+};
+
+const allowedThemeIds = new Set(['spiritual-gold', 'modern-blue', 'minimal-dark', 'heritage-vibe']);
+
+const cleanBanner = (banner = {}, fallbackSection = 'home') => ({
+    sectionId: String(banner.sectionId || fallbackSection).trim() || fallbackSection,
+    title: String(banner.title || '').trim(),
+    subtitle: String(banner.subtitle || '').trim(),
+    imageUrl: String(banner.imageUrl || '').trim(),
+    badgeText: String(banner.badgeText || '').trim(),
+    ctaLink: String(banner.ctaLink || '').trim(),
+    active: banner.active !== false
+});
+
+const cleanLoginBanner = (banner = {}) => ({
+    title: String(banner.title || '').trim(),
+    subtitle: String(banner.subtitle || '').trim(),
+    imageUrl: String(banner.imageUrl || '').trim(),
+    badgeText: String(banner.badgeText || '').trim(),
+    active: banner.active !== false
+});
+
+const normalizeSiteSettingsPayload = (body = {}) => ({
+    activeTheme: allowedThemeIds.has(body.activeTheme) ? body.activeTheme : DEFAULT_SITE_SETTINGS.activeTheme,
+    heroLayout: ['centered', 'split', 'search-first'].includes(body.heroLayout) ? body.heroLayout : 'centered',
+    heroBanners: (Array.isArray(body.heroBanners) ? body.heroBanners : DEFAULT_SITE_SETTINGS.heroBanners).slice(0, 12).map((banner) => cleanBanner(banner, 'home')),
+    loginBanners: (Array.isArray(body.loginBanners) ? body.loginBanners : DEFAULT_SITE_SETTINGS.loginBanners).slice(0, 8).map(cleanLoginBanner).filter((banner) => banner.imageUrl)
+});
+
+const getSiteSettings = async () => {
+    const existing = await SiteSettings.findOne({ key: 'global' });
+    if (existing) return existing;
+    return SiteSettings.create(DEFAULT_SITE_SETTINGS);
 };
 
 
@@ -3198,6 +3262,49 @@ app.put('/api/notifications/read-all', requireSession(['admin', 'assistant']), a
     } catch (err) {
         res.status(500).json({ success: false, message: 'Unable to mark notifications as read', error: err.message, data: [] });
     }
+});
+
+app.get('/api/site-settings', async (req, res) => {
+    try {
+        const data = await getSiteSettings();
+        res.json({ success: true, data, settings: data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Unable to load site settings', error: err.message, data: null });
+    }
+});
+
+app.put('/api/site-settings', verifyAdminOrAssistant('manageSettings'), async (req, res) => {
+    try {
+        const payload = normalizeSiteSettingsPayload(req.body);
+        payload.updatedBy = req.actor?.email || 'system';
+        payload.updatedByRole = req.actor?.role || 'system';
+        const data = await SiteSettings.findOneAndUpdate(
+            { key: 'global' },
+            { $set: { key: 'global', ...payload } },
+            { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+        );
+        await logActivity('UPDATE', 'SiteSettings', data._id, 'Visual Theme & Banner Studio', req.actor.email, req.actor.role, { activeTheme: data.activeTheme });
+        emitRealtime('site-settings-updated', { settings: data, updatedBy: req.actor.email, actorRole: req.actor.role });
+        res.json({ success: true, message: 'Site settings updated successfully', data, settings: data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Unable to update site settings', error: err.message, data: null });
+    }
+});
+
+app.post('/api/site-settings/upload-banner', verifyAdminOrAssistant('manageSettings'), (req, res) => {
+    uploadSiteBanner.single('banner')(req, res, async (uploadErr) => {
+        if (uploadErr) {
+            return res.status(400).json({ success: false, message: uploadErr.message || 'Banner upload failed', data: null });
+        }
+        try {
+            if (!req.file?.path) return res.status(400).json({ success: false, message: 'No banner image uploaded', data: null });
+            const sectionId = String(req.body.sectionId || 'home').trim() || 'home';
+            const data = { imageUrl: req.file.path, publicId: req.file.filename, sectionId };
+            res.json({ success: true, message: 'Banner uploaded successfully', data, imageUrl: data.imageUrl });
+        } catch (err) {
+            res.status(500).json({ success: false, message: 'Banner upload failed', error: err.message, data: null });
+        }
+    });
 });
 
 app.get('/admin/enquiries', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
@@ -5784,6 +5891,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
                 viewReports: false,
                 manageHeritage: true,
+                manageSettings: true,
 
                 ...(permissions || {})
 
