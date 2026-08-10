@@ -458,7 +458,8 @@ app.use(['/login', '/api/login', '/api/auth/login'], loginRateLimiter);
 
 app.use(['/assistant-login', '/api/assistant-login', '/api/auth/assistant-login'], loginRateLimiter);
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Express 5 exposes req.query as a read-only property, so sanitize objects in place.
 
@@ -1321,11 +1322,16 @@ const DEFAULT_SITE_SETTINGS = {
 
 const allowedThemeIds = new Set(['spiritual-gold', 'modern-blue', 'agoda-clean', 'minimal-dark', 'heritage-vibe']);
 
+const cleanImageUrl = (value = '') => {
+    const url = String(value || '').trim();
+    return /^data:image\//i.test(url) ? '' : url.slice(0, 1000);
+};
+
 const cleanBanner = (banner = {}, fallbackSection = 'home') => ({
     sectionId: String(banner.sectionId || fallbackSection).trim() || fallbackSection,
     title: String(banner.title || '').trim(),
     subtitle: String(banner.subtitle || '').trim(),
-    imageUrl: String(banner.imageUrl || '').trim(),
+    imageUrl: cleanImageUrl(banner.imageUrl),
     badgeText: String(banner.badgeText || '').trim(),
     ctaLink: String(banner.ctaLink || '').trim(),
     active: banner.active !== false
@@ -1342,7 +1348,7 @@ const cleanLoginBanner = (banner = {}) => ({
 const cleanShortText = (value, fallback = '', max = 120) => String(value || fallback || '').trim().slice(0, max);
 
 const cleanUploadedAsset = (asset = {}) => ({
-    imageUrl: String(asset.imageUrl || '').trim(),
+    imageUrl: cleanImageUrl(asset.imageUrl),
     publicId: cleanShortText(asset.publicId, '', 160),
     sectionId: cleanShortText(asset.sectionId, 'home', 60),
     label: cleanShortText(asset.label, asset.sectionId || 'Site Asset', 100),
@@ -1365,7 +1371,7 @@ const normalizeSiteSettingsPayload = (body = {}) => ({
     },
     navbar: {
         brandText: cleanShortText(body.navbar?.brandText, DEFAULT_SITE_SETTINGS.navbar.brandText, 80),
-        logoUrl: cleanShortText(body.navbar?.logoUrl, '', 500)
+        logoUrl: cleanImageUrl(body.navbar?.logoUrl)
     },
     announcementBar: {
         text: cleanShortText(body.announcementBar?.text, DEFAULT_SITE_SETTINGS.announcementBar.text, 160),
