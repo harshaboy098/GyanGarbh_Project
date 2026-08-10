@@ -1246,10 +1246,27 @@ const DEFAULT_SITE_SETTINGS = {
         active: true
     }],
     customColors: { primary: '#ff6b00', accent: '#f59e0b' },
-    typography: { headingFont: 'Inter', bodyFont: 'Inter' }
+    typography: { headingFont: 'Inter', bodyFont: 'Inter' },
+    navbar: { brandText: 'Gyan Garbh', logoUrl: '' },
+    announcementBar: { text: 'Get 15% OFF on Bodhi Path Heritage Tours', link: 'hotel.html', active: true },
+    searchOverlay: {
+        destinationPlaceholder: 'Search Bodhgaya hotels or temple routes',
+        checkInLabel: 'Check-in',
+        checkOutLabel: 'Check-out',
+        guestsLabel: 'Pilgrims',
+        buttonText: 'Search'
+    },
+    footer: {
+        copyrightText: '? 2026 Gyan Garbh. All rights reserved.',
+        socialLinks: [
+            { label: 'Instagram', url: '#', icon: 'bi-instagram' },
+            { label: 'Facebook', url: '#', icon: 'bi-facebook' }
+        ]
+    },
+    uploadedAssets: []
 };
 
-const allowedThemeIds = new Set(['spiritual-gold', 'modern-blue', 'minimal-dark', 'heritage-vibe']);
+const allowedThemeIds = new Set(['spiritual-gold', 'modern-blue', 'agoda-clean', 'minimal-dark', 'heritage-vibe']);
 
 const cleanBanner = (banner = {}, fallbackSection = 'home') => ({
     sectionId: String(banner.sectionId || fallbackSection).trim() || fallbackSection,
@@ -1269,6 +1286,17 @@ const cleanLoginBanner = (banner = {}) => ({
     active: banner.active !== false
 });
 
+const cleanShortText = (value, fallback = '', max = 120) => String(value || fallback || '').trim().slice(0, max);
+
+const cleanUploadedAsset = (asset = {}) => ({
+    imageUrl: String(asset.imageUrl || '').trim(),
+    publicId: cleanShortText(asset.publicId, '', 160),
+    sectionId: cleanShortText(asset.sectionId, 'home', 60),
+    label: cleanShortText(asset.label, asset.sectionId || 'Site Asset', 100),
+    uploadedBy: cleanShortText(asset.uploadedBy, 'system', 120),
+    uploadedAt: asset.uploadedAt ? new Date(asset.uploadedAt) : new Date()
+});
+
 const normalizeSiteSettingsPayload = (body = {}) => ({
     activeTheme: allowedThemeIds.has(body.activeTheme) ? body.activeTheme : DEFAULT_SITE_SETTINGS.activeTheme,
     heroLayout: ['centered', 'split', 'search-first'].includes(body.heroLayout) ? body.heroLayout : 'centered',
@@ -1281,7 +1309,38 @@ const normalizeSiteSettingsPayload = (body = {}) => ({
     typography: {
         headingFont: String(body.typography?.headingFont || 'Inter').trim().slice(0, 40) || 'Inter',
         bodyFont: String(body.typography?.bodyFont || 'Inter').trim().slice(0, 40) || 'Inter'
-    }
+    },
+    navbar: {
+        brandText: cleanShortText(body.navbar?.brandText, DEFAULT_SITE_SETTINGS.navbar.brandText, 80),
+        logoUrl: cleanShortText(body.navbar?.logoUrl, '', 500)
+    },
+    announcementBar: {
+        text: cleanShortText(body.announcementBar?.text, DEFAULT_SITE_SETTINGS.announcementBar.text, 160),
+        link: cleanShortText(body.announcementBar?.link, DEFAULT_SITE_SETTINGS.announcementBar.link, 300),
+        active: body.announcementBar?.active !== false
+    },
+    searchOverlay: {
+        destinationPlaceholder: cleanShortText(body.searchOverlay?.destinationPlaceholder, DEFAULT_SITE_SETTINGS.searchOverlay.destinationPlaceholder, 120),
+        checkInLabel: cleanShortText(body.searchOverlay?.checkInLabel, DEFAULT_SITE_SETTINGS.searchOverlay.checkInLabel, 40),
+        checkOutLabel: cleanShortText(body.searchOverlay?.checkOutLabel, DEFAULT_SITE_SETTINGS.searchOverlay.checkOutLabel, 40),
+        guestsLabel: cleanShortText(body.searchOverlay?.guestsLabel, DEFAULT_SITE_SETTINGS.searchOverlay.guestsLabel, 40),
+        buttonText: cleanShortText(body.searchOverlay?.buttonText, DEFAULT_SITE_SETTINGS.searchOverlay.buttonText, 40)
+    },
+    footer: {
+        copyrightText: cleanShortText(body.footer?.copyrightText, DEFAULT_SITE_SETTINGS.footer.copyrightText, 180),
+        socialLinks: (Array.isArray(body.footer?.socialLinks) ? body.footer.socialLinks : DEFAULT_SITE_SETTINGS.footer.socialLinks)
+            .slice(0, 6)
+            .map((link) => ({
+                label: cleanShortText(link.label, '', 40),
+                url: cleanShortText(link.url, '', 300),
+                icon: cleanShortText(link.icon, 'bi-link-45deg', 40)
+            }))
+            .filter((link) => link.label || link.url)
+    },
+    uploadedAssets: (Array.isArray(body.uploadedAssets) ? body.uploadedAssets : [])
+        .map(cleanUploadedAsset)
+        .filter((asset) => asset.imageUrl)
+        .slice(0, 60)
 });
 
 const getSiteSettings = async () => {
@@ -3309,7 +3368,21 @@ app.post('/api/site-settings/upload-banner', verifyAdminOrAssistant('manageSetti
         try {
             if (!req.file?.path) return res.status(400).json({ success: false, message: 'No banner image uploaded', data: null });
             const sectionId = String(req.body.sectionId || 'home').trim() || 'home';
-            const data = { imageUrl: req.file.path, publicId: req.file.filename, sectionId };
+            const data = {
+                imageUrl: req.file.path,
+                publicId: req.file.filename,
+                sectionId,
+                label: String(req.body.label || sectionId || 'Site Asset').trim().slice(0, 100),
+                uploadedBy: req.actor?.email || 'system',
+                uploadedAt: new Date()
+            };
+            const settings = await getSiteSettings();
+            const existingAssets = Array.isArray(settings.uploadedAssets) ? settings.uploadedAssets : [];
+            settings.uploadedAssets = [data, ...existingAssets].filter((asset) => asset?.imageUrl).slice(0, 60);
+            settings.updatedBy = req.actor?.email || 'system';
+            settings.updatedByRole = req.actor?.role || 'system';
+            await settings.save();
+            emitRealtime('site-settings-asset-uploaded', { asset: data, updatedBy: req.actor?.email, actorRole: req.actor?.role });
             res.json({ success: true, message: 'Banner uploaded successfully', data, imageUrl: data.imageUrl });
         } catch (err) {
             res.status(500).json({ success: false, message: 'Banner upload failed', error: err.message, data: null });
