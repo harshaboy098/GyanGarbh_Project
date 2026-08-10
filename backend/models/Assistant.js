@@ -29,6 +29,7 @@ const assistantSchema = new mongoose.Schema({
         manageMitra: { type: Boolean, default: true },
         manageMitras: { type: Boolean, default: true },
         manageBookings: { type: Boolean, default: false },
+        manageHeritage: { type: Boolean, default: true },
         viewReports: { type: Boolean, default: false }
     },
     createdBy: {

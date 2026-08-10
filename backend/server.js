@@ -1156,7 +1156,8 @@ const normalizeAssistantPermissions = (permissions = {}) => {
         manageMitra: permissions.manageMitra === true || permissions.manageMitras === true,
         manageMitras: permissions.manageMitras === true || permissions.manageMitra === true,
         manageBookings: permissions.manageBookings === true,
-        viewReports: permissions.viewReports === true
+        viewReports: permissions.viewReports === true,
+        manageHeritage: permissions.manageHeritage === true
     };
 
     return normalized;
@@ -1199,6 +1200,90 @@ const resolveActorRole = async (email, requestedRole) => {
 
 
 
+
+
+const verifyHeritageManager = async (req, res, next) => {
+    try {
+        const session = ensureVerifiedSession(req);
+        if (!session || !['admin', 'assistant', 'mitra'].includes(session.role)) {
+            return res.status(403).json({ success: false, message: 'Admin, Assistant, or Mitra access required' });
+        }
+
+        if (session.role === 'mitra') {
+            const mitra = await User.findOne({ email: normalizeEmail(session.email), role: 'mitra', isLocked: { $ne: true } }).select('email role name fullName');
+            if (!mitra) return res.status(403).json({ success: false, message: 'Active Mitra access required' });
+            req.actor = { email: mitra.email, role: 'mitra', name: mitra.fullName || mitra.name || mitra.email };
+            return next();
+        }
+
+        const actor = await getRequestActor(req);
+        if (!actor) return res.status(403).json({ success: false, message: 'Heritage manager access required' });
+        if (actor.role === 'admin' || (actor.role === 'assistant' && assistantHasPermission(actor.permissions, 'manageHeritage'))) {
+            req.actor = actor;
+            return next();
+        }
+
+        return res.status(403).json({ success: false, message: 'Assistant permission required: manageHeritage' });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const toCleanArray = (value) => Array.isArray(value)
+    ? value.map((item) => String(item || '').trim()).filter(Boolean)
+    : String(value || '').split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+
+const buildHeritagePayload = (body = {}) => {
+    const routeDetails = body.routeDetails || {};
+    const title = String(body.name || body.title || '').trim();
+    const category = String(body.category || body.type || 'temple').trim().toLowerCase().replace(/\s+/g, '-');
+    const safeCategory = ['temple', 'monastery', 'circuit-route', 'sacred-tree', 'history', 'monument', 'festival', 'tradition'].includes(category) ? category : 'temple';
+    const galleryImages = toCleanArray(body.galleryImages || body.images);
+    const coverImage = String(body.coverImage || body.imageUrl || galleryImages[0] || '').trim();
+    const bestTime = String(routeDetails.bestTimeToVisit || body.bestTimeToVisit || '').trim();
+    const openingHours = String(body.openingHours || body.visitingHours || '').trim();
+
+    return {
+        name: title,
+        title,
+        type: body.type || safeCategory.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' '),
+        category: safeCategory,
+        tagline: String(body.tagline || body.shortTagline || body.shortDescription || '').trim(),
+        shortDescription: String(body.shortDescription || body.tagline || body.shortTagline || title).trim(),
+        fullDescription: String(body.fullDescription || body.richDescription || body.description || body.shortDescription || title).trim(),
+        significance: body.significance || '',
+        historicalFacts: toCleanArray(body.historicalFacts),
+        location: body.location || {},
+        imageUrl: coverImage,
+        coverImage,
+        images: galleryImages,
+        galleryImages,
+        routeDetails: {
+            startingPoint: String(routeDetails.startingPoint || body.startingPoint || '').trim(),
+            keyStops: toCleanArray(routeDetails.keyStops || body.keyStops || body.relatedTemples),
+            estimatedDuration: String(routeDetails.estimatedDuration || body.estimatedDuration || body.estimatedVisitTime || '').trim(),
+            estimatedKm: String(routeDetails.estimatedKm || body.estimatedKm || body.estimatedDistanceKm || '').trim(),
+            bestTimeToVisit: bestTime
+        },
+        bestTimeToVisit: bestTime,
+        visitingHours: openingHours,
+        openingHours,
+        entryFee: String(body.entryFee || '').trim(),
+        estimatedVisitTime: String(body.estimatedVisitTime || routeDetails.estimatedDuration || body.estimatedDuration || '').trim(),
+        relatedTemples: toCleanArray(body.relatedTemples || routeDetails.keyStops || body.keyStops),
+        spiritualSignificance: body.spiritualSignificance || '',
+        status: body.status === 'Inactive' || body.isLocked === true ? 'Inactive' : 'Active',
+        isLocked: body.status === 'Inactive' || body.isLocked === true
+    };
+};
+
+const heritageAudit = (actor, action, changes) => ({
+    updatedBy: actor?.name || actor?.email || 'System',
+    role: actor?.role || 'system',
+    action,
+    timestamp: new Date(),
+    changes: typeof changes === 'string' ? changes : JSON.stringify(changes || {})
+});
 const sendBookingCancellationAlert = async (booking, reason) => {
 
     // Placeholder: replace with WhatsApp and email provider calls.
@@ -5371,6 +5456,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
                 manageBookings: false,
 
                 viewReports: false,
+                manageHeritage: true,
 
                 ...(permissions || {})
 
@@ -6203,7 +6289,7 @@ app.get('/bodhi-path/all', async (req, res) => {
 
 // Admin fetch all Bodhi Path entries
 
-app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant(), async (req, res) => {
+app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant('manageHeritage'), async (req, res) => {
 
     try {
 
@@ -6222,6 +6308,73 @@ app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant(), async (req, res) => 
 });
 
 
+
+
+
+app.get('/api/heritage', async (req, res) => {
+    try {
+        const session = ensureVerifiedSession(req);
+        const isManager = session && ['admin', 'assistant', 'mitra'].includes(session.role);
+        const includeInactive = req.query.includeInactive === 'true' && isManager;
+        const filter = includeInactive ? {} : { status: { $ne: 'Inactive' }, isLocked: { $ne: true } };
+        const heritage = await BodhiPath.find(filter).sort({ updatedAt: -1, createdAt: -1 });
+        res.json({ success: true, heritage, bodhiPaths: heritage, temples: heritage });
+    } catch (err) {
+        console.error('Error fetching heritage catalog:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/heritage', verifyHeritageManager, async (req, res) => {
+    try {
+        const payload = buildHeritagePayload(req.body);
+        if (!payload.title) return res.status(400).json({ success: false, message: 'Name is required' });
+        payload.createdAt = new Date();
+        payload.updatedAt = new Date();
+        payload.updatedBy = req.actor.email;
+        payload.auditLogs = [heritageAudit(req.actor, 'CREATE', req.body.changes || 'Created heritage entry')];
+        const heritage = await BodhiPath.create(payload);
+        await logActivity('CREATE', 'BodhiPath', heritage._id, heritage.title, req.actor.email, req.actor.role, payload);
+        emitRealtime('bodhi-path-created', { bodhiPath: heritage, createdBy: req.actor.email, actorRole: req.actor.role });
+        res.status(201).json({ success: true, message: 'Heritage entry created successfully', heritage, bodhiPath: heritage });
+    } catch (err) {
+        console.error('Create heritage error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/heritage/:id', verifyHeritageManager, async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid heritage ID is required' });
+        const payload = buildHeritagePayload(req.body);
+        if (!payload.title) return res.status(400).json({ success: false, message: 'Name is required' });
+        payload.updatedAt = new Date();
+        payload.updatedBy = req.actor.email;
+        const audit = heritageAudit(req.actor, req.body.auditAction || 'UPDATE', req.body.changes || 'Updated heritage entry');
+        const heritage = await BodhiPath.findByIdAndUpdate(req.params.id, { $set: payload, $push: { auditLogs: audit } }, { new: true, runValidators: true });
+        if (!heritage) return res.status(404).json({ success: false, message: 'Heritage entry not found' });
+        await logActivity('UPDATE', 'BodhiPath', heritage._id, heritage.title, req.actor.email, req.actor.role, { changes: audit.changes });
+        emitRealtime('bodhi-path-updated', { bodhiPath: heritage, updatedBy: req.actor.email, actorRole: req.actor.role });
+        res.json({ success: true, message: 'Heritage entry updated successfully', heritage, bodhiPath: heritage });
+    } catch (err) {
+        console.error('Update heritage error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete('/api/heritage/:id', verifyHeritageManager, async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid heritage ID is required' });
+        const heritage = await BodhiPath.findByIdAndDelete(req.params.id);
+        if (!heritage) return res.status(404).json({ success: false, message: 'Heritage entry not found' });
+        await logActivity('DELETE', 'BodhiPath', heritage._id, heritage.title, req.actor.email, req.actor.role, { reason: req.body?.reason || '' });
+        emitRealtime('bodhi-path-deleted', { bodhiPathId: heritage._id, title: heritage.title, deletedBy: req.actor.email, actorRole: req.actor.role });
+        res.json({ success: true, message: 'Heritage entry deleted successfully' });
+    } catch (err) {
+        console.error('Delete heritage error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 
 // Get specific Bodhi Path entry
 
@@ -6253,7 +6406,7 @@ app.get('/bodhi-path/:id', async (req, res, next) => {
 
 
 
-app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) => {
+app.post('/admin/bodhi-path/create', verifyAdminOrAssistant('manageHeritage'), async (req, res) => {
 
     try {
 
@@ -6340,7 +6493,7 @@ app.post('/admin/bodhi-path/create', verifyAdminOrAssistant(), async (req, res) 
 
 // Update Bodhi Path entry (Admin/Assistant only)
 
-app.put('/admin/bodhi-path/update', verifyAdminOrAssistant(), async (req, res) => {
+app.put('/admin/bodhi-path/update', verifyAdminOrAssistant('manageHeritage'), async (req, res) => {
 
     try {
 
