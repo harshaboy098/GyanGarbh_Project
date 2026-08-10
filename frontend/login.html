@@ -4,12 +4,393 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | Gyan Garbh</title>
-    <meta http-equiv="refresh" content="0; url=index.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="api-client.js"></script>
+    <style>
+        :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --brand:#ff6b00; --brand-dark:#df4f00; --teal:#0891b2; --green:#16a34a; --card:#ffffff; }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:var(--ink); background:#f4f7fb; }
+        button, input { font:inherit; }
+        a { color:inherit; }
+        .auth-layout { min-height:100vh; display:grid; grid-template-columns:minmax(420px,1.08fr) minmax(360px,.92fr); }
+        .hero-pane { position:relative; isolation:isolate; overflow:hidden; padding:34px; display:flex; flex-direction:column; justify-content:space-between; color:white; background:#0f172a; }
+        .hero-pane::before { content:""; position:absolute; inset:0; z-index:-2; background:linear-gradient(120deg,rgba(15,23,42,.88),rgba(8,47,73,.5)), url('https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1600&q=80') center/cover; transform:scale(1.02); }
+        .hero-pane::after { content:""; position:absolute; inset:0; z-index:-1; background:radial-gradient(circle at 18% 16%, rgba(255,184,77,.34), transparent 32%), radial-gradient(circle at 86% 22%, rgba(6,182,212,.32), transparent 31%); }
+        .brand-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+        .brand-lockup { display:flex; align-items:center; gap:12px; font-weight:900; letter-spacing:0; }
+        .brand-mark { width:46px; height:46px; border-radius:8px; display:grid; place-items:center; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(14px); }
+        .offer-pill { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:999px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); font-weight:800; font-size:13px; backdrop-filter:blur(16px); }
+        .hero-copy { max-width:660px; padding:10vh 0 8vh; }
+        .hero-kicker { display:inline-flex; align-items:center; gap:8px; padding:8px 11px; border-radius:999px; color:#ffedd5; background:rgba(251,146,60,.16); border:1px solid rgba(251,146,60,.28); font-weight:800; font-size:12px; text-transform:uppercase; }
+        .hero-copy h1 { margin:18px 0 14px; font-size:clamp(40px,5.6vw,76px); line-height:.98; letter-spacing:0; }
+        .hero-copy p { margin:0; max-width:560px; color:#dbeafe; font-size:17px; line-height:1.7; }
+        .trust-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+        .trust-card { min-height:112px; padding:16px; border-radius:8px; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.2); backdrop-filter:blur(18px); box-shadow:0 18px 50px rgba(0,0,0,.18); }
+        .trust-card strong { display:block; font-size:22px; margin-bottom:7px; }
+        .trust-card span { color:#dbeafe; font-size:13px; line-height:1.45; }
+        .auth-pane { min-height:100vh; display:grid; place-items:center; padding:34px; background:radial-gradient(circle at 80% 10%, rgba(255,107,0,.14), transparent 26%), linear-gradient(180deg,#fff,#eef6fb); }
+        .auth-card { width:min(100%,460px); border:1px solid rgba(255,255,255,.72); border-radius:8px; background:rgba(255,255,255,.86); box-shadow:0 28px 90px rgba(15,23,42,.18); backdrop-filter:blur(24px); overflow:hidden; }
+        .card-head { padding:24px 24px 12px; }
+        .mobile-brand { display:none; align-items:center; gap:10px; margin-bottom:16px; font-weight:900; }
+        .mobile-brand .brand-mark { color:white; background:linear-gradient(135deg,var(--brand),var(--teal)); }
+        .card-head h2 { margin:0; font-size:26px; letter-spacing:0; }
+        .card-head p { margin:8px 0 0; color:var(--muted); font-size:14px; line-height:1.55; }
+        .mode-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:18px 0 0; padding:5px; border:1px solid var(--line); border-radius:8px; background:#f8fafc; }
+        .mode-tabs button { border:0; border-radius:7px; padding:10px; color:#475569; background:transparent; font-weight:900; cursor:pointer; transition:.2s ease; }
+        .mode-tabs button.active { color:white; background:#0f172a; box-shadow:0 10px 24px rgba(15,23,42,.18); }
+        .card-body { padding:12px 24px 24px; }
+        .auth-section { display:none; animation:rise .22s ease; }
+        .auth-section.active { display:block; }
+        @keyframes rise { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+        .progress { display:flex; gap:8px; margin:4px 0 18px; }
+        .progress span { flex:1; height:4px; border-radius:999px; background:#e2e8f0; }
+        .progress span.active { background:linear-gradient(90deg,var(--brand),#f59e0b); }
+        .field { display:grid; gap:8px; margin-bottom:14px; }
+        .field label { color:#475569; font-size:12px; font-weight:900; text-transform:uppercase; }
+        .input-wrap { position:relative; }
+        .input-wrap i.leading { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:#94a3b8; }
+        .input-wrap input { width:100%; height:48px; border:1px solid #cbd5e1; border-radius:8px; padding:0 44px 0 40px; color:#0f172a; background:#fff; outline:none; font-weight:700; transition:.2s ease; }
+        .input-wrap input:focus { border-color:var(--brand); box-shadow:0 0 0 4px rgba(255,107,0,.14); }
+        .eye-btn { position:absolute; right:8px; top:50%; transform:translateY(-50%); width:34px; height:34px; border:0; border-radius:8px; display:grid; place-items:center; color:#64748b; background:transparent; cursor:pointer; }
+        .eye-btn:hover { color:#0f172a; background:#f1f5f9; }
+        .cta { width:100%; min-height:48px; border:0; border-radius:8px; color:white; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); font-weight:900; cursor:pointer; box-shadow:0 14px 34px rgba(255,107,0,.28); transition:.2s ease; }
+        .cta:hover { transform:translateY(-1px); box-shadow:0 18px 42px rgba(255,107,0,.36); }
+        .cta:disabled { opacity:.62; cursor:not-allowed; transform:none; }
+        .ghost-link { border:0; padding:0; color:var(--brand-dark); background:transparent; font-weight:900; cursor:pointer; }
+        .social-stack { display:grid; gap:12px; }
+        .google-btn, .outline-btn { width:100%; min-height:48px; display:flex; align-items:center; justify-content:center; gap:10px; border:1px solid #cbd5e1; border-radius:8px; color:#0f172a; background:#fff; font-weight:900; cursor:pointer; transition:.2s ease; }
+        .google-btn:hover, .outline-btn:hover { transform:translateY(-1px); border-color:#94a3b8; box-shadow:0 12px 30px rgba(15,23,42,.12); }
+        .google-dot { width:22px; height:22px; display:grid; place-items:center; border-radius:50%; color:#dc2626; background:#fff1f2; }
+        .otp-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin:18px 0; }
+        .otp-grid input { width:100%; aspect-ratio:1; border:1px solid #cbd5e1; border-radius:8px; text-align:center; font-size:22px; font-weight:900; outline:none; }
+        .otp-grid input:focus { border-color:var(--green); box-shadow:0 0 0 4px rgba(22,163,74,.14); }
+        .step-note { padding:12px; border-radius:8px; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; font-size:13px; line-height:1.55; }
+        .password-panel { margin-top:16px; padding:14px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; display:none; }
+        .password-panel.open { display:block; }
+        .legal { margin-top:18px; color:#64748b; text-align:center; font-size:12px; line-height:1.6; }
+        .legal a { color:#0f172a; font-weight:900; text-decoration:none; }
+        .mini-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; color:#64748b; font-size:13px; }
+        .status-text { min-height:20px; margin-top:10px; color:#475569; font-size:13px; font-weight:700; }
+        .hidden { display:none !important; }
+        @media(max-width:920px) { .auth-layout{grid-template-columns:1fr}.hero-pane{display:none}.auth-pane{padding:18px}.mobile-brand{display:flex}.auth-card{box-shadow:0 18px 54px rgba(15,23,42,.14)} }
+        @media(max-width:460px) { .card-head,.card-body{padding-left:18px;padding-right:18px}.mode-tabs{grid-template-columns:1fr}.otp-grid{gap:6px}.otp-grid input{font-size:18px}.auth-pane{place-items:start center;padding-top:18px} }
+    </style>
     <link rel="stylesheet" href="mobile-responsive.css">
 </head>
 <body>
-    <script>window.location.replace('index.html');</script>
-    <p>Redirecting to login...</p>
+    <main class="auth-layout">
+        <section class="hero-pane" aria-label="Gyan Garbh travel showcase">
+            <div class="brand-row">
+                <div class="brand-lockup"><div class="brand-mark"><i class="bi bi-compass"></i></div><span>Gyan Garbh</span></div>
+                <div class="offer-pill"><i class="bi bi-stars"></i> Get 15% OFF on Bodhi Path Heritage Tours</div>
+            </div>
+            <div class="hero-copy">
+                <span class="hero-kicker"><i class="bi bi-shield-check"></i> Verified stays and sacred routes</span>
+                <h1>Book Bodhgaya journeys with calm confidence.</h1>
+                <p>Hotels, temple circuits, airport rides, and Bodhi Path experiences in one trusted travel account.</p>
+            </div>
+            <div class="trust-grid" aria-label="Trust highlights">
+                <div class="trust-card"><strong>50,000+</strong><span>Happy pilgrims planned stays and local travel with Gyan Garbh.</span></div>
+                <div class="trust-card"><strong>Verified</strong><span>Heritage stays and partner hotels reviewed before booking.</span></div>
+                <div class="trust-card"><strong>Instant</strong><span>Booking guarantee with live support across your journey.</span></div>
+            </div>
+        </section>
+
+        <section class="auth-pane">
+            <div class="auth-card">
+                <div class="card-head">
+                    <div class="mobile-brand"><div class="brand-mark"><i class="bi bi-compass"></i></div><span>Gyan Garbh</span></div>
+                    <h2 id="authTitle">Start your trip</h2>
+                    <p id="authSubtitle">Login or create a customer account with a quick email OTP. Profile details can wait until checkout.</p>
+                    <div class="mode-tabs" role="tablist">
+                        <button id="otpTab" class="active" type="button" onclick="switchMode('otp')">Phone / Email OTP</button>
+                        <button id="socialTab" type="button" onclick="switchMode('social')">Social Fast Login</button>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <section id="otpMode" class="auth-section active">
+                        <div class="progress"><span id="bar1" class="active"></span><span id="bar2"></span><span id="bar3"></span></div>
+
+                        <div id="stepContact">
+                            <div class="field">
+                                <label for="authIdentifier">Phone or Email</label>
+                                <div class="input-wrap"><i class="bi bi-person leading"></i><input id="authIdentifier" type="text" inputmode="email" placeholder="you@example.com or mobile number" autocomplete="username"></div>
+                            </div>
+                            <div class="field hidden" id="emailBridgeField">
+                                <label for="authEmailBridge">Email for OTP delivery</label>
+                                <div class="input-wrap"><i class="bi bi-envelope leading"></i><input id="authEmailBridge" type="email" placeholder="you@example.com"></div>
+                            </div>
+                            <button id="sendOtpBtn" class="cta" type="button" onclick="sendProgressiveOTP()">Send OTP</button>
+                            <div class="mini-row"><button class="ghost-link" type="button" onclick="togglePasswordPanel()">Use password instead</button><button class="ghost-link" type="button" onclick="switchMode('social')">Continue with Google</button></div>
+                            <div id="passwordPanel" class="password-panel">
+                                <div class="field"><label for="logEmail">Email Address</label><div class="input-wrap"><i class="bi bi-envelope leading"></i><input id="logEmail" type="email" autocomplete="username"></div></div>
+                                <div class="field"><label for="logPass">Password</label><div class="input-wrap"><i class="bi bi-lock leading"></i><input id="logPass" type="password" autocomplete="current-password"><button class="eye-btn" type="button" onclick="togglePasswordVisibility('logPass')"><i id="logPassIcon" class="bi bi-eye"></i></button></div></div>
+                                <button class="outline-btn" type="button" onclick="handleLogin()">Login with Password</button>
+                                <div class="mini-row"><span></span><button class="ghost-link" type="button" onclick="handleForgotPassword()">Forgot password?</button></div>
+                            </div>
+                        </div>
+
+                        <div id="stepOtp" class="hidden">
+                            <div class="step-note">Enter the 6 digit OTP sent to <strong id="otpDestination"></strong>.</div>
+                            <div class="otp-grid" id="otpGrid" aria-label="OTP input">
+                                <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric">
+                            </div>
+                            <button id="verifyOtpBtn" class="cta" type="button" onclick="verifyProgressiveOTP()">Verify OTP</button>
+                            <div class="mini-row"><button class="ghost-link" type="button" onclick="backToContact()">Change contact</button><span id="otpTimerDisplay">Resend in <strong id="timerCount">30</strong>s</span><button id="resendOtpBtn" class="ghost-link hidden" type="button" onclick="sendProgressiveOTP(true)">Resend OTP</button></div>
+                        </div>
+
+                        <div id="stepProfile" class="hidden">
+                            <div class="step-note">New here? Just tell us your name and set a password. Address, DOB, and other profile details can be completed later.</div>
+                            <div class="field"><label for="quickName">Full Name</label><div class="input-wrap"><i class="bi bi-person-badge leading"></i><input id="quickName" type="text" placeholder="Your full name" autocomplete="name"></div></div>
+                            <div class="field"><label for="quickPass">Create Password</label><div class="input-wrap"><i class="bi bi-lock leading"></i><input id="quickPass" type="password" placeholder="Minimum 8 characters" autocomplete="new-password"><button class="eye-btn" type="button" onclick="togglePasswordVisibility('quickPass')"><i id="quickPassIcon" class="bi bi-eye"></i></button></div></div>
+                            <button id="completeProfileBtn" class="cta" type="button" onclick="completeProgressiveSignup()">Create Account</button>
+                        </div>
+                        <div id="authStatus" class="status-text"></div>
+                    </section>
+
+                    <section id="socialMode" class="auth-section">
+                        <div class="social-stack">
+                            <button class="google-btn" type="button" onclick="handleGoogleLogin()"><span class="google-dot"><i class="bi bi-google"></i></span> Continue with Google</button>
+                            <button class="outline-btn" type="button" onclick="showGoogleOneTap()"><i class="bi bi-lightning-charge"></i> Try Google One Tap</button>
+                            <div class="step-note">Fast login uses your Google account to create or open your Gyan Garbh customer profile instantly.</div>
+                        </div>
+                    </section>
+
+                    <p class="legal">By continuing, you agree to Gyan Garbh <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
+        const GOOGLE_CLIENT_ID = '47696856369-b8pck7a7n94fsp303ltmmh5qpk4a55dh.apps.googleusercontent.com';
+        let googleClientInitialized = false;
+        let otpResendTimer = null;
+        let authState = { email: '', phone: '', setupToken: '' };
+
+        function initGoogleIdentity() {
+            if (window.google?.accounts?.id && !googleClientInitialized) {
+                google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse, cancel_on_tap_outside: true });
+                googleClientInitialized = true;
+            }
+        }
+        window.addEventListener('load', initGoogleIdentity);
+        window.addEventListener('DOMContentLoaded', () => { setupOtpInputs(); document.getElementById('authIdentifier')?.focus(); });
+
+        function switchMode(mode) {
+            document.getElementById('otpMode').classList.toggle('active', mode === 'otp');
+            document.getElementById('socialMode').classList.toggle('active', mode === 'social');
+            document.getElementById('otpTab').classList.toggle('active', mode === 'otp');
+            document.getElementById('socialTab').classList.toggle('active', mode === 'social');
+            document.getElementById('authTitle').textContent = mode === 'otp' ? 'Start your trip' : 'One tap, ready to travel';
+            document.getElementById('authSubtitle').textContent = mode === 'otp' ? 'Login or create a customer account with a quick email OTP. Profile details can wait until checkout.' : 'Use Google for instant access to bookings, stays, routes, and support.';
+        }
+
+        function setStep(step) {
+            ['stepContact','stepOtp','stepProfile'].forEach((id) => document.getElementById(id).classList.toggle('hidden', id !== step));
+            document.getElementById('bar1').classList.toggle('active', true);
+            document.getElementById('bar2').classList.toggle('active', step === 'stepOtp' || step === 'stepProfile');
+            document.getElementById('bar3').classList.toggle('active', step === 'stepProfile');
+        }
+
+        function setStatus(message) { document.getElementById('authStatus').textContent = message || ''; }
+        function isEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
+        function cleanPhone(value) { return String(value || '').replace(/\D/g, '').slice(-10); }
+        function parseContact() {
+            const raw = document.getElementById('authIdentifier').value.trim();
+            const bridge = document.getElementById('authEmailBridge').value.trim();
+            if (isEmail(raw)) return { email: raw.toLowerCase(), phone: cleanPhone(bridge) };
+            const phone = cleanPhone(raw);
+            return { email: bridge.toLowerCase(), phone };
+        }
+
+        async function sendProgressiveOTP(isResend = false) {
+            const contact = parseContact();
+            if (!contact.email || !isEmail(contact.email)) {
+                document.getElementById('emailBridgeField').classList.remove('hidden');
+                document.getElementById('authEmailBridge').focus();
+                return setStatus('Email is required for secure OTP delivery. Add it once and continue.');
+            }
+            const btn = document.getElementById('sendOtpBtn');
+            if (btn) { btn.disabled = true; btn.textContent = isResend ? 'Resending...' : 'Sending OTP...'; }
+            try {
+                const response = await fetch(API_URL + '/api/customer-auth/start', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ identifier: contact.email, phone: contact.phone }) });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.success === false) throw new Error(data.message || 'Unable to send OTP.');
+                authState = { email: contact.email, phone: contact.phone, setupToken: '' };
+                document.getElementById('otpDestination').textContent = contact.email;
+                setStep('stepOtp');
+                clearOtpInputs();
+                startOTPTimer();
+                setStatus('OTP sent. Check your inbox.');
+                setTimeout(() => document.querySelector('#otpGrid input')?.focus(), 80);
+            } catch (error) {
+                setStatus(error.message);
+                if (window.Swal) Swal.fire('Unable to send OTP', error.message, 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Send OTP'; }
+            }
+        }
+
+        async function verifyProgressiveOTP() {
+            const otp = Array.from(document.querySelectorAll('#otpGrid input')).map((input) => input.value).join('');
+            if (otp.length !== 6) return setStatus('Please enter the 6 digit OTP.');
+            const btn = document.getElementById('verifyOtpBtn');
+            btn.disabled = true; btn.textContent = 'Verifying...';
+            try {
+                const response = await fetch(API_URL + '/api/customer-auth/verify', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email: authState.email, otp }) });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.success === false) throw new Error(data.message || 'OTP verification failed.');
+                if (data.sessionToken) return finishAuth(data);
+                authState.setupToken = data.data?.setupToken || '';
+                setStep('stepProfile');
+                setStatus('OTP verified. Complete your quick profile.');
+                setTimeout(() => document.getElementById('quickName')?.focus(), 80);
+            } catch (error) {
+                setStatus(error.message);
+                if (window.Swal) Swal.fire('OTP Error', error.message, 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Verify OTP';
+            }
+        }
+
+        async function completeProgressiveSignup() {
+            const name = document.getElementById('quickName').value.trim();
+            const password = document.getElementById('quickPass').value;
+            if (!name) return setStatus('Please enter your name.');
+            if (!password || password.length < 8) return setStatus('Password must be at least 8 characters.');
+            const btn = document.getElementById('completeProfileBtn');
+            btn.disabled = true; btn.textContent = 'Creating account...';
+            try {
+                const response = await fetch(API_URL + '/api/customer-auth/complete', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email: authState.email, name, password, setupToken: authState.setupToken }) });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.success === false) throw new Error(data.message || 'Unable to create account.');
+                finishAuth(data);
+            } catch (error) {
+                setStatus(error.message);
+                if (window.Swal) Swal.fire('Signup Error', error.message, 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Create Account';
+            }
+        }
+
+        function setupOtpInputs() {
+            document.querySelectorAll('#otpGrid input').forEach((input, index, list) => {
+                input.addEventListener('input', () => {
+                    input.value = input.value.replace(/\D/g, '').slice(0, 1);
+                    if (input.value && list[index + 1]) list[index + 1].focus();
+                    if (Array.from(list).every((box) => box.value)) verifyProgressiveOTP();
+                });
+                input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Backspace' && !input.value && list[index - 1]) list[index - 1].focus();
+                });
+                input.addEventListener('paste', (event) => {
+                    const digits = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6).split('');
+                    if (!digits.length) return;
+                    event.preventDefault();
+                    list.forEach((box, i) => { box.value = digits[i] || ''; });
+                    list[Math.min(digits.length, 6) - 1]?.focus();
+                });
+            });
+        }
+        function clearOtpInputs() { document.querySelectorAll('#otpGrid input').forEach((input) => { input.value = ''; }); }
+        function startOTPTimer() {
+            let seconds = 30;
+            clearInterval(otpResendTimer);
+            document.getElementById('resendOtpBtn').classList.add('hidden');
+            document.getElementById('otpTimerDisplay').classList.remove('hidden');
+            document.getElementById('timerCount').textContent = seconds;
+            otpResendTimer = setInterval(() => {
+                seconds -= 1;
+                document.getElementById('timerCount').textContent = seconds;
+                if (seconds <= 0) { clearInterval(otpResendTimer); document.getElementById('otpTimerDisplay').classList.add('hidden'); document.getElementById('resendOtpBtn').classList.remove('hidden'); }
+            }, 1000);
+        }
+        function backToContact() { setStep('stepContact'); setStatus(''); }
+        function togglePasswordPanel() { document.getElementById('passwordPanel').classList.toggle('open'); }
+        function togglePasswordVisibility(fieldId) {
+            const field = document.getElementById(fieldId);
+            const icon = document.getElementById(fieldId + 'Icon');
+            field.type = field.type === 'password' ? 'text' : 'password';
+            if (icon) icon.className = field.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+        }
+
+        function finishAuth(data) {
+            localStorage.setItem('userName', data.name || data.data?.name || 'Guest');
+            localStorage.setItem('userId', data.userId || data.data?.userId || '');
+            localStorage.setItem('userEmail', data.email || data.data?.email || authState.email);
+            localStorage.setItem('userRole', data.role || data.data?.role || 'customer');
+            localStorage.setItem('authToken', data.sessionToken || '');
+            document.cookie = 'authToken=' + encodeURIComponent(data.sessionToken || '') + '; path=/; secure; samesite=strict';
+            const role = data.role || data.data?.role || 'customer';
+            if (window.Swal) {
+                Swal.fire({ icon:'success', title:'Welcome!', timer:1000, showConfirmButton:false, willClose:() => routeByRole(role) });
+            } else routeByRole(role);
+        }
+        function routeByRole(role) { if (role === 'mitra') window.location.href = 'mitra-dashboard.html'; else if (role === 'hotel') window.location.href = 'hotel-dashboard.html'; else window.location.href = 'hotel.html'; }
+
+        function handleCredentialResponse(response) {
+            if (!response?.credential) return Swal.fire('Error', 'Google authentication failed. Please try again.', 'error');
+            fetch(API_URL + '/google-login', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ idToken: response.credential }) })
+                .then((res) => res.json().then((body) => ({ status: res.status, body })))
+                .then(({ status, body }) => { if (status >= 200 && status < 300) finishAuth(body); else Swal.fire('Error', body.message || 'Google login failed.', 'error'); })
+                .catch(() => Swal.fire('Error', 'Server connection error during login.', 'error'));
+        }
+        function handleGoogleLogin() { initGoogleIdentity(); if (window.google?.accounts?.id) google.accounts.id.prompt(); else Swal.fire('Google unavailable', 'Google login is still loading. Please try again.', 'info'); }
+        function showGoogleOneTap() { handleGoogleLogin(); }
+
+        async function handleLogin() {
+            const email = document.getElementById('logEmail').value.trim().toLowerCase();
+            const password = document.getElementById('logPass').value;
+            try {
+                const res = await fetch(API_URL + '/login', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, password }) });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || 'Invalid login credentials.');
+                finishAuth(data);
+            } catch (error) { Swal.fire('Login Error', error.message, 'error'); }
+        }
+        async function handleForgotPassword() {
+            const result = await Swal.fire({ title:'Reset Password', input:'email', inputPlaceholder:'you@example.com', showCancelButton:true, confirmButtonText:'Send OTP' });
+            if (!result.value) return;
+            const email = result.value.trim().toLowerCase();
+            try {
+                Swal.fire({ title:'Sending OTP...', allowOutsideClick:false, didOpen:() => Swal.showLoading() });
+                const send = await fetch(API_URL + '/send-otp', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, isReset:true }) });
+                const sent = await send.json().catch(() => ({}));
+                if (!send.ok || sent.success === false) throw new Error(sent.message || 'Unable to send reset OTP.');
+                const reset = await Swal.fire({
+                    title:'Verify and Reset',
+                    html:'<input id="resetOtp" class="swal2-input" inputmode="numeric" maxlength="6" placeholder="6 digit OTP"><input id="resetPass" class="swal2-input" type="password" placeholder="New password">',
+                    showCancelButton:true,
+                    confirmButtonText:'Reset Password',
+                    preConfirm:() => {
+                        const otp = document.getElementById('resetOtp').value.replace(/\D/g, '');
+                        const newPassword = document.getElementById('resetPass').value;
+                        if (otp.length !== 6) { Swal.showValidationMessage('Enter the 6 digit OTP.'); return false; }
+                        if (!newPassword || newPassword.length < 8) { Swal.showValidationMessage('Password must be at least 8 characters.'); return false; }
+                        return { otp, newPassword };
+                    }
+                });
+                if (!reset.value) return;
+                const verify = await fetch(API_URL + '/verify-otp', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, otp: reset.value.otp }) });
+                const verified = await verify.json().catch(() => ({}));
+                if (!verify.ok || verified.success === false) throw new Error(verified.message || 'Invalid OTP.');
+                const update = await fetch(API_URL + '/reset-password', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, newPassword: reset.value.newPassword, userType:'user', resetToken: verified.resetToken }) });
+                const updated = await update.json().catch(() => ({}));
+                if (!update.ok || updated.success === false) throw new Error(updated.message || 'Password reset failed.');
+                Swal.fire('Password Updated', 'You can now login with your new password.', 'success');
+            } catch (error) {
+                Swal.fire('Reset Error', error.message, 'error');
+            }
+        }
+    </script>
     <script src="mobile-responsive.js"></script>
 </body>
 </html>
