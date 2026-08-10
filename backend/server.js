@@ -246,6 +246,10 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
+const siteBannerUploadsDir = path.join(uploadsDir, 'site-banners');
+if (!fs.existsSync(siteBannerUploadsDir)) {
+    fs.mkdirSync(siteBannerUploadsDir, { recursive: true });
+}
 const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
 const allowedOrigins = [
     'http://localhost:5173',
@@ -278,6 +282,18 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
+
+app.get('/uploads/site-banners/:filename', (req, res) => {
+    const safeFileName = path.basename(String(req.params.filename || ''));
+    const filePath = path.resolve(siteBannerUploadsDir, safeFileName);
+    if (!filePath.startsWith(path.resolve(siteBannerUploadsDir) + path.sep)) {
+        return res.status(400).json({ success: false, message: 'Invalid file path', data: null });
+    }
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, message: 'Image not found', data: null });
+    }
+    res.sendFile(filePath);
+});
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '47696856369-b8pck7a7n94fsp303ltmmh5qpk4a55dh.apps.googleusercontent.com';
 
@@ -314,13 +330,26 @@ cloudinary.config({
 
 
 
-if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
+const hasCloudinaryCredentials = Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret);
 
-    console.warn('Cloudinary config warning: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are required for hotel image uploads.');
+if (!hasCloudinaryCredentials) {
+
+    console.warn('Cloudinary config warning: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are missing. Image uploads will use local uploads fallback.');
 
 }
 
 
+
+const createLocalSiteBannerStorage = () => multer.diskStorage({
+    destination(req, file, callback) {
+        callback(null, siteBannerUploadsDir);
+    },
+    filename(req, file, callback) {
+        const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
+        const safeExt = ['.jpg', '.jpeg', '.png', '.webp'].includes(ext) ? ext : '.jpg';
+        callback(null, 'site-banner-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + safeExt);
+    }
+});
 
 const createCloudinaryStorage = (params) => ({
     _handleFile(req, file, callback) {
@@ -354,11 +383,13 @@ const hotelImageStorage = createCloudinaryStorage({
     transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
 });
 
-const siteBannerStorage = createCloudinaryStorage({
+const siteBannerCloudinaryStorage = createCloudinaryStorage({
     folder: 'GyanGarbh/SiteBanners',
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
     transformation: [{ width: 1920, height: 1080, crop: 'limit' }]
 });
+
+const siteBannerStorage = hasCloudinaryCredentials ? siteBannerCloudinaryStorage : createLocalSiteBannerStorage();
 
 
 
@@ -366,7 +397,29 @@ const uploadHotelImages = multer({ storage: hotelImageStorage });
 const uploadRoomImages = multer({ storage: hotelImageStorage });
 
 const uploadProfilePic = multer({ storage: hotelImageStorage });
-const uploadSiteBanner = multer({ storage: siteBannerStorage, limits: { fileSize: 8 * 1024 * 1024 } });
+const uploadSiteBanner = multer({
+    storage: siteBannerStorage,
+    limits: { fileSize: 8 * 1024 * 1024 },
+    fileFilter(req, file, callback) {
+        if (!/^image\/(jpeg|png|webp)$/i.test(file.mimetype || '')) {
+            return callback(new Error('Only JPG, PNG, and WEBP images are allowed'));
+        }
+        callback(null, true);
+    }
+});
+
+const resolvePublicBaseUrl = (req) => {
+    const configured = String(process.env.PUBLIC_API_URL || process.env.BACKEND_PUBLIC_URL || '').trim().replace(/^['"]|['"]$/g, '').replace(/\/$/, '');
+    if (configured) return configured;
+    return req.protocol + '://' + req.get('host');
+};
+
+const resolveSiteBannerUrl = (req, file) => {
+    if (!file) return '';
+    if (/^https?:\/\//i.test(file.path || '')) return file.path;
+    const filename = path.basename(file.filename || file.path || '');
+    return resolvePublicBaseUrl(req) + '/uploads/site-banners/' + encodeURIComponent(filename);
+};
 
 
 const loginRateLimiter = rateLimit({
@@ -3369,7 +3422,7 @@ app.post('/api/site-settings/upload-banner', verifyAdminOrAssistant('manageSetti
             if (!req.file?.path) return res.status(400).json({ success: false, message: 'No banner image uploaded', data: null });
             const sectionId = String(req.body.sectionId || 'home').trim() || 'home';
             const data = {
-                imageUrl: req.file.path,
+                imageUrl: resolveSiteBannerUrl(req, req.file),
                 publicId: req.file.filename,
                 sectionId,
                 label: String(req.body.label || sectionId || 'Site Asset').trim().slice(0, 100),
@@ -3383,7 +3436,7 @@ app.post('/api/site-settings/upload-banner', verifyAdminOrAssistant('manageSetti
             settings.updatedByRole = req.actor?.role || 'system';
             await settings.save();
             emitRealtime('site-settings-asset-uploaded', { asset: data, updatedBy: req.actor?.email, actorRole: req.actor?.role });
-            res.json({ success: true, message: 'Banner uploaded successfully', data, imageUrl: data.imageUrl });
+            res.json({ success: true, message: 'Banner uploaded successfully', data, imageUrl: data.imageUrl, storage: hasCloudinaryCredentials ? 'cloudinary' : 'local' });
         } catch (err) {
             res.status(500).json({ success: false, message: 'Banner upload failed', error: err.message, data: null });
         }
