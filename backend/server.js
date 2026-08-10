@@ -1106,6 +1106,40 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
 
 
 
+const verifySiteSettingsActor = async (req, res, next) => {
+
+    try {
+
+        const session = ensureVerifiedSession(req);
+
+        if (!session || !['admin', 'assistant'].includes(session.role)) {
+
+            return res.status(403).json({ success: false, message: 'Session expired or permission required. Please log in again.', data: null });
+
+        }
+
+        const actor = await getRequestActor(req);
+
+        if (!actor || !['admin', 'assistant'].includes(actor.role)) {
+
+            return res.status(403).json({ success: false, message: 'Session expired or permission required. Please log in again.', data: null });
+
+        }
+
+        req.actor = actor;
+
+        return next();
+
+    } catch (err) {
+
+        return res.status(500).json({ success: false, message: err.message, data: null });
+
+    }
+
+};
+
+
+
 const verifySupportActor = (allowedRoles = ['support', 'specialist', 'assistant', 'admin']) => async (req, res, next) => {
 
     try {
@@ -3401,7 +3435,7 @@ app.get('/api/site-settings', async (req, res) => {
     }
 });
 
-app.put('/api/site-settings', verifyAdminOrAssistant('manageSettings'), async (req, res) => {
+app.put('/api/site-settings', verifySiteSettingsActor, async (req, res) => {
     try {
         const payload = normalizeSiteSettingsPayload(req.body);
         payload.updatedBy = req.actor?.email || 'system';
@@ -3419,7 +3453,7 @@ app.put('/api/site-settings', verifyAdminOrAssistant('manageSettings'), async (r
     }
 });
 
-app.post('/api/site-settings/upload-banner', verifyAdminOrAssistant('manageSettings'), (req, res) => {
+app.post('/api/site-settings/upload-banner', verifySiteSettingsActor, (req, res) => {
     uploadSiteBanner.single('banner')(req, res, async (uploadErr) => {
         if (uploadErr) {
             return res.status(400).json({ success: false, message: uploadErr.message || 'Banner upload failed', data: null });
