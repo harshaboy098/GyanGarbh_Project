@@ -28,6 +28,14 @@ const siteSettingsSchema = new mongoose.Schema({
     heroLayout: { type: String, enum: ['centered', 'split', 'search-first'], default: 'centered' },
     heroBanners: [bannerSchema],
     loginBanners: [loginBannerSchema],
+    customColors: {
+        primary: { type: String, default: '#ff6b00' },
+        accent: { type: String, default: '#f59e0b' }
+    },
+    typography: {
+        headingFont: { type: String, default: 'Inter' },
+        bodyFont: { type: String, default: 'Inter' }
+    },
     updatedBy: { type: String, default: 'system' },
     updatedByRole: { type: String, default: 'system' }
 }, { timestamps: true });

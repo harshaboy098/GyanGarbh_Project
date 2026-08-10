@@ -1244,7 +1244,9 @@ const DEFAULT_SITE_SETTINGS = {
         imageUrl: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1600&q=80',
         badgeText: 'Verified stays and sacred routes',
         active: true
-    }]
+    }],
+    customColors: { primary: '#ff6b00', accent: '#f59e0b' },
+    typography: { headingFont: 'Inter', bodyFont: 'Inter' }
 };
 
 const allowedThemeIds = new Set(['spiritual-gold', 'modern-blue', 'minimal-dark', 'heritage-vibe']);
@@ -1271,7 +1273,15 @@ const normalizeSiteSettingsPayload = (body = {}) => ({
     activeTheme: allowedThemeIds.has(body.activeTheme) ? body.activeTheme : DEFAULT_SITE_SETTINGS.activeTheme,
     heroLayout: ['centered', 'split', 'search-first'].includes(body.heroLayout) ? body.heroLayout : 'centered',
     heroBanners: (Array.isArray(body.heroBanners) ? body.heroBanners : DEFAULT_SITE_SETTINGS.heroBanners).slice(0, 12).map((banner) => cleanBanner(banner, 'home')),
-    loginBanners: (Array.isArray(body.loginBanners) ? body.loginBanners : DEFAULT_SITE_SETTINGS.loginBanners).slice(0, 8).map(cleanLoginBanner).filter((banner) => banner.imageUrl)
+    loginBanners: (Array.isArray(body.loginBanners) ? body.loginBanners : DEFAULT_SITE_SETTINGS.loginBanners).slice(0, 8).map(cleanLoginBanner).filter((banner) => banner.imageUrl),
+    customColors: {
+        primary: /^#[0-9a-f]{6}$/i.test(String(body.customColors?.primary || '')) ? body.customColors.primary : DEFAULT_SITE_SETTINGS.customColors.primary,
+        accent: /^#[0-9a-f]{6}$/i.test(String(body.customColors?.accent || '')) ? body.customColors.accent : DEFAULT_SITE_SETTINGS.customColors.accent
+    },
+    typography: {
+        headingFont: String(body.typography?.headingFont || 'Inter').trim().slice(0, 40) || 'Inter',
+        bodyFont: String(body.typography?.bodyFont || 'Inter').trim().slice(0, 40) || 'Inter'
+    }
 });
 
 const getSiteSettings = async () => {

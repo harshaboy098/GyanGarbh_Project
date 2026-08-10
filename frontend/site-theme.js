@@ -10,7 +10,9 @@
     const active = (list, sectionId) => (list || []).find((item) => item.active !== false && (!sectionId || item.sectionId === sectionId)) || null;
     const safeUrl = (value) => String(value || '').replace(/'/g, '%27');
     function applyTheme(settings = {}) {
-        const theme = presets[settings.activeTheme] || presets['spiritual-gold'];
+        const theme = { ...(presets[settings.activeTheme] || presets['spiritual-gold']) };
+        if (settings.customColors?.primary) theme.brand = settings.customColors.primary;
+        if (settings.customColors?.accent) theme.accent = settings.customColors.accent;
         const root = document.documentElement;
         root.style.setProperty('--dynamic-brand', theme.brand);
         root.style.setProperty('--dynamic-accent', theme.accent);
@@ -21,6 +23,8 @@
         root.style.setProperty('--brand-dark', theme.brand);
         root.style.setProperty('--gold', theme.accent);
         root.style.setProperty('--accent', theme.accent);
+        if (settings.typography?.headingFont) root.style.setProperty('--site-heading-font', settings.typography.headingFont);
+        if (settings.typography?.bodyFont) root.style.setProperty('--site-body-font', settings.typography.bodyFont);
         root.dataset.siteTheme = settings.activeTheme || 'spiritual-gold';
         document.body?.classList.add('site-theme-ready');
         const homeBanner = active(settings.heroBanners, 'home') || active(settings.heroBanners);
