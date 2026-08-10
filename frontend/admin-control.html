@@ -3,18 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 Not Found</title>
+    <title>Admin Control | Bodhi Path</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Arial, sans-serif; color: #111827; background: #ffffff; }
-        main { text-align: center; }
-        h1 { margin: 0 0 8px; font-size: 2rem; }
-        p { margin: 0; color: #6b7280; }
+        :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --panel:#ffffff; --brand:#4f46e5; --cyan:#0891b2; }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#eef2f7; color:var(--ink); }
+        .shell { display:grid; grid-template-columns:260px minmax(0,1fr); min-height:100vh; }
+        aside { padding:22px; color:white; background:#0f172a; }
+        .brand { display:flex; align-items:center; gap:10px; margin-bottom:28px; font-weight:900; }
+        .brand i { width:40px; height:40px; display:grid; place-items:center; border-radius:8px; background:linear-gradient(135deg,var(--brand),var(--cyan)); }
+        .nav { display:grid; gap:8px; }
+        .nav button { display:flex; align-items:center; gap:10px; width:100%; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:11px 12px; color:#cbd5e1; background:transparent; font-weight:800; text-align:left; cursor:pointer; }
+        .nav button.active, .nav button:hover { color:white; background:rgba(255,255,255,.1); }
+        main { padding:24px; min-width:0; }
+        .topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+        h1 { margin:0; font-size:clamp(24px,3vw,34px); }
+        .topbar p { margin:5px 0 0; color:var(--muted); }
+        .admin-pill { display:inline-flex; align-items:center; gap:8px; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:white; font-weight:800; }
+        .section { display:none; }
+        .section.active { display:block; }
+        .panel { padding:18px; border:1px solid var(--line); border-radius:8px; background:white; box-shadow:0 18px 50px rgba(15,23,42,.12); }
+        .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+        .stat strong { display:block; margin-top:8px; font-size:30px; }
+        .notice { margin-top:14px; color:var(--muted); line-height:1.6; }
+        @media(max-width:860px){ .shell{grid-template-columns:1fr} aside{position:relative}.stats{grid-template-columns:1fr} main{padding:16px} }
     </style>
 </head>
 <body>
+<div class="shell">
+    <aside>
+        <div class="brand"><i class="bi bi-shield-lock"></i><span>Admin Control</span></div>
+        <nav class="nav">
+            <button class="active" onclick="showSection('overview', this)"><i class="bi bi-speedometer2"></i>Overview</button>
+            <button onclick="showSection('bodhi-path', this)"><i class="bi bi-temple"></i>Bodhi Path</button>
+        </nav>
+    </aside>
     <main>
-        <h1>404 Not Found</h1>
-        <p>The requested resource was not found.</p>
+        <header class="topbar">
+            <div><h1>Bodhi Path Route Management</h1><p>Admin catalog controls for temples, circuits, route stops, images, status, and audit logs.</p></div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><div id="adminNotifications"></div><div class="admin-pill"><i class="bi bi-person-badge"></i><span id="adminIdentity">Admin</span></div></div>
+        </header>
+        <section id="overview" class="section active">
+            <div class="stats">
+                <div class="panel stat"><span>Total Heritage Records</span><strong id="heritageCount">0</strong></div>
+                <div class="panel stat"><span>Role Access</span><strong>Admin</strong></div>
+                <div class="panel stat"><span>Audit Mode</span><strong>Live</strong></div>
+            </div>
+            <div class="panel notice">Use the Bodhi Path section to add new temples or pilgrimage circuits, upload card images, manage route stops, switch Active/Inactive status, and inspect update history.</div>
+        </section>
+        <section id="bodhi-path" class="section"><div id="adminBodhiCatalog"></div></section>
     </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="api-client.js"></script>
+<script src="bodhi-path-manager.js"></script>
+<script src="dashboard-notifications.js"></script>
+<script>
+    const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
+    function token() { return localStorage.getItem('authToken') || localStorage.getItem('adminToken') || ''; }
+    function adminEmail() { return localStorage.getItem('adminEmail') || localStorage.getItem('userEmail') || 'admin@gyangarbh.com'; }
+    function showSection(id, btn) {
+        document.querySelectorAll('.section').forEach((section) => section.classList.toggle('active', section.id === id));
+        document.querySelectorAll('.nav button').forEach((item) => item.classList.remove('active'));
+        btn.classList.add('active');
+        if (id === 'bodhi-path') loadBodhiPath();
+    }
+    function loadBodhiPath() {
+        window.GyanGarbhBodhiPath?.init({ containerId:'adminBodhiCatalog', role:'admin', actorName:'Admin', actorEmail: adminEmail(), token: token(), apiBase: API_URL, onCount: (count) => { document.getElementById('heritageCount').textContent = count; } });
+    }
+    function refreshAdminLiveData() { window.GyanGarbhBodhiPath?.load?.(true); }
+    function initNotifications() { window.GyanGarbhNotifications?.init({ containerId:'adminNotifications', role:'admin', actorEmail: adminEmail(), token: token(), apiBase: API_URL, onPoll: refreshAdminLiveData }); }
+    window.addEventListener('load', () => { document.getElementById('adminIdentity').textContent = adminEmail(); loadBodhiPath(); initNotifications(); setInterval(refreshAdminLiveData, 30000); });
+    window.addEventListener('gyangarbh:realtime', refreshAdminLiveData);
+</script>
 </body>
 </html>

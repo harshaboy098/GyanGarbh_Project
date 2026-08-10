@@ -47,6 +47,7 @@
                 <nav class="nav flex-column mb-auto">
                     <button class="nav-link active" onclick="showSection('dashboard', this)"><i class="bi bi-ui-checks-grid me-2"></i> Dashboard</button>
                     <button class="nav-link" onclick="showSection('profile', this)"><i class="bi bi-person-badge me-2"></i> My Profile</button>
+                    <button class="nav-link" onclick="showSection('bodhi-path', this)"><i class="bi bi-temple me-2"></i> Bodhi Path</button>
                     <button class="nav-link ai-sidebar-link" onclick="openRoleAIAssistant('mitra')"><i class="bi bi-robot me-2"></i> 🤖 Chat with AI</button>
                     <button class="nav-link" onclick="showSection('settings', this)"><i class="bi bi-gear me-2"></i> Settings</button>
                 </nav>
@@ -66,6 +67,7 @@
                         <p class="text-muted small">Tracking your assigned tasks and Bodhgaya stay verifications.</p>
                     </div>
                     <div class="d-flex align-items-center gap-3">
+                        <div id="mitraNotifications"></div>
                         <div class="text-end d-none d-md-block">
                             <span class="badge bg-success badge-status">Agent Level 1</span>
                         </div>
@@ -129,6 +131,8 @@
                 </div>
             </div>
 
+            <div id="bodhi-path" class="content-section"><div id="mitraBodhiCatalog"></div></div>
+
             <div id="settings" class="content-section">
                 <h2 class="fw-bold mb-4">Control Panel</h2>
                 <div class="row g-4">
@@ -162,6 +166,8 @@
 <script src="ai-navbar.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
+<script src="bodhi-path-manager.js"></script>
+<script src="dashboard-notifications.js"></script>
 <script>
     const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
     window.gyanGarbhDashboardData = { bookings: [], mitraName: localStorage.getItem('mitraName') || '' };
@@ -188,6 +194,10 @@
         document.getElementById('earnDisplay').innerText = "₹" + earnings;
 
         fetchAssignedBookings();
+        loadBodhiPath();
+        initNotifications();
+        startMitraAutoPoll();
+        window.GyanGarbhApi?.connectRealtime?.();
     };
 
     function showSection(id, btn) {
@@ -195,6 +205,39 @@
         document.getElementById(id).classList.add('active');
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         btn.classList.add('active');
+        if (id === 'bodhi-path') loadBodhiPath();
+    }
+
+    function loadBodhiPath() {
+        window.GyanGarbhBodhiPath?.init({
+            containerId: 'mitraBodhiCatalog',
+            role: 'mitra',
+            actorName: localStorage.getItem('mitraName') || localStorage.getItem('userName') || 'Mitra',
+            actorEmail: localStorage.getItem('mitraEmail') || localStorage.getItem('userEmail') || '',
+            token: localStorage.getItem('authToken') || '',
+            apiBase: API_URL
+        });
+    }
+
+    function refreshMitraLiveData() {
+        fetchAssignedBookings();
+        window.GyanGarbhBodhiPath?.load?.(true);
+    }
+
+    let mitraSyncTimer = null;
+    function startMitraAutoPoll() {
+        if (mitraSyncTimer) return;
+        mitraSyncTimer = setInterval(refreshMitraLiveData, 30000);
+    }
+
+    function initNotifications() {
+        window.GyanGarbhNotifications?.init({
+            containerId: 'mitraNotifications',
+            role: 'mitra',
+            token: localStorage.getItem('authToken') || '',
+            apiBase: API_URL,
+            onPoll: refreshMitraLiveData
+        });
     }
 
     async function fetchAssignedBookings() {
@@ -251,7 +294,7 @@
         }
     }
 
-    window.addEventListener('gyangarbh:realtime', fetchAssignedBookings);
+    window.addEventListener('gyangarbh:realtime', refreshMitraLiveData);
 
     function updatePassword() {
         const pass = document.getElementById('newPass').value;
