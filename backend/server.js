@@ -222,6 +222,20 @@ const Enquiry = mongoose.model('Enquiry', enquirySchema);
 
 // ⭐ ACTIVITY LOG MODEL - Track all changes by Admin/Assistant
 
+const systemNotificationSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    type: { type: String, default: 'system' },
+    entityType: { type: String, default: '' },
+    entityId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    audience: [{ type: String, enum: ['admin', 'assistant', 'mitra'], default: 'assistant' }],
+    readBy: [{ email: String, role: String, readAt: { type: Date, default: Date.now } }],
+    createdBy: { type: String, default: 'system' },
+    createdAt: { type: Date, default: Date.now }
+});
+
+const SystemNotification = mongoose.model('SystemNotification', systemNotificationSchema);
+
 const app = express();
 
 const server = http.createServer(app);
@@ -690,6 +704,30 @@ const emitRealtime = (type, payload = {}) => {
     const message = `event: update\ndata: ${JSON.stringify(event)}\n\n`;
 
     realtimeClients.forEach((client) => client.write(message));
+
+};
+
+const createSystemNotification = async ({ title, message, type = 'system', entityType = '', entityId = null, audience = ['admin', 'assistant'], createdBy = 'system' } = {}) => {
+
+    try {
+
+        if (!title || !message) return null;
+
+        const uniqueAudience = [...new Set((Array.isArray(audience) ? audience : [audience]).filter(Boolean))];
+
+        const notification = await SystemNotification.create({ title, message, type, entityType, entityId, audience: uniqueAudience, createdBy });
+
+        emitRealtime('system-notification', { notification });
+
+        return notification;
+
+    } catch (err) {
+
+        console.error('System notification error:', err.message);
+
+        return null;
+
+    }
 
 };
 
@@ -1219,7 +1257,7 @@ const verifyHeritageManager = async (req, res, next) => {
         const actor = await getRequestActor(req);
         if (!actor) return res.status(403).json({ success: false, message: 'Heritage manager access required' });
         if (actor.role === 'admin' || (actor.role === 'assistant' && assistantHasPermission(actor.permissions, 'manageHeritage'))) {
-            req.actor = actor;
+            req.actor = await enrichHeritageActor(actor);
             return next();
         }
 
@@ -1284,6 +1322,20 @@ const heritageAudit = (actor, action, changes) => ({
     timestamp: new Date(),
     changes: typeof changes === 'string' ? changes : JSON.stringify(changes || {})
 });
+
+const enrichHeritageActor = async (actor = {}) => {
+    if (!actor.email) return actor;
+    if (actor.name) return actor;
+    if (actor.role === 'assistant') {
+        const assistant = await Assistant.findOne({ email: normalizeEmail(actor.email) }).select('name email');
+        return { ...actor, name: assistant?.name || actor.email };
+    }
+    if (actor.role === 'mitra') {
+        const mitra = await User.findOne({ email: normalizeEmail(actor.email), role: 'mitra' }).select('name fullName email');
+        return { ...actor, name: mitra?.fullName || mitra?.name || actor.email };
+    }
+    return { ...actor, name: actor.role === 'admin' ? 'Admin' : actor.email };
+};
 const sendBookingCancellationAlert = async (booking, reason) => {
 
     // Placeholder: replace with WhatsApp and email provider calls.
@@ -2294,6 +2346,16 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
             );
 
+            await createSystemNotification({
+                title: 'New Hotel Registration',
+                message: `New Hotel Registration: ${requestId} pending review`,
+                type: 'hotel-registration',
+                entityType: 'Hotel',
+                entityId: newHotel._id,
+                audience: ['admin', 'assistant'],
+                createdBy: pending.email
+            });
+
             try {
 
                 await sendHotelApplicationConfirmationEmail({ to: pending.ownerEmail, hotelName: pending.hotelName, requestId, trackingLink, brevoApiKey: String(process.env.BREVO_API_KEY || '').trim() });
@@ -2883,6 +2945,54 @@ app.use('/admin', (req, res, next) => {
 
 
 
+
+app.get('/api/notifications', requireSession(['admin', 'assistant', 'mitra']), async (req, res) => {
+    try {
+        const role = req.session.role;
+        const email = normalizeEmail(req.session.email);
+        const notifications = await SystemNotification.find({ audience: role }).sort({ createdAt: -1 }).limit(50).lean();
+        const data = notifications.map((item) => ({
+            ...item,
+            isRead: (item.readBy || []).some((read) => normalizeEmail(read.email) === email)
+        }));
+        const unreadCount = data.filter((item) => !item.isRead).length;
+        res.json({ success: true, data, notifications: data, unreadCount });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Unable to load notifications', error: err.message, data: [], unreadCount: 0 });
+    }
+});
+
+app.put('/api/notifications/:id/read', requireSession(['admin', 'assistant']), async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid notification ID is required', data: null });
+        const email = normalizeEmail(req.session.email);
+        const role = req.session.role;
+        const data = await SystemNotification.findOneAndUpdate(
+            { _id: req.params.id, audience: role, 'readBy.email': { $ne: email } },
+            { $push: { readBy: { email, role, readAt: new Date() } } },
+            { new: true }
+        );
+        const notification = data || await SystemNotification.findById(req.params.id);
+        res.json({ success: true, data: notification, message: 'Notification marked as read' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Unable to mark notification as read', error: err.message, data: null });
+    }
+});
+
+app.put('/api/notifications/read-all', requireSession(['admin', 'assistant']), async (req, res) => {
+    try {
+        const email = normalizeEmail(req.session.email);
+        const role = req.session.role;
+        await SystemNotification.updateMany(
+            { audience: role, 'readBy.email': { $ne: email } },
+            { $push: { readBy: { email, role, readAt: new Date() } } }
+        );
+        res.json({ success: true, message: 'All notifications marked as read', data: [] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Unable to mark notifications as read', error: err.message, data: [] });
+    }
+});
+
 app.get('/admin/enquiries', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
 
     try {
@@ -3256,6 +3366,16 @@ app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (r
         await newHotel.save();
 
         await logActivity('CREATE', 'Hotel', newHotel._id, hotelName, actorEmail, actorRole);
+
+        await createSystemNotification({
+            title: 'New Hotel Registration',
+            message: `New Hotel Registration: ${newHotel.applicationRequestId || newHotel._id} pending review`,
+            type: 'hotel-registration',
+            entityType: 'Hotel',
+            entityId: newHotel._id,
+            audience: ['admin', 'assistant'],
+            createdBy: actorEmail
+        });
 
         emitRealtime('hotel-created', { hotel: newHotel, createdBy: actorEmail, actorRole });
 
@@ -6317,62 +6437,85 @@ app.get('/api/heritage', async (req, res) => {
         const isManager = session && ['admin', 'assistant', 'mitra'].includes(session.role);
         const includeInactive = req.query.includeInactive === 'true' && isManager;
         const filter = includeInactive ? {} : { status: { $ne: 'Inactive' }, isLocked: { $ne: true } };
-        const heritage = await BodhiPath.find(filter).sort({ updatedAt: -1, createdAt: -1 });
-        res.json({ success: true, heritage, bodhiPaths: heritage, temples: heritage });
+        const data = await BodhiPath.find(filter).sort({ updatedAt: -1, createdAt: -1 });
+        res.json({ success: true, data, heritage: data, bodhiPaths: data, temples: data });
     } catch (err) {
         console.error('Error fetching heritage catalog:', err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).json({ success: false, message: 'Unable to load heritage catalog', error: err.message, data: [] });
     }
 });
 
 app.post('/api/heritage', verifyHeritageManager, async (req, res) => {
     try {
         const payload = buildHeritagePayload(req.body);
-        if (!payload.title) return res.status(400).json({ success: false, message: 'Name is required' });
+        if (!payload.title) return res.status(400).json({ success: false, message: 'Name is required', data: null });
         payload.createdAt = new Date();
         payload.updatedAt = new Date();
         payload.updatedBy = req.actor.email;
         payload.auditLogs = [heritageAudit(req.actor, 'CREATE', req.body.changes || 'Created heritage entry')];
-        const heritage = await BodhiPath.create(payload);
-        await logActivity('CREATE', 'BodhiPath', heritage._id, heritage.title, req.actor.email, req.actor.role, payload);
-        emitRealtime('bodhi-path-created', { bodhiPath: heritage, createdBy: req.actor.email, actorRole: req.actor.role });
-        res.status(201).json({ success: true, message: 'Heritage entry created successfully', heritage, bodhiPath: heritage });
+        const data = await BodhiPath.create(payload);
+        await logActivity('CREATE', 'BodhiPath', data._id, data.title, req.actor.email, req.actor.role, payload);
+        await createSystemNotification({ title: 'Bodhi Path Created', message: `${req.actor.name || req.actor.email} created ${data.title}`, type: 'heritage-created', entityType: 'BodhiPath', entityId: data._id, audience: ['admin', 'assistant', 'mitra'], createdBy: req.actor.email });
+        emitRealtime('bodhi-path-created', { bodhiPath: data, createdBy: req.actor.email, actorName: req.actor.name, actorRole: req.actor.role });
+        res.status(201).json({ success: true, message: 'Heritage entry created successfully', data, heritage: data, bodhiPath: data });
     } catch (err) {
         console.error('Create heritage error:', err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).json({ success: false, message: 'Unable to create heritage entry', error: err.message, data: null });
     }
 });
 
 app.put('/api/heritage/:id', verifyHeritageManager, async (req, res) => {
     try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid heritage ID is required' });
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid heritage ID is required', data: null });
         const payload = buildHeritagePayload(req.body);
-        if (!payload.title) return res.status(400).json({ success: false, message: 'Name is required' });
+        if (!payload.title) return res.status(400).json({ success: false, message: 'Name is required', data: null });
         payload.updatedAt = new Date();
         payload.updatedBy = req.actor.email;
         const audit = heritageAudit(req.actor, req.body.auditAction || 'UPDATE', req.body.changes || 'Updated heritage entry');
-        const heritage = await BodhiPath.findByIdAndUpdate(req.params.id, { $set: payload, $push: { auditLogs: audit } }, { new: true, runValidators: true });
-        if (!heritage) return res.status(404).json({ success: false, message: 'Heritage entry not found' });
-        await logActivity('UPDATE', 'BodhiPath', heritage._id, heritage.title, req.actor.email, req.actor.role, { changes: audit.changes });
-        emitRealtime('bodhi-path-updated', { bodhiPath: heritage, updatedBy: req.actor.email, actorRole: req.actor.role });
-        res.json({ success: true, message: 'Heritage entry updated successfully', heritage, bodhiPath: heritage });
+        const data = await BodhiPath.findByIdAndUpdate(req.params.id, { $set: payload, $push: { auditLogs: audit } }, { new: true, runValidators: true });
+        if (!data) return res.status(404).json({ success: false, message: 'Heritage entry not found', data: null });
+        await logActivity('UPDATE', 'BodhiPath', data._id, data.title, req.actor.email, req.actor.role, { changes: audit.changes, timestamp: audit.timestamp });
+        await createSystemNotification({ title: 'Bodhi Path Updated', message: `${req.actor.name || req.actor.email} updated ${data.title}`, type: 'heritage-updated', entityType: 'BodhiPath', entityId: data._id, audience: ['admin', 'assistant', 'mitra'], createdBy: req.actor.email });
+        emitRealtime('bodhi-path-updated', { bodhiPath: data, updatedBy: req.actor.email, actorName: req.actor.name, actorRole: req.actor.role });
+        res.json({ success: true, message: 'Heritage entry updated successfully', data, heritage: data, bodhiPath: data });
     } catch (err) {
         console.error('Update heritage error:', err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).json({ success: false, message: 'Unable to update heritage entry', error: err.message, data: null });
     }
 });
 
 app.delete('/api/heritage/:id', verifyHeritageManager, async (req, res) => {
     try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid heritage ID is required' });
-        const heritage = await BodhiPath.findByIdAndDelete(req.params.id);
-        if (!heritage) return res.status(404).json({ success: false, message: 'Heritage entry not found' });
-        await logActivity('DELETE', 'BodhiPath', heritage._id, heritage.title, req.actor.email, req.actor.role, { reason: req.body?.reason || '' });
-        emitRealtime('bodhi-path-deleted', { bodhiPathId: heritage._id, title: heritage.title, deletedBy: req.actor.email, actorRole: req.actor.role });
-        res.json({ success: true, message: 'Heritage entry deleted successfully' });
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid heritage ID is required', data: null });
+        const audit = heritageAudit(req.actor, 'DELETE', req.body?.reason || 'Deleted from dashboard');
+        const data = await BodhiPath.findByIdAndUpdate(
+            req.params.id,
+            { $set: { status: 'Inactive', isLocked: true, updatedBy: req.actor.email, updatedAt: new Date() }, $push: { auditLogs: audit } },
+            { new: true, runValidators: true }
+        );
+        if (!data) return res.status(404).json({ success: false, message: 'Heritage entry not found', data: null });
+        await logActivity('DELETE', 'BodhiPath', data._id, data.title, req.actor.email, req.actor.role, { reason: audit.changes, timestamp: audit.timestamp });
+        await createSystemNotification({ title: 'Bodhi Path Archived', message: `${req.actor.name || req.actor.email} archived ${data.title}`, type: 'heritage-archived', entityType: 'BodhiPath', entityId: data._id, audience: ['admin', 'assistant', 'mitra'], createdBy: req.actor.email });
+        emitRealtime('bodhi-path-deleted', { bodhiPathId: data._id, title: data.title, deletedBy: req.actor.email, actorName: req.actor.name, actorRole: req.actor.role });
+        res.json({ success: true, message: 'Heritage entry archived successfully', data, heritage: data, bodhiPath: data });
     } catch (err) {
         console.error('Delete heritage error:', err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).json({ success: false, message: 'Unable to archive heritage entry', error: err.message, data: null });
+    }
+});
+
+app.get('/api/heritage/:id', async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'Valid heritage ID is required', data: null });
+        const data = await BodhiPath.findOneAndUpdate(
+            { _id: req.params.id, status: { $ne: 'Inactive' }, isLocked: { $ne: true } },
+            { $inc: { views: 1 } },
+            { new: true }
+        );
+        if (!data) return res.status(404).json({ success: false, message: 'Heritage entry not found', data: null });
+        res.json({ success: true, data, heritage: data, bodhiPath: data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Unable to load heritage entry', error: err.message, data: null });
     }
 });
 

@@ -69,6 +69,8 @@ const bodhiPathSchema = new mongoose.Schema({
     // Activity tracking and role-visible audit trail
     updatedBy: { type: String, default: null }, // Email of who last updated
     status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+    views: { type: Number, default: 0 },
+    inquiries: { type: Number, default: 0 },
     auditLogs: [{
         updatedBy: { type: String, default: 'System' },
         role: { type: String, default: 'system' },
