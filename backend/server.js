@@ -1483,6 +1483,7 @@ app.all('/api/admin', async (req, res) => {
 let otpStore = {};
 
 let pendingRegistrationStore = {};
+let progressiveAuthStore = {};
 
 let resetAuthorizationStore = {};
 
@@ -2006,6 +2007,212 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 // ---------------------------------------------------------
 
 
+
+app.post(['/api/customer-auth/start', '/customer-auth/start'], async (req, res) => {
+
+    let normalizedEmail = '';
+
+    try {
+
+        const { identifier, email, phone } = req.body;
+
+        const rawIdentifier = String(identifier || email || '').trim();
+
+        normalizedEmail = rawIdentifier.toLowerCase();
+
+        if (!isValidEmail(normalizedEmail)) {
+
+            return res.status(400).json({ success: false, message: 'Please enter a valid email address for OTP delivery.', data: null });
+
+        }
+
+        const brevoApiKey = String(process.env.BREVO_API_KEY || '').trim();
+
+        if (!brevoApiKey) {
+
+            return res.status(500).json({ success: false, message: 'Brevo API key is missing in environment variables.', data: null });
+
+        }
+
+        const existingUser = await User.findOne({ email: normalizedEmail });
+
+        const otp = Math.floor(100000 + Math.random() * 900000);
+
+        const expiresAt = Date.now() + 5 * 60 * 1000;
+
+        if (otpStore[normalizedEmail]?.timeoutId) clearTimeout(otpStore[normalizedEmail].timeoutId);
+
+        const timeoutId = setTimeout(() => {
+
+            delete otpStore[normalizedEmail];
+
+            delete progressiveAuthStore[normalizedEmail];
+
+        }, 5 * 60 * 1000);
+
+        otpStore[normalizedEmail] = { code: otp, expiresAt, timeoutId };
+
+        progressiveAuthStore[normalizedEmail] = {
+
+            email: normalizedEmail,
+
+            phone: normalizePhone(phone || ''),
+
+            existingUserId: existingUser?._id || null,
+
+            isExisting: Boolean(existingUser),
+
+            expiresAt
+
+        };
+
+        await sendOtpEmail({ to: normalizedEmail, otp, isReset: false, brevoApiKey });
+
+        res.json({ success: true, message: 'OTP sent successfully.', data: { destination: normalizedEmail, isExisting: Boolean(existingUser) } });
+
+    } catch (error) {
+
+        if (normalizedEmail && otpStore[normalizedEmail]?.timeoutId) clearTimeout(otpStore[normalizedEmail].timeoutId);
+
+        if (normalizedEmail) {
+
+            delete otpStore[normalizedEmail];
+
+            delete progressiveAuthStore[normalizedEmail];
+
+        }
+
+        res.status(500).json({ success: false, message: error.response ? error.response.data.message : error.message, data: null });
+
+    }
+
+});
+
+app.post(['/api/customer-auth/verify', '/customer-auth/verify'], async (req, res) => {
+
+    try {
+
+        const normalizedEmail = String(req.body.email || req.body.identifier || '').trim().toLowerCase();
+
+        const otp = String(req.body.otp || '').replace(/D/g, '');
+
+        const record = otpStore[normalizedEmail];
+
+        const pending = progressiveAuthStore[normalizedEmail];
+
+        if (!record || record.code != otp || !pending) return res.status(400).json({ success: false, message: 'Invalid OTP', data: null });
+
+        if (record.expiresAt < Date.now() || pending.expiresAt < Date.now()) {
+
+            if (record.timeoutId) clearTimeout(record.timeoutId);
+
+            delete otpStore[normalizedEmail];
+
+            delete progressiveAuthStore[normalizedEmail];
+
+            return res.status(400).json({ success: false, message: 'OTP expired. Please request a new code.', data: null });
+
+        }
+
+        if (record.timeoutId) clearTimeout(record.timeoutId);
+
+        delete otpStore[normalizedEmail];
+
+        const existingUser = pending.existingUserId ? await User.findById(pending.existingUserId) : await User.findOne({ email: normalizedEmail });
+
+        if (existingUser) {
+
+            delete progressiveAuthStore[normalizedEmail];
+
+            const sessionToken = createSessionToken(existingUser.role || 'customer', existingUser.email);
+
+            return res.json({ success: true, message: 'Login verified successfully.', data: { needsName: false }, userId: existingUser._id, name: existingUser.name || existingUser.fullName || 'Guest', email: existingUser.email, role: existingUser.role || 'customer', phone: existingUser.phone || '', sessionToken });
+
+        }
+
+        const setupToken = crypto.randomBytes(32).toString('hex');
+
+        pending.setupTokenHash = crypto.createHash('sha256').update(setupToken).digest('hex');
+
+        pending.setupExpiresAt = Date.now() + 10 * 60 * 1000;
+
+        return res.json({ success: true, message: 'OTP verified. Complete your profile.', data: { needsName: true, setupToken, email: normalizedEmail, phone: pending.phone || '' } });
+
+    } catch (error) {
+
+        res.status(500).json({ success: false, message: error.message || 'Unable to verify OTP.', data: null });
+
+    }
+
+});
+
+app.post(['/api/customer-auth/complete', '/customer-auth/complete'], async (req, res) => {
+
+    try {
+
+        const normalizedEmail = String(req.body.email || '').trim().toLowerCase();
+
+        const name = String(req.body.name || req.body.fullName || '').trim();
+
+        const password = String(req.body.password || '').trim();
+
+        const setupToken = String(req.body.setupToken || '');
+
+        const pending = progressiveAuthStore[normalizedEmail];
+
+        if (!pending || !pending.setupTokenHash || pending.setupExpiresAt < Date.now()) return res.status(400).json({ success: false, message: 'Signup session expired. Please request OTP again.', data: null });
+
+        const tokenHash = crypto.createHash('sha256').update(setupToken).digest('hex');
+
+        if (tokenHash !== pending.setupTokenHash) return res.status(400).json({ success: false, message: 'Invalid signup session.', data: null });
+
+        if (!name) return res.status(400).json({ success: false, message: 'Name is required.', data: null });
+
+        if (!isStrongEnoughPassword(password)) return res.status(400).json({ success: false, message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`, data: null });
+
+        const existingUser = await User.findOne({ email: normalizedEmail });
+
+        if (existingUser) return res.status(400).json({ success: false, message: 'This email is already registered.', data: null });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = new User({
+
+            name,
+
+            fullName: name,
+
+            email: normalizedEmail,
+
+            password: hashedPassword,
+
+            role: 'customer',
+
+            phone: pending.phone || '',
+
+            villageCity: 'Bodhgaya',
+
+            address: '',
+
+            pinCode: ''
+
+        });
+
+        await newUser.save();
+
+        delete progressiveAuthStore[normalizedEmail];
+
+        const sessionToken = createSessionToken(newUser.role || 'customer', newUser.email);
+
+        res.status(201).json({ success: true, message: 'Account created successfully.', userId: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role, phone: newUser.phone, sessionToken, data: { userId: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role, phone: newUser.phone } });
+
+    } catch (error) {
+
+        res.status(500).json({ success: false, message: error.message || 'Unable to complete signup.', data: null });
+
+    }
+
+});
 
 app.post(['/send-otp', '/api/send-otp'], async (req, res) => {
 
