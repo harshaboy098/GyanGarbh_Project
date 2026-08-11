@@ -260,18 +260,11 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 const corsOptions = {
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-            return callback(null, true);
-        }
-
-        console.log('Blocked Origin:', origin);
-        return callback(new Error('Not allowed by CORS'));
-    },
+    origin: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-gyangarbh-admin-shield'],
-    credentials: true,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
