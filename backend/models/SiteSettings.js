@@ -47,6 +47,12 @@ const siteSettingsSchema = new mongoose.Schema({
         primary: { type: String, default: '#ff6b00' },
         accent: { type: String, default: '#f59e0b' }
     },
+    bodhiVisuals: {
+        cardRadius: { type: Number, default: 18 },
+        badgeColor: { type: String, default: '#d6a843' },
+        goldAccent: { type: String, default: '#f6d784' },
+        bannerCaption: { type: String, default: 'Heritage & Spiritual Tour Exploration First' }
+    },
     typography: {
         headingFont: { type: String, default: 'Inter' },
         bodyFont: { type: String, default: 'Inter' }

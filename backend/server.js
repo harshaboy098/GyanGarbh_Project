@@ -1329,6 +1329,7 @@ const DEFAULT_SITE_SETTINGS = {
         active: true
     }],
     customColors: { primary: '#ff6b00', accent: '#f59e0b' },
+    bodhiVisuals: { cardRadius: 18, badgeColor: '#d6a843', goldAccent: '#f6d784', bannerCaption: 'Heritage & Spiritual Tour Exploration First' },
     typography: { headingFont: 'Inter', bodyFont: 'Inter' },
     navbar: { brandText: 'Gyan Garbh', logoUrl: '' },
     announcementBar: { text: 'Get 15% OFF on Bodhi Path Heritage Tours', link: 'hotel.html', active: true },
@@ -1376,6 +1377,17 @@ const cleanLoginBanner = (banner = {}) => ({
 
 const cleanShortText = (value, fallback = '', max = 120) => String(value || fallback || '').trim().slice(0, max);
 
+const cleanBodhiVisuals = (visuals = {}) => {
+    const radius = Number(visuals.cardRadius);
+    const color = (value, fallback) => /^#[0-9a-f]{6}$/i.test(String(value || '')) ? value : fallback;
+    return {
+        cardRadius: Number.isFinite(radius) ? Math.min(28, Math.max(8, radius)) : DEFAULT_SITE_SETTINGS.bodhiVisuals.cardRadius,
+        badgeColor: color(visuals.badgeColor, DEFAULT_SITE_SETTINGS.bodhiVisuals.badgeColor),
+        goldAccent: color(visuals.goldAccent, DEFAULT_SITE_SETTINGS.bodhiVisuals.goldAccent),
+        bannerCaption: cleanShortText(visuals.bannerCaption, DEFAULT_SITE_SETTINGS.bodhiVisuals.bannerCaption, 120)
+    };
+};
+
 const cleanUploadedAsset = (asset = {}) => ({
     imageUrl: cleanImageUrl(asset.imageUrl),
     publicId: cleanShortText(asset.publicId, '', 160),
@@ -1398,6 +1410,7 @@ const normalizeSiteSettingsPayload = (body = {}) => ({
         headingFont: String(body.typography?.headingFont || 'Inter').trim().slice(0, 40) || 'Inter',
         bodyFont: String(body.typography?.bodyFont || 'Inter').trim().slice(0, 40) || 'Inter'
     },
+    bodhiVisuals: cleanBodhiVisuals(body.bodhiVisuals),
     navbar: {
         brandText: cleanShortText(body.navbar?.brandText, DEFAULT_SITE_SETTINGS.navbar.brandText, 80),
         logoUrl: cleanImageUrl(body.navbar?.logoUrl)
@@ -5031,6 +5044,22 @@ app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
 app.get('/all-hotels', async (req, res) => {
 
     try { res.json(await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }))); } catch (err) { res.status(500).send(err.message); }
+
+});
+
+app.get('/api/hotels', async (req, res) => {
+
+    try {
+
+        const hotels = await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
+
+        res.json({ success: true, data: hotels, hotels });
+
+    } catch (err) {
+
+        res.status(500).json({ success: false, message: err.message });
+
+    }
 
 });
 

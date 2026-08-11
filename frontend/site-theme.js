@@ -25,6 +25,11 @@
         root.style.setProperty('--accent', theme.accent);
         if (settings.typography?.headingFont) root.style.setProperty('--site-heading-font', settings.typography.headingFont);
         if (settings.typography?.bodyFont) root.style.setProperty('--site-body-font', settings.typography.bodyFont);
+        const bodhiVisuals = settings.bodhiVisuals || {};
+        if (bodhiVisuals.cardRadius) root.style.setProperty('--card-radius', bodhiVisuals.cardRadius + 'px');
+        if (bodhiVisuals.cardRadius) root.style.setProperty('--bodhi-card-radius', bodhiVisuals.cardRadius + 'px');
+        if (bodhiVisuals.badgeColor) root.style.setProperty('--badge-color', bodhiVisuals.badgeColor);
+        if (bodhiVisuals.goldAccent) root.style.setProperty('--accent-highlight', bodhiVisuals.goldAccent);
         root.dataset.siteTheme = settings.activeTheme || 'spiritual-gold';
         document.body?.classList.add('site-theme-ready');
         const homeBanner = active(settings.heroBanners, 'home') || active(settings.heroBanners);
