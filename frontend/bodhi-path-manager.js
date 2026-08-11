@@ -7,6 +7,7 @@
     let statusFilter = 'all';
     let activeContainer = '';
     let isLoaded = false;
+    const CACHE_KEY = 'gg_assistant_bodhi_path_cache_v1';
 
     function injectStyle() {
         if (document.getElementById(STYLE_ID)) return;
@@ -28,11 +29,23 @@
     const categoryLabel = (item) => (item.type || item.category || 'Temple').toString().replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
     const isInactive = (item) => item.status === 'Inactive' || item.isLocked;
 
+    function readCache() { try { const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); return Array.isArray(cached) ? cached.map(normalize) : []; } catch { return []; } }
+    function writeCache(nextItems) { try { if (Array.isArray(nextItems)) localStorage.setItem(CACHE_KEY, JSON.stringify(nextItems)); } catch (_) {} }
+    function timeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('Render cold-start timeout')), ms)); }
     async function request(path, options = {}) {
-        const res = await fetch(`${apiBase()}${path}`, { ...options, headers: { ...headers(), ...(options.headers || {}) } });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === false) throw new Error(data.message || `Request failed: ${res.status}`);
-        return data;
+        let lastError;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const res = await Promise.race([fetch(`${apiBase()}${path}`, { ...options, headers: { ...headers(), ...(options.headers || {}) } }), timeout(3000)]);
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) throw new Error(data.message || `Request failed: ${res.status}`);
+                return data;
+            } catch (error) {
+                lastError = error;
+                await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+            }
+        }
+        throw lastError || new Error('Failed to fetch');
     }
 
     function filteredItems() {
@@ -117,15 +130,23 @@
         const root = document.getElementById(cfg.containerId);
         if (!root) return;
         if (isLoaded && !force && activeContainer === cfg.containerId) { render(); return; }
-        root.innerHTML = '<div class="bp-empty">Loading Bodhi Path catalog...</div>';
+        if (!items.length) {
+            items = readCache();
+            if (items.length) render();
+            else root.innerHTML = '<div class="bp-empty">Preparing Bodhi Path catalog...</div>';
+        }
         try {
             const response = await request('/api/heritage?includeInactive=true');
-            items = (response.data || response.heritage || response.bodhiPaths || response.temples || []).map(normalize);
+            const nextItems = (response.data || response.heritage || response.bodhiPaths || response.temples || []).map(normalize);
+            if (nextItems.length || !items.length) items = nextItems;
+            writeCache(items);
             isLoaded = true;
             activeContainer = cfg.containerId;
             render();
         } catch (err) {
-            root.innerHTML = `<div class="bp-empty bp-error">${esc(err.message)}</div>`;
+            console.warn('Bodhi Path background sync skipped:', err.message);
+            const cached = items.length ? items : readCache();
+            if (cached.length) { items = cached; isLoaded = true; activeContainer = cfg.containerId; render(); }
         }
     }
 
