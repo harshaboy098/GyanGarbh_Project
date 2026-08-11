@@ -793,6 +793,9 @@
         if (params.get('checkIn')) checkIn.value = params.get('checkIn');
         if (params.get('checkOut')) checkOut.value = params.get('checkOut');
         if (guests && params.get('guests')) guests.value = params.get('guests');
+        const heritageFilter = params.get('hotelFilter') || params.get('landmark') || '';
+        const searchInput = document.getElementById('hotelSearch');
+        if (heritageFilter && searchInput) searchInput.value = heritageFilter;
 
         checkIn.addEventListener('change', () => {
             if (!checkIn.value) return;
@@ -1089,6 +1092,20 @@
             const text = c.innerText.toLowerCase();
             c.style.display = text.includes(val) ? "block" : "none";
         });
+    }
+
+    function applyHeritageHotelFilter() {
+        const params = new URLSearchParams(window.location.search);
+        const filter = params.get('hotelFilter') || params.get('landmark') || '';
+        const searchInput = document.getElementById('hotelSearch');
+        if (filter && searchInput) {
+            searchInput.value = filter;
+            filterHotels();
+            const heroTitle = document.querySelector('[data-hero-title]');
+            const heroSub = document.querySelector('[data-hero-subtitle]');
+            if (heroTitle) heroTitle.textContent = `Stays Near ${filter}`;
+            if (heroSub) heroSub.textContent = 'Verified hotels filtered for your selected Bodhi Path sacred site.';
+        }
     }
 
     async function handleHotelSearchSubmit() {

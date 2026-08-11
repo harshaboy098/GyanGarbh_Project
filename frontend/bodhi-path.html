@@ -379,6 +379,18 @@
                 padding: 20px;
             }
         }
+
+        .heritage-explorer-layout { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:24px; align-items:start; margin-bottom:50px; }
+        .heritage-explorer-layout .heritage-grid { margin-bottom:0; }
+        .stays-panel { position:sticky; top:18px; background:white; border-radius:15px; box-shadow:0 10px 32px rgba(15,23,42,.16); padding:18px; }
+        .stays-panel h3 { color:#1f2937; font-size:1.1rem; font-weight:800; margin-bottom:6px; }
+        .stays-panel p { color:#64748b; font-size:.9rem; margin-bottom:14px; }
+        .nearby-stay-card { border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:10px; background:#f8fafc; }
+        .nearby-stay-card strong { display:block; color:#111827; }
+        .nearby-stay-card small { color:#64748b; display:block; margin:4px 0 9px; }
+        .stay-cta { display:inline-flex; align-items:center; gap:7px; border:0; border-radius:999px; padding:8px 11px; color:white; background:linear-gradient(45deg,#ff6b00,#f59e0b); font-weight:800; text-decoration:none; font-size:.82rem; }
+        .heritage-card.active { outline:3px solid #f59e0b; transform:translateY(-6px); }
+        @media(max-width:980px){ .heritage-explorer-layout{grid-template-columns:1fr}.stays-panel{position:static} }
     </style>
     <link rel="stylesheet" href="mobile-responsive.css">
 </head>
@@ -634,6 +646,96 @@
     });
 </script>
 
+
+<script id="heritageEnhanceScript">
+(function(){
+    const fallbackSites = [
+        { _id:'mahabodhi-temple', title:'Mahabodhi Temple', name:'Mahabodhi Temple', category:'temple', shortDescription:'UNESCO World Heritage enlightenment shrine and the core pilgrimage landmark.', fullDescription:'The Mahabodhi Temple marks the sacred place of Buddha enlightenment.', imageUrl:'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=900&auto=format&fit=crop', estimatedVisitTime:'2-3 hours', location:{address:'Bodhi Marg, Bodh Gaya'}, nearbyKey:'Mahabodhi Temple' },
+        { _id:'thai-monastery', title:'Thai Monastery', name:'Thai Monastery', category:'monastery', shortDescription:'A peaceful Thai Buddhist monastery close to the central sacred circuit.', fullDescription:'Thai Monastery offers quiet architecture, meditation, and easy access to nearby stays.', imageUrl:'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=900&q=80', estimatedVisitTime:'1-2 hours', location:{address:'Near Mahabodhi Temple'}, nearbyKey:'Thai Monastery' },
+        { _id:'great-buddha-statue', title:'Great Buddha Statue', name:'Great Buddha Statue', category:'monument', shortDescription:'Iconic open-air Buddha landmark suited for evening routes and family visits.', fullDescription:'The Great Buddha Statue is one of Bodh Gaya most recognizable sacred landmarks.', imageUrl:'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=900&q=80', estimatedVisitTime:'1 hour', location:{address:'Bodh Gaya'}, nearbyKey:'Great Buddha Statue' }
+    ];
+    let nearbyHotels = [];
+    function esc(value){ return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function nextDate(days){ const d = new Date(); d.setDate(d.getDate()+days); return d.toISOString().split('T')[0]; }
+    function ensureLayout(){
+        const grid = document.getElementById('heritageContainer');
+        if (!grid || grid.closest('.heritage-explorer-layout')) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'heritage-explorer-layout';
+        grid.parentNode.insertBefore(wrap, grid);
+        wrap.appendChild(grid);
+        const panel = document.createElement('aside');
+        panel.className = 'stays-panel';
+        panel.id = 'nearbyStaysPanel';
+        panel.innerHTML = '<h3>Recommended Stays Near Mahabodhi Temple</h3><p>Hover or tap a sacred site to see nearby verified stays.</p><div id="nearbyStaysList"></div>';
+        wrap.appendChild(panel);
+    }
+    async function loadNearbyHotels(){ try { const res = await fetch(API_URL + '/all-hotels'); nearbyHotels = await res.json(); } catch(_) { nearbyHotels = []; } }
+    function normalizeSite(item){
+        const normalized = typeof normalizeTemple === 'function' ? normalizeTemple(item) : item;
+        return Object.assign({}, normalized, { title: normalized.title || normalized.name, imageUrl: normalized.coverImage || normalized.imageUrl || normalized.mainImage, nearbyKey: normalized.nearbyKey || normalized.title || normalized.name });
+    }
+    function distanceText(site, hotel, index){
+        const value = hotel.distanceFromLandmark?.value || ([0.3,0.7,1.1][index] || 1.4);
+        return Number(value) < 1 ? Math.round(Number(value)*1000) + 'm from ' + site.title : value + ' km from ' + site.title;
+    }
+    function recommendedHotelsFor(site){
+        const key = String(site.title || '').toLowerCase();
+        const hotels = (nearbyHotels || []).map((hotel, index) => {
+            const hay = (hotel.hotelName + ' ' + hotel.location + ' ' + hotel.description + ' ' + (hotel.distanceFromLandmark?.landmark || '')).toLowerCase();
+            let score = hay.includes(key) ? 20 : 0;
+            if (/mahabodhi|bodh|temple|monastery/.test(hay)) score += 8;
+            score += Math.max(0, 5 - index);
+            return Object.assign({}, hotel, { score, distanceLabel: distanceText(site, hotel, index) });
+        }).sort((a,b) => b.score - a.score).slice(0,3);
+        return hotels.length ? hotels : [
+            { hotelName:'Mahabodhi Heritage Stay', location:'Bodh Gaya', roomRate:1800, rating:4.7, distanceLabel:'300m from ' + site.title },
+            { hotelName:'Bodhi Retreat Inn', location:'Temple Road', roomRate:2200, rating:4.6, distanceLabel:'650m from ' + site.title }
+        ];
+    }
+    window.setActiveHeritage = function(id){
+        const site = (window.allHeritageData || []).find(item => item._id === id) || (window.allHeritageData || [])[0];
+        if (!site) return;
+        document.querySelectorAll('.heritage-card').forEach(card => card.classList.toggle('active', card.dataset.siteId === site._id));
+        const title = document.querySelector('#nearbyStaysPanel h3');
+        const list = document.getElementById('nearbyStaysList');
+        if (title) title.textContent = 'Recommended Stays Near ' + site.title;
+        if (list) list.innerHTML = recommendedHotelsFor(site).map(hotel => {
+            const params = new URLSearchParams({ landmark: site.title, hotelFilter: site.title, checkIn: nextDate(1), checkOut: nextDate(2), guests: '2' });
+            return '<div class="nearby-stay-card"><strong>'+esc(hotel.hotelName || 'Verified Stay')+'</strong><small>'+esc(hotel.distanceLabel || ('Near '+site.title))+' - '+esc(hotel.location || 'Bodh Gaya')+' - Rs '+esc(hotel.acRoomPrice || hotel.roomRate || hotel.nonAcRoomPrice || 1800)+'/night</small><a class="stay-cta" href="hotel.html?'+params.toString()+'"><i class="bi bi-calendar-check"></i> Book Stay Now</a></div>';
+        }).join('');
+    };
+    window.displayHeritage = function(heritageList){
+        ensureLayout();
+        const container = document.getElementById('heritageContainer');
+        const list = (heritageList && heritageList.length ? heritageList : fallbackSites).map(normalizeSite);
+        window.allHeritageData = list;
+        container.innerHTML = list.map(item => '<div class="heritage-card" data-site-id="'+esc(item._id)+'"><img src="'+esc(item.imageUrl || 'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=400')+'" alt="'+esc(item.title)+'" class="card-image"><div class="card-content"><div class="card-category">'+esc((item.category || 'temple').toUpperCase())+'</div><div class="card-title">'+esc(item.title)+'</div><div class="card-description">'+esc(item.shortDescription || '')+'</div><div class="card-footer"><span class="card-meta"><i class="bi bi-clock"></i> '+esc(item.estimatedVisitTime || '2-3 hours')+'</span><button class="explore-btn" type="button">Explore <i class="bi bi-arrow-right"></i></button></div></div></div>').join('');
+        container.querySelectorAll('.heritage-card').forEach(card => {
+            card.addEventListener('mouseenter', () => setActiveHeritage(card.dataset.siteId));
+            card.addEventListener('click', () => {
+                setActiveHeritage(card.dataset.siteId);
+                openModal(card.dataset.siteId);
+            });
+        });
+        setActiveHeritage(list[0]?._id);
+    };
+    window.loadHeritageData = async function(){
+        ensureLayout();
+        await loadNearbyHotels();
+        try {
+            const response = await fetch(API_URL + '/api/heritage');
+            const data = await response.json();
+            const list = data.data || data.temples || data.bodhiPaths || [];
+            displayHeritage(list.length ? list : fallbackSites);
+        } catch (error) {
+            console.warn('Heritage fallback loaded:', error);
+            displayHeritage(fallbackSites);
+        }
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', window.loadHeritageData); else window.loadHeritageData();
+}());
+</script>
     <script src="mobile-responsive.js"></script>
 </body>
 </html>

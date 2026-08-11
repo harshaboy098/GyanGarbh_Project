@@ -51,13 +51,13 @@ const { OAuth2Client } = require('google-auth-library');
 
 const User = require('./models/User');
 
-const Booking = require('./models/Booking'); 
+const Booking = require('./models/Booking');
 
 const Hotel = require('./models/Hotel');
 
 const Assistant = require('./models/Assistant');
 
-const BodhiPath = require('./models/BodhiPath'); 
+const BodhiPath = require('./models/BodhiPath');
 
 const ActivityLog = require('./models/ActivityLog');
 
@@ -205,7 +205,7 @@ const enquirySchema = new mongoose.Schema({
 
     mitraName: String,
 
-    status: { type: String, default: 'Pending' }, 
+    status: { type: String, default: 'Pending' },
 
     createdAt: { type: Date, default: Date.now },
 
@@ -800,7 +800,7 @@ const checkRole = (allowedRoles) => {
 
             const { userEmail, userRole } = req.body;
 
-            
+
 
             if (!userEmail || !userRole) {
 
@@ -808,7 +808,7 @@ const checkRole = (allowedRoles) => {
 
             }
 
-            
+
 
             // Check if user is admin
 
@@ -822,7 +822,7 @@ const checkRole = (allowedRoles) => {
 
             }
 
-            
+
 
             // Check if user is assistant
 
@@ -838,7 +838,7 @@ const checkRole = (allowedRoles) => {
 
             }
 
-            
+
 
             return res.status(403).json({ success: false, message: 'Unauthorized access' });
 
@@ -1536,6 +1536,76 @@ const buildHeritagePayload = (body = {}) => {
     };
 };
 
+const DEFAULT_BODHI_PATH_SITES = [
+    {
+        title: 'Mahabodhi Temple',
+        name: 'Mahabodhi Temple',
+        type: 'Temple',
+        category: 'temple',
+        tagline: 'UNESCO World Heritage sacred temple',
+        shortDescription: 'The enlightenment shrine and most important pilgrimage landmark in Bodh Gaya.',
+        fullDescription: 'The Mahabodhi Temple marks the sacred place where Siddhartha Gautama attained enlightenment. It is the natural first stop for pilgrims and the anchor for nearby verified stays.',
+        significance: 'The holiest Buddhist pilgrimage site in Bodh Gaya.',
+        location: { address: 'Bodhi Marg, Bodh Gaya, Bihar 824231' },
+        imageUrl: 'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200&auto=format&fit=crop',
+        coverImage: 'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200&auto=format&fit=crop',
+        visitingHours: '5:00 AM - 9:00 PM',
+        entryFee: 'Free',
+        estimatedVisitTime: '2-3 hours',
+        bestTimeToVisit: 'October to March',
+        status: 'Active'
+    },
+    {
+        title: 'Thai Monastery',
+        name: 'Thai Monastery',
+        type: 'Monastery',
+        category: 'monastery',
+        tagline: 'Peaceful Thai Buddhist monastery near the main circuit',
+        shortDescription: 'A calm monastery known for Thai architecture, meditation atmosphere, and easy access from central Bodhgaya.',
+        fullDescription: 'Thai Monastery brings a graceful international Buddhist presence to Bodh Gaya and is a favorite stop for slow, quiet exploration after the Mahabodhi Temple.',
+        significance: 'A living monastery representing Thai Buddhist devotion in Bodh Gaya.',
+        location: { address: 'Near Mahabodhi Temple, Bodh Gaya' },
+        imageUrl: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80',
+        coverImage: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80',
+        visitingHours: '6:00 AM - 7:00 PM',
+        entryFee: 'Free',
+        estimatedVisitTime: '1-2 hours',
+        bestTimeToVisit: 'Morning and sunset',
+        status: 'Active'
+    },
+    {
+        title: 'Great Buddha Statue',
+        name: 'Great Buddha Statue',
+        type: 'Monument',
+        category: 'monument',
+        tagline: 'Iconic open-air Buddha monument',
+        shortDescription: 'A landmark Buddha statue suited for families, first-time visitors, and evening route planning.',
+        fullDescription: "The Great Buddha Statue is one of Bodh Gaya's most recognizable landmarks and pairs naturally with nearby monasteries, cafes, and family-friendly stays.",
+        significance: 'A modern symbol of peace, compassion, and Buddhist devotion.',
+        location: { address: 'Bodh Gaya, Bihar' },
+        imageUrl: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80',
+        coverImage: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80',
+        visitingHours: '6:00 AM - 6:00 PM',
+        entryFee: 'Free',
+        estimatedVisitTime: '1 hour',
+        bestTimeToVisit: 'Late afternoon',
+        status: 'Active'
+    }
+];
+
+const ensureDefaultBodhiPathData = async () => {
+    const existingCount = await BodhiPath.countDocuments();
+    if (existingCount > 0) return false;
+    await BodhiPath.insertMany(DEFAULT_BODHI_PATH_SITES.map((site) => ({
+        ...site,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: 'system',
+        auditLogs: [{ updatedBy: 'System', role: 'system', action: 'SEEDED', timestamp: new Date(), changes: 'Default heritage-first sacred site seed' }]
+    })));
+    return true;
+};
+
 const heritageAudit = (actor, action, changes) => ({
     updatedBy: actor?.name || actor?.email || 'System',
     role: actor?.role || 'system',
@@ -2189,11 +2259,11 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 
 
 
-        res.status(200).json({ 
+        res.status(200).json({
 
-            success: true, 
+            success: true,
 
-            message: 'Admin Login Successful', 
+            message: 'Admin Login Successful',
 
             role: 'admin',
 
@@ -2700,7 +2770,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
         const pending = pendingRegistrationStore[normalizedEmail];
 
-        
+
 
         // 🔒 FORGOT PASSWORD / PASSWORD RESET FLOW
 
@@ -2794,7 +2864,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
             }
 
-            
+
 
             // Delete cache only AFTER successful database storage
 
@@ -2804,13 +2874,13 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
             delete pendingRegistrationStore[normalizedEmail];
 
-            
+
 
             return res.json({ success: true, message: 'Hotel owner registered successfully. Your account is pending assistant verification.', role: 'hotel', name: pending.name, email: pending.email, verificationStatus: 'Pending Verification', requestId, applicationRequestId: requestId, trackingLink });
 
         }
 
-        
+
 
         // 🔒 NEW CUSTOMER / MITRA REGISTRATION
 
@@ -2820,7 +2890,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
         const cleanFullName = String(pending.fullName || pending.name || '').trim();
 
-        
+
 
         if (!cleanName) {
 
@@ -2828,7 +2898,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
         }
 
-        
+
 
         const hashedPassword = await bcrypt.hash(pending.password, 10);
 
@@ -2860,7 +2930,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
         await newUser.save();
 
-        
+
 
         // Delete cache only AFTER successful database storage
 
@@ -2870,7 +2940,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
         delete pendingRegistrationStore[normalizedEmail];
 
-        
+
 
         return res.json({ success: true, message: 'Registered successfully.', role: newUser.role, userId: newUser._id, name: newUser.name, email: newUser.email, phone: newUser.phone, sessionToken: createSessionToken(newUser.role, newUser.email) });
 
@@ -3730,7 +3800,7 @@ app.put('/admin/update-hotel', verifyAdminOrAssistant('manageHotels'), async (re
 
         await logActivity('UPDATE', 'Hotel', hotelId, updatedHotel.hotelName, actorEmail, actorRole, {
 
-            phone, address, location, rating, description, totalRooms 
+            phone, address, location, rating, description, totalRooms
 
         });
 
@@ -4359,11 +4429,11 @@ app.delete('/admin/delete-hotel', verifyAdmin, async (req, res) => {
 
         if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
 
-            return res.status(403).json({ 
+            return res.status(403).json({
 
-                success: false, 
+                success: false,
 
-                message: 'Only Admin can delete hotels permanently' 
+                message: 'Only Admin can delete hotels permanently'
 
             });
 
@@ -4914,9 +4984,9 @@ app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
 
         const normalizedEmail = String(email || '').trim().toLowerCase();
 
-        const hotel = await Hotel.findOne({ 
+        const hotel = await Hotel.findOne({
 
-            $or: [{ ownerEmail: normalizedEmail }, { email: normalizedEmail }] 
+            $or: [{ ownerEmail: normalizedEmail }, { email: normalizedEmail }]
 
         });
 
@@ -4932,11 +5002,11 @@ app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
 
         if (hotel && await hotel.comparePassword(password)) {
 
-            res.status(200).json({ 
+            res.status(200).json({
 
-                success: true, 
+                success: true,
 
-                hotelName: hotel.hotelName, 
+                hotelName: hotel.hotelName,
 
                 ownerEmail: hotel.ownerEmail || hotel.email,
 
@@ -5361,7 +5431,7 @@ app.post(['/reset-password', '/api/reset-password'], async (req, res) => {
 
         }
 
-        let account = (userType === 'hotel') 
+        let account = (userType === 'hotel')
 
             ? await Hotel.findOne({ $or: [{ ownerEmail: normalizedEmail }, { email: normalizedEmail }] })
 
@@ -5890,7 +5960,7 @@ app.get('/mitra-bookings/:mitraEmail', requireSession(['mitra', 'admin', 'assist
 
         const mitra = await User.findOne({ email: normalizeEmail(req.params.mitraEmail) }).select('_id name email');
 
-        const bookings = await safeSortQuery(Booking.find({ 
+        const bookings = await safeSortQuery(Booking.find({
 
             $or: mitra
 
@@ -6087,9 +6157,9 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
 
 
-        return res.status(201).json({ 
+        return res.status(201).json({
 
-            success: true, 
+            success: true,
 
             message: 'Assistant created successfully',
 
@@ -6757,13 +6827,13 @@ app.put('/admin/update-assistant', verifyAdmin, async (req, res) => {
 
 
 
-        res.json({ 
+        res.json({
 
-            success: true, 
+            success: true,
 
             message: 'Assistant updated successfully',
 
-            assistant: updatedAssistant 
+            assistant: updatedAssistant
 
         });
 
@@ -6794,11 +6864,11 @@ app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
 
         if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
 
-            return res.status(403).json({ 
+            return res.status(403).json({
 
-                success: false, 
+                success: false,
 
-                message: 'Only Admin can delete assistants permanently' 
+                message: 'Only Admin can delete assistants permanently'
 
             });
 
@@ -6878,6 +6948,7 @@ app.get('/bodhi-path/all', async (req, res) => {
 
     try {
 
+        await ensureDefaultBodhiPathData();
         const bodhiPaths = await BodhiPath.find();
 
         res.json({ success: true, bodhiPaths });
@@ -6920,6 +6991,7 @@ app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant('manageHeritage'), asyn
 
 app.get('/api/heritage', async (req, res) => {
     try {
+        await ensureDefaultBodhiPathData();
         const session = ensureVerifiedSession(req);
         const isManager = session && ['admin', 'assistant', 'mitra'].includes(session.role);
         const includeInactive = req.query.includeInactive === 'true' && isManager;
@@ -7202,7 +7274,7 @@ app.put('/admin/bodhi-path/update', verifyAdminOrAssistant('manageHeritage'), as
 
         await logActivity('UPDATE', 'BodhiPath', bodhiPathId, title, actorEmail, actorRole, {
 
-            category, shortDescription 
+            category, shortDescription
 
         });
 
@@ -7752,13 +7824,13 @@ app.put('/hotel/update-distance-highlights', requireSession(['hotel']), async (r
 
         emitRealtime('hotel-updated', { ownerEmail, hotelName: updatedHotel.hotelName });
 
-        res.json({ 
+        res.json({
 
-            success: true, 
+            success: true,
 
             message: 'Hotel distance and highlights updated successfully',
 
-            hotel: updatedHotel 
+            hotel: updatedHotel
 
         });
 
@@ -7866,7 +7938,7 @@ app.get('/admin/activity-log', verifyAdmin, async (req, res) => {
 
         const { userEmail, userRole } = req.query;
 
-        
+
 
         // Verify admin
 
@@ -7876,7 +7948,7 @@ app.get('/admin/activity-log', verifyAdmin, async (req, res) => {
 
         }
 
-        
+
 
         const activities = await ActivityLog.find()
 
@@ -7884,7 +7956,7 @@ app.get('/admin/activity-log', verifyAdmin, async (req, res) => {
 
             .limit(200);
 
-        
+
 
         res.json({ success: true, activities });
 
@@ -7924,11 +7996,11 @@ app.post('/admin/seed-heritage-data', verifyAdmin, async (req, res) => {
 
         if (existingCount > 0) {
 
-            return res.status(400).json({ 
+            return res.status(400).json({
 
-                success: false, 
+                success: false,
 
-                message: 'Heritage data already exists. Delete and try again if needed.' 
+                message: 'Heritage data already exists. Delete and try again if needed.'
 
             });
 

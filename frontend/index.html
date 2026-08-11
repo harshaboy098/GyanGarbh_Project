@@ -79,6 +79,23 @@
         .hidden { display:none !important; }
         @media(max-width:920px) { .auth-layout{grid-template-columns:1fr}.hero-pane{display:none}.auth-pane{padding:18px}.mobile-brand{display:flex}.auth-card{box-shadow:0 18px 54px rgba(15,23,42,.14)} }
         @media(max-width:460px) { .card-head,.card-body{padding-left:18px;padding-right:18px}.mode-tabs{grid-template-columns:1fr}.otp-grid{gap:6px}.otp-grid input{font-size:18px}.auth-pane{place-items:start center;padding-top:18px} }
+
+        .heritage-showcase { display:grid; grid-template-columns:minmax(0,1fr) minmax(250px,.72fr); gap:14px; align-items:stretch; margin:22px 0; }
+        .sacred-site-stack { display:grid; gap:10px; }
+        .sacred-site-card { display:grid; grid-template-columns:86px 1fr; gap:12px; align-items:center; min-height:98px; padding:10px; border:1px solid rgba(255,255,255,.2); border-radius:8px; background:rgba(255,255,255,.13); cursor:pointer; transition:.2s ease; backdrop-filter:blur(14px); }
+        .sacred-site-card:hover, .sacred-site-card.active { transform:translateY(-2px); background:rgba(255,255,255,.22); border-color:rgba(251,191,36,.55); }
+        .sacred-site-card img { width:86px; height:76px; object-fit:cover; border-radius:8px; }
+        .sacred-site-card strong { display:block; color:white; font-size:15px; }
+        .sacred-site-card span { color:#dbeafe; font-size:12px; line-height:1.45; }
+        .hero-stays-panel { padding:14px; border-radius:8px; background:rgba(15,23,42,.58); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(18px); }
+        .hero-stays-panel h3 { margin:0 0 5px; font-size:16px; color:white; }
+        .hero-stays-panel p { margin:0 0 10px; color:#cbd5e1; font-size:12px; }
+        .hero-stay { padding:10px; border-radius:8px; background:rgba(255,255,255,.1); margin-bottom:8px; }
+        .hero-stay strong { display:block; color:white; font-size:13px; }
+        .hero-stay small { display:block; color:#dbeafe; margin:3px 0 7px; }
+        .hero-stay a { display:inline-flex; padding:7px 9px; border-radius:999px; color:#111827; background:#fbbf24; font-weight:900; text-decoration:none; font-size:12px; }
+        @media(max-width:1120px){.heritage-showcase{grid-template-columns:1fr}.hero-stays-panel{min-height:unset}}
+        @media(max-width:920px){.heritage-showcase{display:none}}
     </style>
     <link rel="stylesheet" href="mobile-responsive.css">
 </head>
@@ -91,8 +108,12 @@
             </div>
             <div class="hero-copy">
                 <span class="hero-kicker" data-login-badge><i class="bi bi-shield-check"></i> Verified stays and sacred routes</span>
-                <h1 data-login-title>Book Bodhgaya journeys with calm confidence.</h1>
-                <p data-login-subtitle>Hotels, temple circuits, airport rides, and Bodhi Path experiences in one trusted travel account.</p>
+                <h1 data-login-title>Bodhgaya sacred sites, with stays beside them.</h1>
+                <p data-login-subtitle>Start from Mahabodhi Temple, Thai Monastery, or the Great Buddha Statue, then book verified hotels nearby.</p>
+                <div class="heritage-showcase" aria-label="Sacred site stay recommendations">
+                    <div class="sacred-site-stack" id="indexSacredSites"></div>
+                    <aside class="hero-stays-panel"><h3 id="indexStayTitle">Recommended Stays Near Mahabodhi Temple</h3><p>Hover or tap a sacred site.</p><div id="indexStayList"></div></aside>
+                </div>
             </div>
             <div class="trust-grid" aria-label="Trust highlights">
                 <div class="trust-card"><strong>50,000+</strong><span>Happy pilgrims planned stays and local travel with Gyan Garbh.</span></div>
@@ -168,6 +189,45 @@
         </section>
     </main>
 
+
+<script id="indexHeritageEnhanceScript">
+(function(){
+    const sites = [
+        { id:'mahabodhi', title:'Mahabodhi Temple', meta:'UNESCO enlightenment shrine', image:'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=500&auto=format&fit=crop' },
+        { id:'thai', title:'Thai Monastery', meta:'Peaceful monastery circuit stop', image:'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=500&q=80' },
+        { id:'buddha', title:'Great Buddha Statue', meta:'Iconic open-air landmark', image:'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=500&q=80' }
+    ];
+    let hotels = [];
+    function esc(v){ return String(v || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function nextDate(days){ const d = new Date(); d.setDate(d.getDate()+days); return d.toISOString().split('T')[0]; }
+    async function loadHotels(){ try { const res = await fetch(API_URL + '/all-hotels'); hotels = await res.json(); } catch(_) { hotels = []; } }
+    function pickHotels(site){
+        const key = site.title.toLowerCase();
+        const list = hotels.map((h,i)=>{ const hay = (h.hotelName+' '+h.location+' '+h.description+' '+(h.distanceFromLandmark?.landmark || '')).toLowerCase(); return Object.assign({}, h, { score:(hay.includes(key)?20:0)+(/bodh|temple|monastery/.test(hay)?8:0)+Math.max(0,4-i), distance:i===0?'300m from '+site.title:(i+1)*450+'m from '+site.title }); }).sort((a,b)=>b.score-a.score).slice(0,2);
+        return list.length ? list : [{hotelName:'Mahabodhi Heritage Stay', roomRate:1800, location:'Bodh Gaya', distance:'300m from '+site.title},{hotelName:'Bodhi Retreat Inn', roomRate:2200, location:'Temple Road', distance:'650m from '+site.title}];
+    }
+    window.selectIndexSacredSite = function(id){
+        const site = sites.find(s=>s.id===id) || sites[0];
+        document.querySelectorAll('.sacred-site-card').forEach(card => card.classList.toggle('active', card.dataset.site === site.id));
+        const title = document.getElementById('indexStayTitle');
+        const list = document.getElementById('indexStayList');
+        if (title) title.textContent = 'Recommended Stays Near ' + site.title;
+        if (list) list.innerHTML = pickHotels(site).map(h => { const params = new URLSearchParams({ landmark:site.title, hotelFilter:site.title, checkIn:nextDate(1), checkOut:nextDate(2), guests:'2' }); return '<div class="hero-stay"><strong>'+esc(h.hotelName || 'Verified Stay')+'</strong><small>'+esc(h.distance || 'Near '+site.title)+' - Rs '+esc(h.acRoomPrice || h.roomRate || h.nonAcRoomPrice || 1800)+'/night</small><a href="hotel.html?'+params.toString()+'">Book Stay Now</a></div>'; }).join('');
+    };
+    async function init(){
+        const host = document.getElementById('indexSacredSites');
+        if (!host) return;
+        host.innerHTML = sites.map(site => '<div class="sacred-site-card" data-site="'+esc(site.id)+'"><img src="'+esc(site.image)+'" alt="'+esc(site.title)+'"><div><strong>'+esc(site.title)+'</strong><span>'+esc(site.meta)+'</span></div></div>').join('');
+        host.querySelectorAll('.sacred-site-card').forEach(card => {
+            card.addEventListener('mouseenter', () => selectIndexSacredSite(card.dataset.site));
+            card.addEventListener('click', () => selectIndexSacredSite(card.dataset.site));
+        });
+        await loadHotels();
+        selectIndexSacredSite('mahabodhi');
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+}());
+</script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
