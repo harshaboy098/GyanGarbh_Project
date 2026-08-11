@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root {
-            --royal-bg: #0b1329;
-            --royal-panel: #111c38;
-            --royal-panel-2: #172444;
+            --royal-bg: #090e1d;
+            --royal-panel: #101832;
+            --royal-panel-2: #17203c;
             --royal-gold: #d6a843;
             --royal-gold-2: #f6d784;
             --royal-text: #f8fafc;
@@ -29,18 +29,26 @@
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: var(--royal-text);
             background:
-                radial-gradient(circle at 12% 4%, rgba(214,168,67,.18), transparent 28%),
-                radial-gradient(circle at 88% 8%, rgba(79,70,229,.16), transparent 30%),
-                linear-gradient(180deg, #0b1329 0%, #081021 100%);
+                radial-gradient(circle at 16% 8%, rgba(246,215,132,.16), transparent 26%),
+                radial-gradient(circle at 80% 0%, rgba(214,168,67,.12), transparent 28%),
+                linear-gradient(135deg, rgba(214,168,67,.045) 1px, transparent 1px),
+                linear-gradient(225deg, rgba(214,168,67,.035) 1px, transparent 1px),
+                linear-gradient(180deg, #090e1d 0%, #070b16 100%);
+            background-size: auto, auto, 92px 92px, 92px 92px, auto;
         }
         a { color: inherit; }
         button { font: inherit; }
         .royal-shell { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 18px 0 44px; }
-        .royal-nav { height: 64px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 2px; }
-        .brand { display:flex; align-items:center; gap:12px; font-weight:900; letter-spacing:.04em; }
-        .brand-mark { width:42px; height:42px; border-radius:14px; display:grid; place-items:center; color:#0b1329; background:linear-gradient(135deg,var(--royal-gold-2),var(--royal-gold)); box-shadow:0 16px 42px rgba(214,168,67,.24); }
-        .nav-actions { display:flex; align-items:center; gap:10px; color:var(--royal-muted); font-weight:800; font-size:13px; }
-        .nav-actions a { text-decoration:none; padding:10px 12px; border:1px solid var(--royal-line); border-radius:999px; background:rgba(255,255,255,.04); }
+        .royal-nav { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px 14px; border:1px solid rgba(214,168,67,.22); border-radius:24px; background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.025)); box-shadow:0 22px 80px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.08); backdrop-filter:blur(18px); }
+        .brand { display:flex; align-items:center; gap:13px; font-weight:950; letter-spacing:.08em; min-width:0; }
+        .brand-mark { width:52px; height:52px; border-radius:50%; display:grid; place-items:center; color:#090e1d; background:radial-gradient(circle,#fff6cf 0 18%,#f6d784 19% 42%,#b98925 43% 100%); box-shadow:0 0 0 1px rgba(246,215,132,.55),0 0 36px rgba(214,168,67,.34); position:relative; flex:0 0 auto; }
+        .brand-mark:before { content:""; position:absolute; inset:7px; border:1px solid rgba(9,14,29,.55); border-radius:50%; }
+        .brand-copy { display:grid; gap:3px; min-width:0; }
+        .brand-copy strong { white-space:nowrap; }
+        .brand-copy small { color:var(--royal-muted); font-size:11px; font-weight:900; letter-spacing:.14em; }
+        .nav-actions { display:flex; align-items:center; gap:10px; color:var(--royal-muted); font-weight:900; font-size:13px; }
+        .nav-actions a { text-decoration:none; padding:11px 15px; border:1px solid rgba(246,215,132,.34); border-radius:999px; background:linear-gradient(180deg,rgba(214,168,67,.13),rgba(255,255,255,.035)); color:#f8e3a1; box-shadow:inset 0 1px 0 rgba(255,255,255,.08); transition:.18s ease; }
+        .nav-actions a:hover { transform:translateY(-1px); border-color:rgba(246,215,132,.72); box-shadow:0 14px 34px rgba(214,168,67,.14); }
         .hero { padding: 54px 0 28px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:24px; align-items:end; }
         .kicker { width:max-content; max-width:100%; display:inline-flex; align-items:center; gap:8px; padding:9px 13px; border:1px solid var(--royal-line); border-radius:999px; color:var(--royal-gold-2); background:rgba(214,168,67,.08); font-weight:900; font-size:12px; text-transform:uppercase; }
         h1 { margin:16px 0 10px; max-width:980px; font-size:clamp(34px,5vw,68px); line-height:.98; letter-spacing:0; text-transform:uppercase; }
@@ -50,31 +58,31 @@
         .hero-stat span { color:var(--royal-muted); font-size:13px; font-weight:800; }
         .explorer { display:grid; grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr); gap:24px; align-items:start; }
         .featured-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
-        .temple-card { min-height:520px; position:relative; overflow:hidden; border-radius:var(--card-radius); border:1px solid var(--royal-line); background:#111c38; cursor:pointer; box-shadow:0 24px 80px rgba(0,0,0,.32); transform:translateY(0); transition:.22s ease; }
-        .temple-card:hover, .temple-card.active { transform:translateY(-6px); border-color:rgba(246,215,132,.78); box-shadow:0 28px 90px rgba(214,168,67,.18); }
+        .temple-card { min-height:540px; position:relative; overflow:hidden; border-radius:var(--card-radius); border:1px solid rgba(214,168,67,.3); background:#101832; cursor:pointer; box-shadow:0 24px 80px rgba(0,0,0,.36), 0 0 0 1px rgba(255,255,255,.035), inset 0 1px 0 rgba(255,255,255,.06); transform:translateY(0); transition:.22s ease; }
+        .temple-card:hover, .temple-card.active { transform:translateY(-7px); border-color:rgba(246,215,132,.86); box-shadow:0 30px 96px rgba(0,0,0,.42),0 0 42px rgba(214,168,67,.22); }
         .temple-card img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:saturate(1.06); transition:.28s ease; }
         .temple-card:hover img, .temple-card.active img { transform:scale(1.045); }
         .temple-card:after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(6,12,28,.05) 0%,rgba(6,12,28,.42) 42%,rgba(6,12,28,.94) 100%); }
         .temple-content { position:absolute; inset:auto 0 0; z-index:1; padding:20px; }
         .badge-row { position:absolute; z-index:2; left:16px; right:16px; top:16px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
-        .site-badge, .rating-badge, .distance-badge { display:inline-flex; align-items:center; gap:6px; width:max-content; max-width:100%; padding:8px 10px; border-radius:999px; background:rgba(11,19,41,.78); border:1px solid rgba(246,215,132,.36); color:var(--accent-highlight); font-size:12px; font-weight:900; backdrop-filter:blur(14px); }
+        .site-badge, .rating-badge, .distance-badge, .duration-badge { display:inline-flex; align-items:center; gap:6px; width:max-content; max-width:100%; padding:8px 10px; border-radius:999px; background:rgba(9,14,29,.82); border:1px solid rgba(246,215,132,.42); color:var(--accent-highlight); font-size:12px; font-weight:950; backdrop-filter:blur(14px); box-shadow:0 10px 24px rgba(0,0,0,.22); }
         .rating-badge { color:#fff; background:rgba(17,24,39,.72); }
         .temple-content h2 { margin:0 0 10px; font-size:clamp(22px,2.4vw,32px); line-height:1.05; }
         .temple-content p { margin:0 0 16px; color:#d7def0; line-height:1.55; }
         .meta-row { display:flex; gap:8px; flex-wrap:wrap; }
         .meta-row span { padding:7px 9px; border-radius:999px; color:#dbeafe; background:rgba(255,255,255,.1); font-size:12px; font-weight:800; }
-        .stays-panel { position:sticky; top:18px; border-radius:var(--card-radius); border:1px solid var(--royal-line); background:linear-gradient(180deg,rgba(23,36,68,.96),rgba(12,20,43,.96)); box-shadow:0 28px 90px rgba(0,0,0,.34); overflow:hidden; }
+        .stays-panel { position:sticky; top:18px; border-radius:var(--card-radius); border:1px solid rgba(214,168,67,.34); background:linear-gradient(180deg,rgba(18,27,54,.98),rgba(8,13,29,.98)); box-shadow:0 30px 96px rgba(0,0,0,.42),0 0 40px rgba(214,168,67,.1); overflow:hidden; }
         .stays-head { padding:20px; border-bottom:1px solid var(--royal-line); }
         .stays-head small { color:var(--royal-gold-2); font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
         .stays-head h3 { margin:8px 0 8px; font-size:22px; line-height:1.15; text-transform:uppercase; }
         .stays-head p { margin:0; color:var(--royal-muted); font-size:13px; line-height:1.55; }
         .stay-list { display:grid; gap:12px; padding:16px; }
-        .stay-card { display:grid; gap:10px; padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.055); }
+        .stay-card { display:grid; gap:10px; padding:15px; border-radius:16px; border:1px solid rgba(214,168,67,.2); background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.035)); box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
         .stay-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
         .stay-card strong { display:block; font-size:15px; line-height:1.3; }
         .stay-card small { color:var(--royal-muted); line-height:1.4; }
         .price { color:var(--royal-gold-2); font-weight:900; white-space:nowrap; }
-        .book-btn { display:flex; align-items:center; justify-content:center; gap:8px; min-height:42px; border-radius:999px; color:#0b1329; background:linear-gradient(135deg,var(--royal-gold-2),var(--badge-color)); text-decoration:none; font-weight:950; box-shadow:0 16px 36px rgba(214,168,67,.22); }
+        .book-btn { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; border-radius:999px; color:#090e1d; background:linear-gradient(135deg,#fff1b8,var(--royal-gold-2) 42%,var(--badge-color)); text-decoration:none; font-weight:950; box-shadow:0 16px 36px rgba(214,168,67,.26), inset 0 1px 0 rgba(255,255,255,.55); }
         .empty-card { padding:18px; color:var(--royal-muted); text-align:center; }
         .more-section { margin-top:28px; }
         .section-title { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
@@ -102,8 +110,8 @@
 <body>
     <main class="royal-shell">
         <nav class="royal-nav">
-            <div class="brand"><span class="brand-mark"><i class="bi bi-flower1"></i></span><span data-nav-brand>GYAN GARBH</span></div>
-            <div class="nav-actions"><a href="hotel.html">Hotels</a><a href="index.html">Login</a></div>
+            <div class="brand"><span class="brand-mark"><i class="bi bi-flower1"></i></span><span class="brand-copy"><strong data-nav-brand>GYAN GARBH</strong><small>MANDALA PILGRIMAGE</small></span></div>
+            <div class="nav-actions"><a href="hotel.html"><i class="bi bi-buildings"></i> Luxury Stays</a><a href="index.html"><i class="bi bi-person-circle"></i> Member Login</a></div>
         </nav>
 
         <section class="hero" data-site-hero="bodhi-path">
@@ -147,9 +155,9 @@
     <script>
         const API_URL = (window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com').replace(/\/$/, '');
         const fallbackSites = [
-            { _id:'mahabodhi-templex', name:'Mahabodhi Temple Complex', title:'Mahabodhi Temple Complex', category:'Sacred Temple', rating:4.9, badgeText:'UNESCO Sacred Temple', imageUrl:'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200&auto=format&fit=crop', shortDescription:'The enlightenment shrine and the spiritual anchor of Bodh Gaya.', fullDescription:'Explore the Mahabodhi Temple Complex, sacred Bodhi Tree area, meditation paths, and surrounding pilgrimage lanes before booking verified stays nearby.', estimatedVisitTime:'2-3 hrs', distanceHint:'200m to Temple' },
-            { _id:'thai-monastery', name:'Thai Monastery', title:'Thai Monastery', category:'Monastery', rating:4.8, badgeText:'Peaceful Monastery', imageUrl:'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80', shortDescription:'A serene Thai Buddhist monastery on the central sacred route.', fullDescription:'A quiet monastery stop with graceful architecture, calm courtyards, and easy access to nearby hotels and guide-led circuit routes.', estimatedVisitTime:'1-2 hrs', distanceHint:'550m to Monastery' },
-            { _id:'great-buddha-statue', name:'Great Buddha Statue', title:'Great Buddha Statue', category:'Sacred Landmark', rating:4.7, badgeText:'Iconic Landmark', imageUrl:'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80', shortDescription:'An iconic open-air Buddha landmark for evening visits and family routes.', fullDescription:'Plan an easy spiritual stop around the Great Buddha Statue, nearby monasteries, cafes, and family-friendly stays.', estimatedVisitTime:'1 hr', distanceHint:'900m to Statue' }
+            { _id:'mahabodhi-temple', name:'Mahabodhi Temple Complex', title:'Mahabodhi Temple Complex', category:'Sacred Temple', rating:4.9, badgeText:'UNESCO Sacred Temple', imageUrl:'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200&auto=format&fit=crop', shortDescription:'The enlightenment shrine and the spiritual anchor of Bodh Gaya.', fullDescription:'Explore the Mahabodhi Temple Complex, sacred Bodhi Tree area, meditation paths, and surrounding pilgrimage lanes before booking verified stays nearby.', estimatedVisitTime:'5 mins', durationBadge:'5 mins', distanceHint:'200m to Temple' },
+            { _id:'thai-monastery', name:'Thai Monastery', title:'Thai Monastery', category:'Monastery', rating:4.8, badgeText:'Peaceful Monastery', imageUrl:'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80', shortDescription:'A serene Thai Buddhist monastery on the central sacred route.', fullDescription:'A quiet monastery stop with graceful architecture, calm courtyards, and easy access to nearby hotels and guide-led circuit routes.', estimatedVisitTime:'8 mins', durationBadge:'8 mins', distanceHint:'550m to Monastery' },
+            { _id:'great-buddha-statue', name:'Great Buddha Statue', title:'Great Buddha Statue', category:'Sacred Landmark', rating:4.7, badgeText:'Iconic Landmark', imageUrl:'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80', shortDescription:'An iconic open-air Buddha landmark for evening visits and family routes.', fullDescription:'Plan an easy spiritual stop around the Great Buddha Statue, nearby monasteries, cafes, and family-friendly stays.', estimatedVisitTime:'12 mins', durationBadge:'12 mins', distanceHint:'900m to Statue' }
         ];
         const extraSites = [
             { title:'Bodhi Tree Meditation Zone', meta:'Silent prayer route', image:'https://images.unsplash.com/photo-1548013146-72479768bbaa?q=80&w=900&auto=format&fit=crop' },
@@ -157,15 +165,46 @@
             { title:'Japanese Temple Circuit', meta:'Half-day route', image:'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=900&q=80' },
             { title:'Dungeshwari Cave Route', meta:'Pilgrimage extension', image:'https://images.unsplash.com/photo-1582972236019-ea4af5ffe587?auto=format&fit=crop&w=900&q=80' }
         ];
-        let sites = fallbackSites;
-        let hotels = [];
+        const fallbackHotels = [
+            { hotelName:'Mahabodhi Royal Heritage Stay', location:'Temple Road, Bodh Gaya', roomRate:2200, rating:4.8, distanceLabel:'200m to Temple' },
+            { hotelName:'Bodhi Palace Retreat', location:'Near Sacred Circuit', roomRate:2600, rating:4.7, distanceLabel:'350m to Temple' },
+            { hotelName:'Pilgrim Comfort Inn', location:'Central Bodh Gaya', roomRate:1700, rating:4.6, distanceLabel:'600m to Temple' },
+            { hotelName:'Thai Monastery View Hotel', location:'Monastery Lane, Bodh Gaya', roomRate:2100, rating:4.7, distanceLabel:'300m to Monastery' },
+            { hotelName:'Great Buddha Premium Stay', location:'Statue Road, Bodh Gaya', roomRate:2400, rating:4.6, distanceLabel:'400m to Statue' }
+        ];
+        const CACHE_KEYS = { heritage:'gg_bodhi_path_cache_v2', hotels:'gg_bodhi_hotels_cache_v2' };
+        let sites = readCache(CACHE_KEYS.heritage, fallbackSites);
+        let hotels = readCache(CACHE_KEYS.hotels, fallbackHotels);
         let activeSite = null;
         function esc(value){ return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function siteTitle(site){ return site.title || site.name || 'Sacred Site'; }
         function siteImage(site){ return site.coverImage || site.imageUrl || site.mainImage || site.galleryImages?.[0] || fallbackSites[0].imageUrl; }
         function nextDate(days){ const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }
         function priceOf(hotel){ return hotel.acRoomPrice || hotel.roomRate || hotel.nonAcRoomPrice || 1800; }
-        async function jsonFetch(paths){ for (const path of paths) { try { const res = await fetch(API_URL + path); const data = await res.json(); if (res.ok) return data; } catch (_) {} } return null; }
+        function readCache(key, fallback){ try { const cached = JSON.parse(localStorage.getItem(key) || 'null'); return Array.isArray(cached) && cached.length ? cached : fallback; } catch { return fallback; } }
+        function writeCache(key, value){ try { if (Array.isArray(value) && value.length) localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
+        function timeout(ms){ return new Promise((_, reject) => setTimeout(() => reject(new Error('Render cold-start timeout')), ms)); }
+        async function fetchWithRetry(path, tries = 3, ms = 3000){
+            let lastError;
+            for (let attempt = 0; attempt < tries; attempt++) {
+                try {
+                    const res = await Promise.race([fetch(API_URL + path, { cache:'no-store' }), timeout(ms)]);
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || data.success === false) throw new Error(data.message || 'Request failed: ' + res.status);
+                    return data;
+                } catch (error) {
+                    lastError = error;
+                    await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+                }
+            }
+            throw lastError || new Error('Failed to fetch');
+        }
+        async function jsonFetch(paths, cacheKey, fallback){
+            for (const path of paths) {
+                try { return await fetchWithRetry(path); } catch (_) {}
+            }
+            return { data: readCache(cacheKey, fallback) };
+        }
         function normalizeHeritage(raw){
             const list = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.bodhiPaths) ? raw.bodhiPaths : Array.isArray(raw?.temples) ? raw.temples : [];
             const merged = list.length ? list : fallbackSites;
@@ -205,7 +244,7 @@
         function renderSites(){
             document.getElementById('siteCount').textContent = sites.length;
             const host = document.getElementById('featuredSites');
-            host.innerHTML = sites.map((site, index) => '<article class="temple-card" data-id="'+esc(site._id || index)+'"><img src="'+esc(siteImage(site))+'" alt="'+esc(siteTitle(site))+'"><div class="badge-row"><span class="site-badge">'+esc(site.badgeText || site.category || 'Sacred Site')+'</span><span class="rating-badge"><i class="bi bi-star-fill"></i> '+esc(site.rating || (4.9 - index / 10).toFixed(1))+'</span></div><div class="temple-content"><h2>'+esc(siteTitle(site))+'</h2><p>'+esc(site.shortDescription || site.tagline || '')+'</p><div class="meta-row"><span><i class="bi bi-clock"></i> '+esc(site.estimatedVisitTime || '2 hrs')+'</span><span><i class="bi bi-geo-alt"></i> '+esc(site.distanceHint || 'Near Bodh Gaya')+'</span></div></div></article>').join('');
+            host.innerHTML = sites.map((site, index) => '<article class="temple-card" data-id="'+esc(site._id || index)+'"><img src="'+esc(siteImage(site))+'" alt="'+esc(siteTitle(site))+'"><div class="badge-row"><span class="site-badge">'+esc(site.badgeText || site.category || 'Sacred Site')+'</span><span class="rating-badge"><i class="bi bi-star-fill"></i> '+esc(site.rating || (4.9 - index / 10).toFixed(1))+'</span></div><div class="temple-content"><h2>'+esc(siteTitle(site))+'</h2><p>'+esc(site.shortDescription || site.tagline || '')+'</p><div class="meta-row"><span class="duration-badge"><i class="bi bi-clock"></i> '+esc(site.durationBadge || site.estimatedVisitTime || '5 mins')+'</span><span><i class="bi bi-geo-alt"></i> '+esc(site.distanceHint || 'Near Bodh Gaya')+'</span></div></div></article>').join('');
             host.querySelectorAll('.temple-card').forEach((card, index) => {
                 card.addEventListener('mouseenter', () => selectSite(index));
                 card.addEventListener('click', () => { selectSite(index); openModal(index); });
@@ -230,12 +269,22 @@
             document.getElementById('siteModal').classList.add('show');
         }
         function closeModal(){ document.getElementById('siteModal').classList.remove('show'); }
-        async function init(){
-            const [heritageData, hotelData] = await Promise.all([jsonFetch(['/api/heritage', '/bodhi-path/all']), jsonFetch(['/api/hotels', '/all-hotels'])]);
-            sites = normalizeHeritage(heritageData);
-            hotels = Array.isArray(hotelData?.data) ? hotelData.data : Array.isArray(hotelData?.hotels) ? hotelData.hotels : Array.isArray(hotelData) ? hotelData : [];
+        function applyData(heritageData, hotelData){
+            const nextSites = normalizeHeritage(heritageData);
+            const nextHotels = Array.isArray(hotelData?.data) ? hotelData.data : Array.isArray(hotelData?.hotels) ? hotelData.hotels : Array.isArray(hotelData) ? hotelData : [];
+            if (nextSites.length) { sites = nextSites; writeCache(CACHE_KEYS.heritage, sites); }
+            if (nextHotels.length) { hotels = nextHotels; writeCache(CACHE_KEYS.hotels, hotels); }
             renderSites();
             selectSite(0);
+        }
+        async function refreshFromNetwork(){
+            const [heritageData, hotelData] = await Promise.all([jsonFetch(['/api/bodhi-path', '/api/heritage', '/bodhi-path/all'], CACHE_KEYS.heritage, fallbackSites), jsonFetch(['/api/hotels', '/all-hotels'], CACHE_KEYS.hotels, fallbackHotels)]);
+            applyData(heritageData, hotelData);
+        }
+        function init(){
+            renderSites();
+            selectSite(0);
+            refreshFromNetwork().catch(error => console.warn('Bodhi Path using instant cached data:', error.message));
         }
         document.getElementById('siteModal').addEventListener('click', (event) => { if (event.target.id === 'siteModal') closeModal(); });
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModal(); });

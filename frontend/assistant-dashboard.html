@@ -281,8 +281,46 @@
     function parsePermissions() { try { return JSON.parse(localStorage.getItem('assistantPermissions') || '{}') || {}; } catch { return {}; } }
     function hasPermission(key) { const p = parsePermissions(); if (!key) return true; if (key === 'manageMitra' || key === 'manageMitras') return p.manageMitra === true || p.manageMitras === true; if (key === 'manageHeritage') return p.manageHeritage !== false; if (key === 'manageSettings') return p.manageSettings !== false; return p[key] === true; }
     function headers(extra = {}) { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, [ADMIN_SHIELD_HEADER]: ADMIN_SHIELD_SECRET, ...extra }; }
-    async function api(path, options = {}) { const response = await fetch(`${API_URL}${path}`, { ...options, headers: headers(options.headers || {}) }); const data = await response.json().catch(() => ({})); if (!response.ok || data.success === false) throw new Error(data.message || `Request failed: ${response.status}`); return data; }
-    async function apiFirst(paths) { let lastError = null; for (const path of paths) { try { return await api(path); } catch (error) { lastError = error; } } throw lastError || new Error('No report endpoint available'); }
+    const API_CACHE_PREFIX = 'gg_assistant_api_cache:';
+    const safeMethods = new Set(['GET', 'HEAD']);
+    function cacheKey(path) { return API_CACHE_PREFIX + path; }
+    function readApiCache(path) { try { const item = JSON.parse(localStorage.getItem(cacheKey(path)) || 'null'); return item?.data || null; } catch { return null; } }
+    function writeApiCache(path, data) { try { localStorage.setItem(cacheKey(path), JSON.stringify({ data, savedAt: Date.now() })); } catch (_) {} }
+    function fetchTimeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('Render cold-start timeout')), ms)); }
+    async function fetchWithRetry(path, options = {}, retries = 3, timeoutMs = 3000) {
+        let lastError;
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                const response = await Promise.race([fetch(`${API_URL}${path}`, { ...options, headers: headers(options.headers || {}) }), fetchTimeout(timeoutMs)]);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.success === false) throw new Error(data.message || `Request failed: ${response.status}`);
+                return data;
+            } catch (error) {
+                lastError = error;
+                await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+            }
+        }
+        throw lastError || new Error('Failed to fetch');
+    }
+    async function api(path, options = {}) {
+        const method = String(options.method || 'GET').toUpperCase();
+        const canCache = safeMethods.has(method);
+        try {
+            const data = await fetchWithRetry(path, options);
+            if (canCache) writeApiCache(path, data);
+            return data;
+        } catch (error) {
+            if (canCache) {
+                const cached = readApiCache(path);
+                if (cached) {
+                    console.warn(`Using cached assistant data for ${path}:`, error.message);
+                    return cached;
+                }
+            }
+            throw new Error(/failed to fetch|timeout|network/i.test(error.message) ? 'Server is waking up. Showing cached data where available.' : error.message);
+        }
+    }
+    async function apiFirst(paths) { let lastError = null; for (const path of paths) { try { return await api(path); } catch (error) { const cached = readApiCache(path); if (cached) return cached; lastError = error; } } throw lastError || new Error('No report endpoint available'); }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
     function statusBadge(value, locked = false) { if (locked) return '<span class="badge badge-locked">Locked</span>'; const text = String(value || 'Active'); const cls = /pending|review/i.test(text) ? 'badge-pending' : 'badge-active'; return `<span class="badge ${cls}">${escapeHtml(text)}</span>`; }
     function requireAuth() { if (!token() || !localStorage.getItem('assistantEmail')) window.location.href = 'assistant-login.html'; }
