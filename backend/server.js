@@ -282,6 +282,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
+app.use('/uploads/site-banners', express.static(siteBannerUploadsDir, { maxAge: '7d', immutable: true }));
 
 app.get('/uploads/site-banners/:filename', (req, res) => {
     const safeFileName = path.basename(String(req.params.filename || ''));
@@ -383,13 +384,7 @@ const hotelImageStorage = createCloudinaryStorage({
     transformation: [{ width: 1600, height: 1200, crop: 'limit' }]
 });
 
-const siteBannerCloudinaryStorage = createCloudinaryStorage({
-    folder: 'GyanGarbh/SiteBanners',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ width: 1920, height: 1080, crop: 'limit' }]
-});
-
-const siteBannerStorage = hasCloudinaryCredentials ? siteBannerCloudinaryStorage : createLocalSiteBannerStorage();
+const siteBannerStorage = createLocalSiteBannerStorage();
 
 
 
@@ -3467,7 +3462,8 @@ app.post('/api/site-settings/upload-banner', verifySiteSettingsActor, (req, res)
                 sectionId,
                 label: String(req.body.label || sectionId || 'Site Asset').trim().slice(0, 100),
                 uploadedBy: req.actor?.email || 'system',
-                uploadedAt: new Date()
+                uploadedAt: new Date(),
+                storage: 'local'
             };
             const settings = await getSiteSettings();
             const existingAssets = Array.isArray(settings.uploadedAssets) ? settings.uploadedAssets : [];
@@ -3476,7 +3472,7 @@ app.post('/api/site-settings/upload-banner', verifySiteSettingsActor, (req, res)
             settings.updatedByRole = req.actor?.role || 'system';
             await settings.save();
             emitRealtime('site-settings-asset-uploaded', { asset: data, updatedBy: req.actor?.email, actorRole: req.actor?.role });
-            res.json({ success: true, message: 'Banner uploaded successfully', data, imageUrl: data.imageUrl, storage: hasCloudinaryCredentials ? 'cloudinary' : 'local' });
+            res.json({ success: true, message: 'Banner uploaded successfully', data, imageUrl: data.imageUrl, storage: 'local' });
         } catch (err) {
             res.status(500).json({ success: false, message: 'Banner upload failed', error: err.message, data: null });
         }
