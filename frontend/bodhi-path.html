@@ -209,7 +209,14 @@
             const list = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.bodhiPaths) ? raw.bodhiPaths : Array.isArray(raw?.temples) ? raw.temples : [];
             const merged = list.length ? list : fallbackSites;
             const preferred = ['mahabodhi','thai','great buddha'];
-            return preferred.map(key => merged.find(item => JSON.stringify(item).toLowerCase().includes(key))).filter(Boolean).map((item, index) => ({ ...fallbackSites[index], ...item, title: index === 0 ? 'Mahabodhi Temple Complex' : siteTitle(item) })).slice(0, 3);
+            const used = new Set();
+            const ordered = preferred.map(key => merged.find(item => JSON.stringify(item).toLowerCase().includes(key))).filter(Boolean);
+            ordered.forEach(item => used.add(item._id || item.id || siteTitle(item)));
+            merged.forEach(item => {
+                const key = item._id || item.id || siteTitle(item);
+                if (!used.has(key)) ordered.push(item);
+            });
+            return ordered.map((item, index) => ({ ...fallbackSites[Math.min(index, fallbackSites.length - 1)], ...item, title: index === 0 && /mahabodhi/i.test(siteTitle(item)) ? 'Mahabodhi Temple Complex' : siteTitle(item) }));
         }
         function distanceLabel(site, hotel, index){
             const raw = hotel.distanceFromLandmark?.value;
@@ -244,15 +251,18 @@
         function renderSites(){
             document.getElementById('siteCount').textContent = sites.length;
             const host = document.getElementById('featuredSites');
-            host.innerHTML = sites.map((site, index) => '<article class="temple-card" data-id="'+esc(site._id || index)+'"><img src="'+esc(siteImage(site))+'" alt="'+esc(siteTitle(site))+'"><div class="badge-row"><span class="site-badge">'+esc(site.badgeText || site.category || 'Sacred Site')+'</span><span class="rating-badge"><i class="bi bi-star-fill"></i> '+esc(site.rating || (4.9 - index / 10).toFixed(1))+'</span></div><div class="temple-content"><h2>'+esc(siteTitle(site))+'</h2><p>'+esc(site.shortDescription || site.tagline || '')+'</p><div class="meta-row"><span class="duration-badge"><i class="bi bi-clock"></i> '+esc(site.durationBadge || site.estimatedVisitTime || '5 mins')+'</span><span><i class="bi bi-geo-alt"></i> '+esc(site.distanceHint || 'Near Bodh Gaya')+'</span></div></div></article>').join('');
+            const featured = sites.slice(0, 3);
+            const more = sites.slice(3);
+            host.innerHTML = featured.map((site, index) => '<article class="temple-card" data-id="'+esc(site._id || index)+'"><img src="'+esc(siteImage(site))+'" alt="'+esc(siteTitle(site))+'"><div class="badge-row"><span class="site-badge">'+esc(site.badgeText || site.category || 'Sacred Site')+'</span><span class="rating-badge"><i class="bi bi-star-fill"></i> '+esc(site.rating || (4.9 - index / 10).toFixed(1))+'</span></div><div class="temple-content"><h2>'+esc(siteTitle(site))+'</h2><p>'+esc(site.shortDescription || site.tagline || '')+'</p><div class="meta-row"><span class="duration-badge"><i class="bi bi-clock"></i> '+esc(site.durationBadge || site.estimatedVisitTime || '5 mins')+'</span><span><i class="bi bi-geo-alt"></i> '+esc(site.distanceHint || 'Near Bodh Gaya')+'</span></div></div></article>').join('');
             host.querySelectorAll('.temple-card').forEach((card, index) => {
                 card.addEventListener('mouseenter', () => selectSite(index));
                 card.addEventListener('click', () => { selectSite(index); openModal(index); });
             });
-            document.getElementById('moreSites').innerHTML = extraSites.map(item => '<div class="more-card"><img src="'+esc(item.image)+'" alt="'+esc(item.title)+'"><div><strong>'+esc(item.title)+'</strong><small>'+esc(item.meta)+'</small></div></div>').join('');
+            document.getElementById('moreSites').innerHTML = (more.length ? more.map(site => ({ title: siteTitle(site), meta: site.category || site.type || site.estimatedVisitTime || 'Sacred route', image: siteImage(site) })) : extraSites).map(item => '<div class="more-card"><img src="'+esc(item.image)+'" alt="'+esc(item.title)+'"><div><strong>'+esc(item.title)+'</strong><small>'+esc(item.meta)+'</small></div></div>').join('');
         }
         function selectSite(index){
-            activeSite = sites[index] || sites[0];
+            const featured = sites.slice(0, 3);
+            activeSite = featured[index] || sites[index] || sites[0];
             document.querySelectorAll('.temple-card').forEach((card, i) => card.classList.toggle('active', i === index));
             document.getElementById('stayPanelTitle').textContent = 'RECOMMENDED STAYS NEAR ' + siteTitle(activeSite).toUpperCase();
             document.getElementById('stayPanelSub').textContent = 'Verified nearby hotels matched to ' + siteTitle(activeSite) + ' with instant booking filters.';

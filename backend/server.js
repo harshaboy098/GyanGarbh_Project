@@ -255,6 +255,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
     'https://gyan-garbh-project-ten.vercel.app',
+    'https://gyan-garbh-project.vercel.app',
     FRONTEND_URL
 ].filter(Boolean);
 
@@ -267,15 +268,8 @@ const corsOptions = {
         console.log('Blocked Origin:', origin);
         return callback(new Error('Not allowed by CORS'));
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'X-Requested-With',
-        'Accept',
-        'Origin',
-        'x-gyangarbh-admin-shield'
-    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-gyangarbh-admin-shield'],
     credentials: true,
     optionsSuccessStatus: 200
 };
@@ -2101,6 +2095,18 @@ mongoose.connect(MONGO_URI, mongooseOptions)
   });
 
 
+
+app.get('/api/health', (req, res) => {
+
+    res.status(200).json({ success: true, service: 'Gyan Garbh API', uptime: process.uptime(), timestamp: new Date().toISOString() });
+
+});
+
+app.get('/ping', (req, res) => {
+
+    res.status(200).json({ success: true, pong: true, timestamp: new Date().toISOString() });
+
+});
 
 app.get('/health', (req, res) => {
 
@@ -5789,6 +5795,13 @@ app.post('/api/bookings/auto-release', async (req, res) => {
 
 
 
+const keepAliveUrl = process.env.GG_KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL || (process.env.RENDER_EXTERNAL_HOSTNAME ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : '');
+if (keepAliveUrl) {
+    setInterval(() => {
+        fetch(String(keepAliveUrl).replace(/\/$/, '') + '/api/health').catch((err) => console.warn('Keep-alive ping failed:', err.message));
+    }, 10 * 60 * 1000).unref?.();
+}
+
 const autoReleaseInterval = setInterval(() => {
 
     autoReleaseBookings().catch((err) => console.error('Auto-release error:', err));
@@ -7017,6 +7030,17 @@ app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant('manageHeritage'), asyn
 
 
 
+
+app.get('/api/bodhi-path', async (req, res) => {
+    try {
+        await ensureDefaultBodhiPathData();
+        const items = await BodhiPath.find({ status: { $ne: 'Inactive' } }).sort({ createdAt: -1 });
+        res.json({ success: true, data: items, bodhiPaths: items });
+    } catch (err) {
+        console.error('Error fetching public Bodhi Path catalog:', err);
+        res.status(500).json({ success: false, message: 'Unable to load Bodhi Path catalog' });
+    }
+});
 
 app.get('/api/heritage', async (req, res) => {
     try {
