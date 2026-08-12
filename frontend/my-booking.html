@@ -386,7 +386,7 @@
 </head>
 <body>
 <script>
-    const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
+    const API_URL = (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '')).replace(/\/$/, '');
 </script>
 
 <nav class="navbar navbar-dark nav-custom sticky-top">

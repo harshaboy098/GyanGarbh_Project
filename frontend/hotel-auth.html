@@ -63,8 +63,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="api-client.js"></script>
 <script>
-    // 🌐 Live Render API URL
-    const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
+    // 🌐 API base URL
+    const API_URL = (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '')).replace(/\/$/, '');
 
     function togglePass(icon) {
         const input = document.getElementById('hotelPass');

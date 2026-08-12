@@ -260,7 +260,7 @@
 <script src="dashboard-notifications.js"></script>
 <script src="theme-studio.js"></script>
 <script>
-    const API_URL = window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com';
+    const API_URL = (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '')).replace(/\/$/, '');
     const SECURE_UPLOADS_BASE_URL = API_URL.endsWith('/') ? API_URL + 'api/assistants/uploads/' : API_URL + '/api/assistants/uploads/';
     const ADMIN_SHIELD_HEADER = 'x-gyangarbh-admin-shield';
     const ADMIN_SHIELD_SECRET = window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821';
@@ -287,7 +287,7 @@
     function cacheKey(path) { return API_CACHE_PREFIX + path; }
     function readApiCache(path) { try { const item = JSON.parse(localStorage.getItem(cacheKey(path)) || 'null'); return item?.data || null; } catch { return null; } }
     function writeApiCache(path, data) { try { localStorage.setItem(cacheKey(path), JSON.stringify({ data, savedAt: Date.now() })); } catch (_) {} }
-    function fetchTimeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('Render cold-start timeout')), ms)); }
+    function fetchTimeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('API request timeout')), ms)); }
     async function fetchWithRetry(path, options = {}, retries = 3, timeoutMs = 3000) {
         let lastError;
         for (let attempt = 0; attempt < retries; attempt++) {
@@ -319,7 +319,7 @@
                     return cached;
                 }
             }
-            throw new Error(/failed to fetch|timeout|network/i.test(error.message) ? 'Server is waking up. Showing cached data where available.' : error.message);
+            throw new Error(/failed to fetch|timeout|network/i.test(error.message) ? 'Connection unavailable. Showing cached data where available.' : error.message);
         }
     }
     async function apiFirst(paths) { let lastError = null; for (const path of paths) { try { return await api(path); } catch (error) { const cached = readApiCache(path); if (cached) return cached; lastError = error; } } throw lastError || new Error('No report endpoint available'); }

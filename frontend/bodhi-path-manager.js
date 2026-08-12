@@ -19,7 +19,7 @@
     }
 
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-    const apiBase = () => (cfg.apiBase || window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com').replace(/\/$/, '');
+    const apiBase = () => (cfg.apiBase || (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : ''))).replace(/\/$/, '');
     const token = () => cfg.token || localStorage.getItem('assistantToken') || localStorage.getItem('authToken') || localStorage.getItem('sessionToken') || '';
     function redirectLogin(reason = 'Session expired. Please log in again.') { console.warn(reason); window.location.href = 'assistant-login.html'; }
     const headers = () => { const activeToken = token(); if (!activeToken) redirectLogin('Missing assistant token.'); return { 'Content-Type':'application/json', Authorization:`Bearer ${activeToken}`, 'x-gyangarbh-admin-shield': window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821' }; };
@@ -32,7 +32,7 @@
 
     function readCache() { try { const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); return Array.isArray(cached) ? cached.map(normalize) : []; } catch { return []; } }
     function writeCache(nextItems) { try { if (Array.isArray(nextItems)) localStorage.setItem(CACHE_KEY, JSON.stringify(nextItems)); } catch (_) {} }
-    function timeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('Render cold-start timeout')), ms)); }
+    function timeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('API request timeout')), ms)); }
     async function request(path, options = {}) {
         let lastError;
         for (let attempt = 0; attempt < 3; attempt++) {

@@ -1,23 +1,74 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": "frontend",
+  "version": 2,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
-      "source": "/x9f2-k8qm-z7p1-v4tw-9821.html",
-      "destination": "/x9f2-k8qm-z7p1-v4tw-9821.html"
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "source": "/x9f2-k8qm-z7p1-v4tw-9821",
-      "destination": "/x9f2-k8qm-z7p1-v4tw-9821.html"
+      "source": "/admin/(.*)",
+      "destination": "/api/index.js"
     },
-    { "source": "/admin", "destination": "/404.html" },
-    { "source": "/admin.html", "destination": "/404.html" },
-    { "source": "/admin-fixed.html", "destination": "/404.html" },
-    { "source": "/admin-secret-panel.html", "destination": "/404.html" },
-    { "source": "/admin-control.html", "destination": "/404.html" },
+    {
+      "source": "/admin",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/admin-fixed.html",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/admin-secret-panel.html",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/admin-control.html",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/",
+      "destination": "/frontend/index.html"
+    },
+    {
+      "source": "/bodhi-path.html",
+      "destination": "/frontend/bodhi-path.html"
+    },
+    {
+      "source": "/assistant-dashboard.html",
+      "destination": "/frontend/assistant-dashboard.html"
+    },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/frontend/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, x-gyangarbh-admin-shield"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        }
+      ]
     }
   ]
 }

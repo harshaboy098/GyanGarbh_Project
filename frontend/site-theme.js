@@ -1,5 +1,5 @@
 (function () {
-    const DEFAULT_API = 'https://gyangarbh-project-1.onrender.com';
+    const DEFAULT_API = (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '');
     const presets = {
         'spiritual-gold': { brand:'#ff6b00', accent:'#f59e0b', ink:'#0f172a', surface:'#fff7ed', nav:'#1e3c72' },
         'modern-blue': { brand:'#2563eb', accent:'#f59e0b', ink:'#0f172a', surface:'#eff6ff', nav:'#0f3f7a' },

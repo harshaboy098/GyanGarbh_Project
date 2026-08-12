@@ -1,6 +1,6 @@
 (function () {
     const STYLE_ID = 'gg-dashboard-notification-style';
-    const DEFAULT_API = 'https://gyangarbh-project-1.onrender.com';
+    const DEFAULT_API = (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '');
     const instances = new Map();
 
     function injectStyle() {
