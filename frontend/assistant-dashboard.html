@@ -276,11 +276,12 @@
         { id: 'reports', label: 'Reports', icon: 'bi-graph-up-arrow', permission: 'viewReports', loader: loadReports },
         { id: 'permissions', label: 'Permissions', icon: 'bi-shield-lock', hidden: true, loader: renderPermissions }
     ];
-    function token() { return localStorage.getItem('authToken') || localStorage.getItem('assistantToken') || ''; }
+    function token() { return localStorage.getItem('assistantToken') || localStorage.getItem('authToken') || ''; }
     function assistant() { return { name: localStorage.getItem('assistantName') || 'Mukesh Assistant', email: localStorage.getItem('assistantEmail') || '', permissions: parsePermissions() }; }
     function parsePermissions() { try { return JSON.parse(localStorage.getItem('assistantPermissions') || '{}') || {}; } catch { return {}; } }
     function hasPermission(key) { const p = parsePermissions(); if (!key) return true; if (key === 'manageMitra' || key === 'manageMitras') return p.manageMitra === true || p.manageMitras === true; if (key === 'manageHeritage') return p.manageHeritage !== false; if (key === 'manageSettings') return p.manageSettings !== false; return p[key] === true; }
-    function headers(extra = {}) { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, [ADMIN_SHIELD_HEADER]: ADMIN_SHIELD_SECRET, ...extra }; }
+    function redirectLogin(reason = 'Session expired. Please log in again.') { console.warn(reason); window.location.href = 'assistant-login.html'; }
+    function headers(extra = {}) { const activeToken = token(); if (!activeToken) redirectLogin('Missing assistant token.'); return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeToken}`, [ADMIN_SHIELD_HEADER]: ADMIN_SHIELD_SECRET, ...extra }; }
     const API_CACHE_PREFIX = 'gg_assistant_api_cache:';
     const safeMethods = new Set(['GET', 'HEAD']);
     function cacheKey(path) { return API_CACHE_PREFIX + path; }
@@ -293,6 +294,7 @@
             try {
                 const response = await Promise.race([fetch(`${API_URL}${path}`, { ...options, headers: headers(options.headers || {}) }), fetchTimeout(timeoutMs)]);
                 const data = await response.json().catch(() => ({}));
+                if (response.status === 401 || response.status === 403) { redirectLogin(data.message || 'Session expired or permission denied.'); throw new Error(data.message || `Request failed: ${response.status}`); }
                 if (!response.ok || data.success === false) throw new Error(data.message || `Request failed: ${response.status}`);
                 return data;
             } catch (error) {
@@ -323,7 +325,7 @@
     async function apiFirst(paths) { let lastError = null; for (const path of paths) { try { return await api(path); } catch (error) { const cached = readApiCache(path); if (cached) return cached; lastError = error; } } throw lastError || new Error('No report endpoint available'); }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
     function statusBadge(value, locked = false) { if (locked) return '<span class="badge badge-locked">Locked</span>'; const text = String(value || 'Active'); const cls = /pending|review/i.test(text) ? 'badge-pending' : 'badge-active'; return `<span class="badge ${cls}">${escapeHtml(text)}</span>`; }
-    function requireAuth() { if (!token() || !localStorage.getItem('assistantEmail')) window.location.href = 'assistant-login.html'; }
+    function requireAuth() { if (!token()) redirectLogin('Missing assistant session.'); }
     function initShell() { const user = assistant(); document.getElementById('assistantName').textContent = user.name; document.getElementById('assistantEmail').textContent = user.email; document.getElementById('avatarInitial').textContent = (user.name || 'M').trim().charAt(0).toUpperCase(); renderNav(); renderPermissions(); document.getElementById('addMitraButton').style.display = hasPermission('manageMitra') ? 'inline-flex' : 'none'; initNotifications(); startAssistantAutoPoll(); loadAll(); }
     function renderNav() { const activePermissions = Object.values(parsePermissions()).filter(Boolean).length; document.getElementById('permissionCount').textContent = `${activePermissions} permissions active`; document.getElementById('sidebarNav').innerHTML = navItems.filter(i => !i.hidden && hasPermission(i.permission)).map(i => `<button data-section="${i.id}" class="${i.id === 'dashboard' ? 'active' : ''}" onclick="showSection('${i.id}')"><i class="bi ${i.icon}"></i>${i.label}</button>`).join(''); }
     function showSection(id) { const item = navItems.find(i => i.id === id); if (!item || !hasPermission(item.permission)) return; document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id)); document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.section === id)); closeDrawer(); if (item?.loader) item.loader(); }

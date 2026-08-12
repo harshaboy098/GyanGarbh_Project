@@ -20,8 +20,9 @@
 
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
     const apiBase = () => (cfg.apiBase || window.GYAN_GARBH_API_URL || 'https://gyangarbh-project-1.onrender.com').replace(/\/$/, '');
-    const token = () => cfg.token || localStorage.getItem('authToken') || localStorage.getItem('assistantToken') || localStorage.getItem('sessionToken') || '';
-    const headers = () => ({ 'Content-Type':'application/json', Authorization:`Bearer ${token()}`, 'x-gyangarbh-admin-shield': window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821' });
+    const token = () => cfg.token || localStorage.getItem('assistantToken') || localStorage.getItem('authToken') || localStorage.getItem('sessionToken') || '';
+    function redirectLogin(reason = 'Session expired. Please log in again.') { console.warn(reason); window.location.href = 'assistant-login.html'; }
+    const headers = () => { const activeToken = token(); if (!activeToken) redirectLogin('Missing assistant token.'); return { 'Content-Type':'application/json', Authorization:`Bearer ${activeToken}`, 'x-gyangarbh-admin-shield': window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821' }; };
     const currentActor = () => ({ name: cfg.actorName || localStorage.getItem('assistantName') || localStorage.getItem('mitraName') || localStorage.getItem('adminName') || 'User', email: cfg.actorEmail || localStorage.getItem('assistantEmail') || localStorage.getItem('mitraEmail') || localStorage.getItem('adminEmail') || '', role: cfg.role || 'assistant' });
     const asArray = (value) => Array.isArray(value) ? value.filter(Boolean) : String(value || '').split(/\r?\n|,/).map((x) => x.trim()).filter(Boolean);
     const normalize = (item) => ({ ...item, name: item.name || item.title || 'Untitled Heritage', coverImage: item.coverImage || item.imageUrl || (item.images || [])[0] || fallbackImage, galleryImages: item.galleryImages || item.images || [], routeDetails: item.routeDetails || {}, openingHours: item.openingHours || item.visitingHours || '', tagline: item.tagline || item.shortDescription || '' });
@@ -38,6 +39,7 @@
             try {
                 const res = await Promise.race([fetch(`${apiBase()}${path}`, { ...options, headers: { ...headers(), ...(options.headers || {}) } }), timeout(3000)]);
                 const data = await res.json().catch(() => ({}));
+                if (res.status === 401 || res.status === 403) { redirectLogin(data.message || 'Session expired or permission denied.'); throw new Error(data.message || `Request failed: ${res.status}`); }
                 if (!res.ok || data.success === false) throw new Error(data.message || `Request failed: ${res.status}`);
                 return data;
             } catch (error) {
