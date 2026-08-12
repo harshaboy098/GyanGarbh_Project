@@ -1817,7 +1817,13 @@ app.get('/api/events', requireSession(), (req, res) => {
 
 
 function hotelTrackingBaseUrl() {
-    return String(process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || process.env.APP_URL || 'https://gyangarbh-project-1.onrender.com').replace(/\/$/, '');
+    // Priority: Environment variables > Current deployment domain
+    // For Vercel: Frontend and Backend share the same domain, so empty string uses relative paths
+    const configured = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || process.env.APP_URL;
+    if (configured) return String(configured).replace(/\/$/, '');
+    
+    // For local development or when env vars aren't set, return relative path (will resolve to same domain)
+    return '';
 }
 
 async function createUniqueHotelRequestId() {
