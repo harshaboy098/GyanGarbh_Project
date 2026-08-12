@@ -260,7 +260,7 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 const corsOptions = {
-    origin: true,
+    origin: ['https://gyan-garbh-project.vercel.app', 'http://localhost:3000', 'http://localhost:5173', 'https://gyan-garbh-project-ten.vercel.app'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-gyangarbh-admin-shield'],
@@ -683,9 +683,15 @@ const requireSession = (allowedRoles = []) => (req, res, next) => {
 
     const session = ensureVerifiedSession(req);
 
-    if (!session || (allowedRoles.length && !allowedRoles.includes(session.role))) {
+    if (!session) {
 
-        return res.status(401).json({ success: false, message: 'Authentication required' });
+        return res.status(401).json({ success: false, message: 'Authentication required', code: 'SESSION_REQUIRED' });
+
+    }
+
+    if (allowedRoles.length && !allowedRoles.includes(session.role)) {
+
+        return res.status(403).json({ success: false, message: 'Permission denied for this role', code: 'ROLE_FORBIDDEN' });
 
     }
 
@@ -1050,9 +1056,15 @@ const verifyAdminOrAssistant = (permission = null) => async (req, res, next) => 
             return next();
         }
 
-        if (!session || !['admin', 'assistant'].includes(session.role)) {
+        if (!session) {
 
-            return res.status(403).json({ success: false, message: 'Admin or assistant access required' });
+            return res.status(401).json({ success: false, message: 'Session expired. Please log in again.', code: 'SESSION_REQUIRED' });
+
+        }
+
+        if (!['admin', 'assistant'].includes(session.role)) {
+
+            return res.status(403).json({ success: false, message: 'Admin or assistant access required', code: 'ROLE_FORBIDDEN' });
 
         }
 
