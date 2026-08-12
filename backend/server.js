@@ -1932,14 +1932,6 @@ if (!JWT_SECRET) {
 
 }
 
-if (!FRONTEND_URL) {
-
-    console.error('Missing FRONTEND_URL environment variable. CORS must be pinned to a trusted frontend origin.');
-
-    process.exit(1);
-
-}
-
 const mongooseMajorVersion = Number((mongoose.version || '0').split('.')[0]);
 
 const mongooseOptions = {
@@ -2081,23 +2073,59 @@ async function ensureOperationalIndexes() {
 
 
 
-mongoose.connect(MONGO_URI, mongooseOptions)
+const cachedMongoose = global.__gyanGarbhMongoose || (global.__gyanGarbhMongoose = { conn: null, promise: null, initialized: false });
 
-  .then(async () => {
+async function connectDatabase() {
 
-      console.log('MongoDB connected successfully for Gyan Garbh Database.');
+    if (cachedMongoose.conn && mongoose.connection.readyState === 1) return cachedMongoose.conn;
 
-      await ensureAdminUser();
+    if (!cachedMongoose.promise) {
 
-      await ensureOperationalIndexes();
+        cachedMongoose.promise = mongoose.connect(MONGO_URI, mongooseOptions).then((mongooseInstance) => mongooseInstance);
 
-  })
+    }
 
-  .catch((err) => {
+    cachedMongoose.conn = await cachedMongoose.promise;
 
-      console.error("DATABASE ERROR: ", err.message);
+    if (!cachedMongoose.initialized) {
 
-  });
+        cachedMongoose.initialized = true;
+
+        console.log('MongoDB connected successfully for Gyan Garbh Database.');
+
+        await ensureAdminUser();
+
+        await ensureOperationalIndexes();
+
+    }
+
+    return cachedMongoose.conn;
+
+}
+
+app.use(async (req, res, next) => {
+
+    try {
+
+        await connectDatabase();
+
+        next();
+
+    } catch (err) {
+
+        console.error('DATABASE ERROR:', err.message);
+
+        res.status(503).json({ success: false, message: 'Database connection unavailable' });
+
+    }
+
+});
+
+if (require.main === module) {
+
+    connectDatabase().catch((err) => console.error('DATABASE ERROR:', err.message));
+
+}
 
 
 
@@ -5800,20 +5828,17 @@ app.post('/api/bookings/auto-release', async (req, res) => {
 
 
 
-const keepAliveUrl = process.env.GG_KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL || (process.env.RENDER_EXTERNAL_HOSTNAME ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : '');
-if (keepAliveUrl) {
-    setInterval(() => {
-        fetch(String(keepAliveUrl).replace(/\/$/, '') + '/api/health').catch((err) => console.warn('Keep-alive ping failed:', err.message));
-    }, 10 * 60 * 1000).unref?.();
+if (require.main === module) {
+
+    const autoReleaseInterval = setInterval(() => {
+
+        autoReleaseBookings().catch((err) => console.error('Auto-release error:', err));
+
+    }, 15 * 60 * 1000);
+
+    autoReleaseInterval.unref();
+
 }
-
-const autoReleaseInterval = setInterval(() => {
-
-    autoReleaseBookings().catch((err) => console.error('Auto-release error:', err));
-
-}, 15 * 60 * 1000);
-
-autoReleaseInterval.unref();
 
 
 
@@ -8278,4 +8303,13 @@ app.post('/admin/seed-heritage-data', verifyAdmin, async (req, res) => {
 
 
 
-server.listen(PORT, () => { console.log(`Gyan Garbh Server Active on ${PORT} 🚀`); });
+if (require.main === module) {
+
+    server.listen(PORT, () => { console.log(`Gyan Garbh Server Active on ${PORT}`); });
+
+}
+
+module.exports = app;
+module.exports.app = app;
+module.exports.server = server;
+module.exports.connectDatabase = connectDatabase;
