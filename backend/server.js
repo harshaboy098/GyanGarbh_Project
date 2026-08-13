@@ -6635,7 +6635,7 @@ app.get('/admin/all-assistants', verifyAdmin, async (req, res) => {
 
 
 
-app.get('/admin/all-hotels', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
+app.get(['/admin/all-hotels', '/api/assistants/all-hotels'], verifyAdminOrAssistant('manageHotels'), async (req, res) => {
 
     try {
 
@@ -6653,7 +6653,7 @@ app.get('/admin/all-hotels', verifyAdminOrAssistant('manageHotels'), async (req,
 
 
 
-app.get('/admin/all-customers', verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
+app.get(['/admin/all-customers', '/api/assistants/customers'], verifyAdminOrAssistant('manageCustomers'), async (req, res) => {
 
     try {
 
@@ -6715,7 +6715,7 @@ app.get('/admin/all-customers', verifyAdminOrAssistant('manageCustomers'), async
 
 
 
-app.get('/admin/all-mitras', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
+app.get(['/admin/all-mitras', '/api/assistants/mitras'], verifyAdminOrAssistant('manageMitra'), async (req, res) => {
 
     try {
 
