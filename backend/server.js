@@ -242,14 +242,24 @@ const app = express();
 const server = http.createServer(app);
 
 const PORT = Number.parseInt(process.env.PORT, 10) || 5000;
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
+const isVercelServerless = Boolean(process.env.VERCEL);
+const uploadsDir = isVercelServerless ? path.join('/tmp', 'gyangarbh-uploads') : path.join(__dirname, 'uploads');
 const siteBannerUploadsDir = path.join(uploadsDir, 'site-banners');
-if (!fs.existsSync(siteBannerUploadsDir)) {
-    fs.mkdirSync(siteBannerUploadsDir, { recursive: true });
+
+function ensureWritableDirectory(dirPath) {
+    try {
+        if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+        }
+        return true;
+    } catch (err) {
+        console.warn('Upload directory setup skipped:', dirPath, err.message);
+        return false;
+    }
 }
+
+ensureWritableDirectory(uploadsDir);
+ensureWritableDirectory(siteBannerUploadsDir);
 const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
 const allowedOrigins = [
     'http://localhost:5173',
