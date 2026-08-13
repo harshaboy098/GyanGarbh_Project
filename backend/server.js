@@ -246,20 +246,31 @@ const isVercelServerless = Boolean(process.env.VERCEL);
 const uploadsDir = isVercelServerless ? path.join('/tmp', 'gyangarbh-uploads') : path.join(__dirname, 'uploads');
 const siteBannerUploadsDir = path.join(uploadsDir, 'site-banners');
 
-function ensureWritableDirectory(dirPath) {
+function safePathExists(filePath) {
     try {
-        if (!fs.existsSync(dirPath)) {
-            fs.mkdirSync(dirPath, { recursive: true });
-        }
-        return true;
+        return fs.existsSync(filePath);
     } catch (err) {
-        console.warn('Upload directory setup skipped:', dirPath, err.message);
+        console.warn('Skipping file existence check in serverless environment:', err.message);
         return false;
     }
 }
 
-ensureWritableDirectory(uploadsDir);
-ensureWritableDirectory(siteBannerUploadsDir);
+function ensureWritableDirectory(dirPath) {
+    try {
+        if (!safePathExists(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+        }
+        return true;
+    } catch (err) {
+        console.warn('Skipping directory creation in serverless environment:', err.message);
+        return false;
+    }
+}
+
+if (!isVercelServerless) {
+    ensureWritableDirectory(uploadsDir);
+    ensureWritableDirectory(siteBannerUploadsDir);
+}
 const FRONTEND_URL = String(process.env.FRONTEND_URL || '').trim().replace(/^['"]|['"]$/g, '');
 const allowedOrigins = [
     'http://localhost:5173',
@@ -287,7 +298,7 @@ app.get('/uploads/site-banners/:filename', (req, res) => {
     if (!filePath.startsWith(path.resolve(siteBannerUploadsDir) + path.sep)) {
         return res.status(400).json({ success: false, message: 'Invalid file path', data: null });
     }
-    if (!fs.existsSync(filePath)) {
+    if (!safePathExists(filePath)) {
         return res.status(404).json({ success: false, message: 'Image not found', data: null });
     }
     res.sendFile(filePath);
@@ -340,6 +351,9 @@ if (!hasCloudinaryCredentials) {
 
 const createLocalSiteBannerStorage = () => multer.diskStorage({
     destination(req, file, callback) {
+        if (!ensureWritableDirectory(siteBannerUploadsDir)) {
+            return callback(new Error('Upload storage is unavailable'));
+        }
         callback(null, siteBannerUploadsDir);
     },
     filename(req, file, callback) {
@@ -1033,7 +1047,7 @@ app.get('/api/assistants/uploads/:filename', verifyAssistantToken('manageHotels'
         return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
-    if (!fs.existsSync(filePath)) {
+    if (!safePathExists(filePath)) {
         console.error(`[Uploads Route Error] File requested: ${safeFileName}, Checked path: ${filePath}`);
         return res.status(404).json({ success: false, message: 'File not found on server storage' });
     }
