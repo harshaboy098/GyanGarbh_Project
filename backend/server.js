@@ -290,6 +290,16 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
+
+app.disable('etag');
+
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    next();
+});
 app.use('/uploads/site-banners', express.static(siteBannerUploadsDir, { maxAge: '7d', immutable: true }));
 
 app.get('/uploads/site-banners/:filename', (req, res) => {

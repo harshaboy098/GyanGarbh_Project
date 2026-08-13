@@ -287,12 +287,12 @@
     function cacheKey(path) { return API_CACHE_PREFIX + path; }
     function readApiCache(path) { try { const item = JSON.parse(localStorage.getItem(cacheKey(path)) || 'null'); return item?.data || null; } catch { return null; } }
     function writeApiCache(path, data) { try { localStorage.setItem(cacheKey(path), JSON.stringify({ data, savedAt: Date.now() })); } catch (_) {} }
-    function fetchTimeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('API request timeout')), ms)); }
-    async function fetchWithRetry(path, options = {}, retries = 3, timeoutMs = 3000) {
+    function fetchTimeout(ms = 12000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('API request timeout')), ms)); }
+    async function fetchWithRetry(path, options = {}, retries = 3, timeoutMs = 12000) {
         let lastError;
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
-                const response = await Promise.race([fetch(`${API_URL}${path}`, { ...options, headers: headers(options.headers || {}) }), fetchTimeout(timeoutMs)]);
+                const response = await Promise.race([fetch(`${API_URL}${path}`, { cache: 'no-store', ...options, headers: headers(options.headers || {}) }), fetchTimeout(timeoutMs)]);
                 const data = await response.json().catch(() => ({}));
                 if (response.status === 401 || response.status === 403) { redirectLogin(data.message || 'Session expired or permission denied.'); throw new Error(data.message || `Request failed: ${response.status}`); }
                 if (!response.ok || data.success === false) throw new Error(data.message || `Request failed: ${response.status}`);

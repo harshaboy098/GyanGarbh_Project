@@ -32,12 +32,12 @@
 
     function readCache() { try { const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); return Array.isArray(cached) ? cached.map(normalize) : []; } catch { return []; } }
     function writeCache(nextItems) { try { if (Array.isArray(nextItems)) localStorage.setItem(CACHE_KEY, JSON.stringify(nextItems)); } catch (_) {} }
-    function timeout(ms = 3000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('API request timeout')), ms)); }
+    function timeout(ms = 12000) { return new Promise((_, reject) => setTimeout(() => reject(new Error('API request timeout')), ms)); }
     async function request(path, options = {}) {
         let lastError;
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                const res = await Promise.race([fetch(`${apiBase()}${path}`, { ...options, headers: { ...headers(), ...(options.headers || {}) } }), timeout(3000)]);
+                const res = await Promise.race([fetch(`${apiBase()}${path}`, { cache: 'no-store', ...options, headers: { ...headers(), ...(options.headers || {}) } }), timeout(12000)]);
                 const data = await res.json().catch(() => ({}));
                 if (res.status === 401 || res.status === 403) { redirectLogin(data.message || 'Session expired or permission denied.'); throw new Error(data.message || `Request failed: ${res.status}`); }
                 if (!res.ok || data.success === false) throw new Error(data.message || `Request failed: ${res.status}`);
