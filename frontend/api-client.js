@@ -97,7 +97,19 @@
 
     function startPollingFallback() {
         if (pollTimer) return;
-        pollTimer = window.setInterval(() => notify({ type: 'poll' }), 15000);
+        notify({ type: 'poll', source: 'fallback' });
+        pollTimer = window.setInterval(() => notify({ type: 'poll', source: 'fallback' }), 15000);
+    }
+
+    function closeSseAndPoll(reason) {
+        try {
+            if (eventSource) eventSource.close();
+        } catch (_) {}
+        eventSource = null;
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+        if (window.console?.debug) console.debug('SSE unavailable; using HTTP polling fallback.', reason || 'error');
+        startPollingFallback();
     }
 
     function connect() {
@@ -119,14 +131,12 @@
                 notify({ type: 'update' });
             }
         });
-        eventSource.onerror = function (err) {
-            console.warn('SSE connection error/unauthorized. Closing stream.', err);
-            removeInvalidLocalStorageToken(token);
-            if (eventSource) eventSource.close();
-            eventSource = null;
-            window.clearTimeout(reconnectTimer);
-            reconnectTimer = null;
+        const handleSseFailure = (event) => {
+            closeSseAndPoll(event?.type || 'error');
         };
+        eventSource.addEventListener('unauthorized', handleSseFailure);
+        eventSource.addEventListener('error', handleSseFailure);
+        eventSource.onerror = handleSseFailure;
     }
 
     window.GyanGarbhApi = { connectRealtime: connect, getToken, getApiBaseUrl: resolveApiBaseUrl, rewriteApiUrl };
