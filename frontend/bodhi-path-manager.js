@@ -7,6 +7,7 @@
     let statusFilter = 'all';
     let activeContainer = '';
     let isLoaded = false;
+    let heritageSyncPromise = null;
     const CACHE_KEY = 'gg_assistant_bodhi_path_cache_v1';
 
     function injectStyle() {
@@ -128,28 +129,41 @@
         return { name: fd.get('name'), title: fd.get('name'), category: fd.get('category'), type: categoryLabel({ category: fd.get('category') }), tagline: fd.get('tagline'), shortDescription: fd.get('tagline') || fd.get('name'), fullDescription: fd.get('fullDescription'), openingHours: fd.get('openingHours'), visitingHours: fd.get('openingHours'), entryFee: fd.get('entryFee'), coverImage: coverUploads[0] || fd.get('coverImage') || galleryImages[0] || '', imageUrl: coverUploads[0] || fd.get('coverImage') || galleryImages[0] || '', galleryImages, images: galleryImages, routeDetails: { startingPoint: fd.get('startingPoint'), keyStops, estimatedDuration: fd.get('estimatedDuration'), estimatedKm: fd.get('estimatedKm'), bestTimeToVisit: fd.get('bestTimeToVisit') }, estimatedVisitTime: fd.get('estimatedDuration'), bestTimeToVisit: fd.get('bestTimeToVisit'), relatedTemples: keyStops, status: fd.get('status'), changes: `${currentActor().name} saved ${fd.get('name')} with ${keyStops.length} route stops` };
     }
 
-    async function load(force = false) {
+    function ensureInstantItems() {
+        if (!items.length) items = readCache();
+        isLoaded = true;
+        activeContainer = cfg.containerId;
+    }
+
+    function syncHeritage(force = false) {
+        if (heritageSyncPromise && !force) return heritageSyncPromise;
+        heritageSyncPromise = request('/api/heritage?includeInactive=true')
+            .then((response) => {
+                const nextItems = (response.data || response.heritage || response.bodhiPaths || response.temples || []).map(normalize);
+                if (nextItems.length || !items.length) items = nextItems;
+                writeCache(items);
+                isLoaded = true;
+                activeContainer = cfg.containerId;
+                render();
+                return items;
+            })
+            .catch((err) => {
+                console.warn('Bodhi Path background sync skipped:', err.message);
+                const cached = items.length ? items : readCache();
+                if (cached.length) { items = cached; isLoaded = true; activeContainer = cfg.containerId; render(); }
+                return items;
+            })
+            .finally(() => { heritageSyncPromise = null; });
+        return heritageSyncPromise;
+    }
+
+    function load(force = false) {
         const root = document.getElementById(cfg.containerId);
-        if (!root) return;
-        if (isLoaded && !force && activeContainer === cfg.containerId) { render(); return; }
-        if (!items.length) {
-            items = readCache();
-            if (items.length) render();
-            else root.innerHTML = '<div class="bp-empty">Preparing Bodhi Path catalog...</div>';
-        }
-        try {
-            const response = await request('/api/heritage?includeInactive=true');
-            const nextItems = (response.data || response.heritage || response.bodhiPaths || response.temples || []).map(normalize);
-            if (nextItems.length || !items.length) items = nextItems;
-            writeCache(items);
-            isLoaded = true;
-            activeContainer = cfg.containerId;
-            render();
-        } catch (err) {
-            console.warn('Bodhi Path background sync skipped:', err.message);
-            const cached = items.length ? items : readCache();
-            if (cached.length) { items = cached; isLoaded = true; activeContainer = cfg.containerId; render(); }
-        }
+        if (!root) return Promise.resolve(items);
+        ensureInstantItems();
+        render();
+        syncHeritage(force);
+        return Promise.resolve(items);
     }
 
     function openForm(id = '') {
