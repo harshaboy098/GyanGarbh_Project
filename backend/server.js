@@ -322,7 +322,7 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-const MONGO_URI = String(process.env.MONGODB_URI || '').trim().replace(/^['"]|['"]$/g, '');
+const MONGO_URI = String(process.env.MONGODB_URI || process.env.MONGO_URI || process.env.DATABASE_URL || '').trim().replace(/^['"]|['"]$/g, '');
 const JWT_SECRET = String(process.env.JWT_SECRET || process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex')).trim();
 
 const SMTP_USER = String(process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
@@ -1974,11 +1974,13 @@ const mongooseOptions = {
 
     ...(mongooseMajorVersion < 6 ? { useNewUrlParser: true, useUnifiedTopology: true } : {}),
 
-    serverSelectionTimeoutMS: 15000,
+    bufferCommands: false,
 
-    connectTimeoutMS: 30000,
+    serverSelectionTimeoutMS: 8000,
 
-    socketTimeoutMS: 45000
+    connectTimeoutMS: 10000,
+
+    socketTimeoutMS: 30000
 
 };
 
@@ -2109,7 +2111,9 @@ async function ensureOperationalIndexes() {
 
 
 
-const cachedMongoose = global.__gyanGarbhMongoose || (global.__gyanGarbhMongoose = { conn: null, promise: null, initialized: false });
+let cachedMongoose = global.mongoose;
+if (!cachedMongoose) cachedMongoose = global.mongoose = { conn: null, promise: null, initialized: false };
+global.__gyanGarbhMongoose = cachedMongoose;
 
 async function connectDatabase() {
 
@@ -2121,7 +2125,12 @@ async function connectDatabase() {
 
     }
 
-    cachedMongoose.conn = await cachedMongoose.promise;
+    try {
+        cachedMongoose.conn = await cachedMongoose.promise;
+    } catch (error) {
+        cachedMongoose.promise = null;
+        throw error;
+    }
 
     if (!cachedMongoose.initialized) {
 

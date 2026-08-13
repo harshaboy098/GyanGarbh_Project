@@ -284,6 +284,8 @@
     function headers(extra = {}) { const activeToken = token(); if (!activeToken) redirectLogin('Missing assistant token.'); return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeToken}`, [ADMIN_SHIELD_HEADER]: ADMIN_SHIELD_SECRET, ...extra }; }
     const API_CACHE_PREFIX = 'gg_assistant_api_cache:';
     const safeMethods = new Set(['GET', 'HEAD']);
+    const dedupeGetPaths = new Set(['/api/assistants/dashboard-stats', '/api/assistants/hotel-operations', '/api/site-settings']);
+    const inFlightGets = new Map();
     function cacheKey(path) { return API_CACHE_PREFIX + path; }
     function readApiCache(path) { try { const item = JSON.parse(localStorage.getItem(cacheKey(path)) || 'null'); return item?.data || null; } catch { return null; } }
     function writeApiCache(path, data) { try { localStorage.setItem(cacheKey(path), JSON.stringify({ data, savedAt: Date.now() })); } catch (_) {} }
@@ -307,20 +309,28 @@
     async function api(path, options = {}) {
         const method = String(options.method || 'GET').toUpperCase();
         const canCache = safeMethods.has(method);
-        try {
-            const data = await fetchWithRetry(path, options);
-            if (canCache) writeApiCache(path, data);
-            return data;
-        } catch (error) {
-            if (canCache) {
-                const cached = readApiCache(path);
-                if (cached) {
-                    console.warn(`Using cached assistant data for ${path}:`, error.message);
-                    return cached;
+        const dedupeKey = canCache && dedupeGetPaths.has(path) ? path : '';
+        if (dedupeKey && inFlightGets.has(dedupeKey)) return inFlightGets.get(dedupeKey);
+        const requestPromise = (async () => {
+            try {
+                const data = await fetchWithRetry(path, options);
+                if (canCache) writeApiCache(path, data);
+                return data;
+            } catch (error) {
+                if (canCache) {
+                    const cached = readApiCache(path);
+                    if (cached) {
+                        console.warn(`Using cached assistant data for ${path}:`, error.message);
+                        return cached;
+                    }
                 }
+                throw new Error(/failed to fetch|timeout|network/i.test(error.message) ? 'Connection unavailable. Showing cached data where available.' : error.message);
+            } finally {
+                if (dedupeKey) inFlightGets.delete(dedupeKey);
             }
-            throw new Error(/failed to fetch|timeout|network/i.test(error.message) ? 'Connection unavailable. Showing cached data where available.' : error.message);
-        }
+        })();
+        if (dedupeKey) inFlightGets.set(dedupeKey, requestPromise);
+        return requestPromise;
     }
     async function apiFirst(paths) { let lastError = null; for (const path of paths) { try { return await api(path); } catch (error) { const cached = readApiCache(path); if (cached) return cached; lastError = error; } } throw lastError || new Error('No report endpoint available'); }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
@@ -331,7 +341,7 @@
     function showSection(id) { const item = navItems.find(i => i.id === id); if (!item || !hasPermission(item.permission)) return; document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id)); document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.section === id)); closeDrawer(); if (item?.loader) item.loader(); }
     function openDrawer() { document.body.classList.add('drawer-open'); }
     function closeDrawer() { document.body.classList.remove('drawer-open'); }
-    async function loadAll() { await Promise.allSettled([loadDashboardStats(), hasPermission('manageHotels') && loadHotels(), hasPermission('manageCustomers') && loadCustomers(), hasPermission('manageBookings') && loadOrders(), hasPermission('manageMitra') && loadMitras(), hasPermission('manageHeritage') && loadBodhiPath()]); if (hasPermission('viewReports')) await loadReports(false).catch(() => renderReports()); updateKpis(); }
+    async function loadAll() { const settle = task => Promise.resolve(task).catch(() => null); await Promise.all([settle(loadDashboardStats()), hasPermission('manageHotels') ? settle(loadHotels()) : Promise.resolve(null), hasPermission('manageSettings') ? settle(loadThemeStudio()) : Promise.resolve(null), hasPermission('manageCustomers') ? settle(loadCustomers()) : Promise.resolve(null), hasPermission('manageBookings') ? settle(loadOrders()) : Promise.resolve(null), hasPermission('manageMitra') ? settle(loadMitras()) : Promise.resolve(null), hasPermission('manageHeritage') ? settle(loadBodhiPath()) : Promise.resolve(null)]); if (hasPermission('viewReports')) await loadReports(false).catch(() => renderReports()); updateKpis(); }
     function numberValue(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
     async function loadDashboardStats() { try { const data = await apiFirst(['/api/assistants/dashboard-stats', '/api/reports', '/admin/dashboard']); state.report = data || state.report; state.stats = extractStats(data); } catch (error) { console.warn('Dashboard stats sync skipped:', error.message); } }
     function extractStats(data = {}) { const stats = data.stats || data.dashboard?.stats || data.dashboard || data; return { totalHotels: numberValue(stats.totalHotels ?? stats.hotelCount ?? data.hotelCount), totalBookings: numberValue(stats.totalBookings ?? stats.bookingCount), confirmedBookings: numberValue(stats.confirmedBookings), pendingBookings: numberValue(stats.pendingBookings), totalCustomers: numberValue(stats.totalCustomers ?? stats.customerCount ?? data.customerCount), activeMitras: numberValue(stats.activeMitras ?? stats.totalMitras ?? stats.mitraCount), pendingTasks: numberValue(stats.pendingTasks ?? stats.pendingBookings) }; }

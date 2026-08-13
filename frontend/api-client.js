@@ -33,6 +33,26 @@
     window.GYAN_GARBH_API_URL = resolveApiBaseUrl();
     window.API_URL = window.GYAN_GARBH_API_URL;
 
+    const dedupeGetPaths = new Set(['/api/assistants/dashboard-stats', '/api/assistants/hotel-operations', '/api/site-settings']);
+    const inFlightFetches = new Map();
+    const nativeFetch = window.fetch?.bind(window);
+    if (nativeFetch && !window.__gyanGarbhFetchDedupeInstalled) {
+        window.__gyanGarbhFetchDedupeInstalled = true;
+        window.fetch = function dedupedFetch(input, init = {}) {
+            const method = String(init?.method || input?.method || 'GET').toUpperCase();
+            let url;
+            try { url = new URL(input?.url || input, window.location.href); } catch { return nativeFetch(input, init); }
+            const shouldDedupe = method === 'GET' && dedupeGetPaths.has(url.pathname);
+            if (!shouldDedupe) return nativeFetch(input, init);
+            const key = `${method}:${url.href}`;
+            if (!inFlightFetches.has(key)) {
+                const options = { cache: 'no-store', ...init };
+                inFlightFetches.set(key, nativeFetch(input, options).finally(() => inFlightFetches.delete(key)));
+            }
+            return inFlightFetches.get(key).then((response) => response.clone());
+        };
+    }
+
     function getToken() {
         return (
             localStorage.getItem('authToken') ||
@@ -98,7 +118,7 @@
     function startPollingFallback() {
         if (pollTimer) return;
         notify({ type: 'poll', source: 'fallback' });
-        pollTimer = window.setInterval(() => notify({ type: 'poll', source: 'fallback' }), 15000);
+        pollTimer = window.setInterval(() => notify({ type: 'poll', source: 'fallback' }), 30000);
     }
 
     function closeSseAndPoll(reason) {
