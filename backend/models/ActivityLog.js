@@ -27,4 +27,4 @@ const activityLogSchema = new mongoose.Schema({
 
 activityLogSchema.index({ timestamp: -1 });
 
-module.exports = mongoose.model('ActivityLog', activityLogSchema);
+module.exports = mongoose.models.ActivityLog || mongoose.model('ActivityLog', activityLogSchema);

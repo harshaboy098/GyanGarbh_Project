@@ -64,4 +64,4 @@ assistantSchema.methods.comparePassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('Assistant', assistantSchema);
+module.exports = mongoose.models.Assistant || mongoose.model('Assistant', assistantSchema);

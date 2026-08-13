@@ -82,4 +82,4 @@ const siteSettingsSchema = new mongoose.Schema({
     updatedByRole: { type: String, default: 'system' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('SiteSettings', siteSettingsSchema);
+module.exports = mongoose.models.SiteSettings || mongoose.model('SiteSettings', siteSettingsSchema);

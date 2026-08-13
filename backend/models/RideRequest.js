@@ -29,4 +29,4 @@ const rideRequestSchema = new mongoose.Schema({
     assignedDriverPhone: { type: String, default: '' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('RideRequest', rideRequestSchema);
+module.exports = mongoose.models.RideRequest || mongoose.model('RideRequest', rideRequestSchema);

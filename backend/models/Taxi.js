@@ -30,4 +30,4 @@ const taxiSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Taxi', taxiSchema);
+module.exports = mongoose.models.Taxi || mongoose.model('Taxi', taxiSchema);

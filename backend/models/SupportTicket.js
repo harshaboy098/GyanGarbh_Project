@@ -40,4 +40,4 @@ const supportTicketSchema = new mongoose.Schema({
     resolvedAt: { type: Date, default: null }
 }, { timestamps: true });
 
-module.exports = mongoose.model('SupportTicket', supportTicketSchema);
+module.exports = mongoose.models.SupportTicket || mongoose.model('SupportTicket', supportTicketSchema);

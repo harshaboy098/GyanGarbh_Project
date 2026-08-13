@@ -55,4 +55,4 @@ const templeSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Temple', templeSchema);
+module.exports = mongoose.models.Temple || mongoose.model('Temple', templeSchema);

@@ -81,4 +81,4 @@ HotelSchema.methods.comparePassword = function(enteredPassword) {
     return bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('Hotel', HotelSchema);
+module.exports = mongoose.models.Hotel || mongoose.model('Hotel', HotelSchema);

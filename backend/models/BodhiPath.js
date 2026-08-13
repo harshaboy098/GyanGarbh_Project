@@ -81,4 +81,4 @@ const bodhiPathSchema = new mongoose.Schema({
     isLocked: { type: Boolean, default: false } // Status toggle for lock
 });
 
-module.exports = mongoose.model('BodhiPath', bodhiPathSchema);
+module.exports = mongoose.models.BodhiPath || mongoose.model('BodhiPath', bodhiPathSchema);

@@ -217,7 +217,7 @@ const enquirySchema = new mongoose.Schema({
 
 });
 
-const Enquiry = mongoose.model('Enquiry', enquirySchema);
+const Enquiry = mongoose.models.Enquiry || mongoose.model('Enquiry', enquirySchema);
 
 
 
@@ -235,7 +235,7 @@ const systemNotificationSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-const SystemNotification = mongoose.model('SystemNotification', systemNotificationSchema);
+const SystemNotification = mongoose.models.SystemNotification || mongoose.model('SystemNotification', systemNotificationSchema);
 
 const app = express();
 
