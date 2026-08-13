@@ -292,7 +292,7 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 const isProduction = process.env.NODE_ENV === 'production';
 
 const MONGO_URI = String(process.env.MONGODB_URI || '').trim().replace(/^['"]|['"]$/g, '');
-const JWT_SECRET = String(process.env.JWT_SECRET || process.env.SESSION_SECRET || '').trim();
+const JWT_SECRET = String(process.env.JWT_SECRET || process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex')).trim();
 
 const SMTP_USER = String(process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
 
@@ -1925,14 +1925,6 @@ async function sendOtpEmail({ to, otp, isReset, brevoApiKey }) {
 if (!MONGO_URI) {
 
     console.error('Missing MONGODB_URI environment variable. Please set it in .env or Render settings.');
-
-    process.exit(1);
-
-}
-
-if (!JWT_SECRET) {
-
-    console.error('Missing JWT_SECRET environment variable. Please set it in .env or deployment settings.');
 
     process.exit(1);
 
@@ -6534,7 +6526,11 @@ app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/
 
     try {
 
-        const { email, password } = req.body;
+        await connectDatabase();
+
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const email = body.email || body.assistantEmail || body.username || '';
+        const password = body.password || '';
 
         const normalizedEmail = normalizeEmail(email);
 
@@ -6607,7 +6603,7 @@ app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/
 
         console.error('Assistant login error:', err);
 
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).json({ success: false, message: err.message, error: err.message });
 
     }
 
