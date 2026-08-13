@@ -438,7 +438,7 @@ app.use(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login']
 
 app.use(['/login', '/api/login', '/api/auth/login'], loginRateLimiter);
 
-app.use(['/assistant-login', '/api/assistant-login', '/api/auth/assistant-login'], loginRateLimiter);
+app.use(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/assistant/login', '/api/assistants/login', '/api/auth/assistant-login'], loginRateLimiter);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -6530,7 +6530,7 @@ app.put('/api/assistants/hotels/:id/active', verifyAssistantToken('manageHotels'
 });
 // Assistant Login
 
-app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/assistants/login', '/api/auth/assistant-login'], async (req, res) => {
+app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/assistant/login', '/api/assistants/login', '/api/auth/assistant-login'], async (req, res) => {
 
     try {
 
