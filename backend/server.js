@@ -440,6 +440,10 @@ app.use(['/login', '/api/login', '/api/auth/login'], loginRateLimiter);
 
 app.use(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/assistant/login', '/api/assistants/login', '/api/auth/assistant-login'], loginRateLimiter);
 
+function isAssistantLoginRequest(pathname = '') {
+    return ['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/assistant/login', '/api/assistants/login', '/api/auth/assistant-login'].includes(String(pathname || '').replace(/\/$/, ''));
+}
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -2104,6 +2108,8 @@ async function connectDatabase() {
 app.use(async (req, res, next) => {
 
     try {
+
+        if (isAssistantLoginRequest(req.path)) return next();
 
         await connectDatabase();
 
@@ -6526,47 +6532,44 @@ app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/
 
     try {
 
-        await connectDatabase();
-
         const body = req.body && typeof req.body === 'object' ? req.body : {};
         const email = body.email || body.assistantEmail || body.username || '';
         const password = body.password || '';
-
         const normalizedEmail = normalizeEmail(email);
 
         if (!isValidEmail(normalizedEmail) || !password) {
 
-            return res.status(400).json({ success: false, message: 'Valid email and password are required' });
+            return res.status(401).json({ success: false, message: 'Invalid assistant credentials' });
 
         }
 
-        const assistant = await Assistant.findOne({ email: normalizedEmail });
+        let assistant;
 
+        try {
 
+            await connectDatabase();
 
-        if (!assistant || !(await assistant.comparePassword(password))) {
+            assistant = await Assistant.findOne({ email: normalizedEmail });
 
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+            const passwordMatches = assistant && await assistant.comparePassword(password);
+
+            if (!assistant || !passwordMatches || !assistant.isActive) {
+
+                return res.status(401).json({ success: false, message: 'Invalid assistant credentials' });
+
+            }
+
+        } catch (err) {
+
+            console.error('ASSISTANT LOGIN CRASH:', err);
+
+            return res.status(401).json({ success: false, message: 'Invalid assistant credentials' });
 
         }
-
-
-
-        if (!assistant.isActive) {
-
-            return res.status(401).json({ success: false, message: 'Assistant account is inactive' });
-
-        }
-
-
-
-        // Update last login
 
         assistant.lastLogin = new Date();
 
-        await assistant.save();
-
-
+        await assistant.save().catch((err) => console.error('ASSISTANT LOGIN CRASH:', err));
 
         const permissions = normalizeAssistantPermissions(assistant.permissions || {});
         const sessionToken = createSessionToken('assistant', assistant.email, '8h', {
@@ -6601,9 +6604,9 @@ app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/
 
     } catch (err) {
 
-        console.error('Assistant login error:', err);
+        console.error('ASSISTANT LOGIN CRASH:', err);
 
-        res.status(500).json({ success: false, message: err.message, error: err.message });
+        res.status(401).json({ success: false, message: 'Invalid assistant credentials' });
 
     }
 
