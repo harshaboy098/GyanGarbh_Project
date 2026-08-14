@@ -33,8 +33,11 @@
     window.GYAN_GARBH_API_URL = resolveApiBaseUrl();
     window.API_URL = window.GYAN_GARBH_API_URL;
 
-    const dedupeGetPaths = new Set(['/api/assistants/dashboard-stats', '/api/assistants/hotel-operations', '/api/site-settings']);
+    const dedupeGetPaths = new Set(['/api/assistants/dashboard-stats', '/api/assistants/hotel-operations', '/api/site-settings', '/api/heritage']);
+    const shortTtlGetPaths = new Set(['/api/heritage']);
+    const SHORT_TTL_MS = 1000;
     const inFlightFetches = new Map();
+    const recentFetches = new Map();
     const nativeFetch = window.fetch?.bind(window);
     if (nativeFetch && !window.__gyanGarbhFetchDedupeInstalled) {
         window.__gyanGarbhFetchDedupeInstalled = true;
@@ -45,9 +48,14 @@
             const shouldDedupe = method === 'GET' && dedupeGetPaths.has(url.pathname);
             if (!shouldDedupe) return nativeFetch(input, init);
             const key = `${method}:${url.href}`;
+            const recent = recentFetches.get(key);
+            if (recent && Date.now() - recent.savedAt < SHORT_TTL_MS) return Promise.resolve(recent.response.clone());
             if (!inFlightFetches.has(key)) {
                 const options = { cache: 'no-store', ...init };
-                inFlightFetches.set(key, nativeFetch(input, options).finally(() => inFlightFetches.delete(key)));
+                inFlightFetches.set(key, nativeFetch(input, options).then((response) => {
+                    if (shortTtlGetPaths.has(url.pathname)) recentFetches.set(key, { response: response.clone(), savedAt: Date.now() });
+                    return response;
+                }).finally(() => inFlightFetches.delete(key)));
             }
             return inFlightFetches.get(key).then((response) => response.clone());
         };

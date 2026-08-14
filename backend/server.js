@@ -7125,13 +7125,15 @@ app.get('/api/bodhi-path', async (req, res) => {
             await ensureDefaultBodhiPathData();
             return BodhiPath.find({ status: { $ne: 'Inactive' } })
                 .sort({ createdAt: -1 })
-                .maxTimeMS(5000)
+                .maxTimeMS(3000)
                 .exec();
-        })(), 5000, 'Bodhi Path query timed out after 5000ms');
+        })(), 3000, 'Bodhi Path query timed out after 3000ms');
 
         res.json({ success: true, data: items, bodhiPaths: items });
     } catch (err) {
-        console.error('Error fetching public Bodhi Path catalog:', err);
+        if (!/timed out|timeout|buffering timed out|server selection/i.test(err?.message || '')) {
+            console.warn('Bodhi Path fallback served after database error:', err.message);
+        }
         res.status(200).json({
             success: true,
             count: fallbackBodhiPath.length,
@@ -7143,28 +7145,28 @@ app.get('/api/bodhi-path', async (req, res) => {
         });
     }
 });
-
 app.get('/api/heritage', async (req, res) => {
     const fallbackHeritage = DEFAULT_BODHI_PATH_SITES.map((site, index) => ({ ...site, _id: 'fallback-heritage-' + (index + 1), isLocked: false, createdAt: new Date(), updatedAt: new Date() }));
 
     try {
-        await ensureDefaultBodhiPathData();
         const session = ensureVerifiedSession(req);
         const isManager = session && ['admin', 'assistant', 'mitra'].includes(session.role);
         const includeInactive = req.query.includeInactive === 'true' && isManager;
         const filter = includeInactive ? {} : { status: { $ne: 'Inactive' }, isLocked: { $ne: true } };
 
-        const queryPromise = BodhiPath.find(filter).sort({ updatedAt: -1, createdAt: -1 });
-        const data = await Promise.race([
-            queryPromise,
-            new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Heritage query timed out after 7000ms')), 7000);
-            })
-        ]);
+        const data = await withDatabaseTimeout((async () => {
+            await ensureDefaultBodhiPathData();
+            return BodhiPath.find(filter)
+                .sort({ updatedAt: -1, createdAt: -1 })
+                .maxTimeMS(3000)
+                .exec();
+        })(), 3000, 'Heritage query timed out after 3000ms');
 
         res.json({ success: true, count: data.length, data, heritage: data, bodhiPaths: data, temples: data });
     } catch (err) {
-        console.error('Error fetching heritage catalog:', err);
+        if (!/timed out|timeout|buffering timed out|server selection/i.test(err?.message || '')) {
+            console.warn('Heritage fallback served after database error:', err.message);
+        }
         res.status(200).json({
             success: true,
             count: fallbackHeritage.length,
@@ -7176,7 +7178,6 @@ app.get('/api/heritage', async (req, res) => {
         });
     }
 });
-
 app.post('/api/heritage', verifyHeritageManager, async (req, res) => {
     try {
         const payload = buildHeritagePayload(req.body);
