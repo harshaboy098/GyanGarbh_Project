@@ -211,6 +211,7 @@
             await request(id ? `/api/heritage/${id}` : '/api/heritage', { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
             close('bpFormModal');
             await load(true);
+            celebrate({ title: id ? 'Bodhi Path Updated' : 'Temple Catalog Synced', subtitle: `${body.name || 'Heritage entry'} saved with ${(body.routeDetails?.keyStops || []).length} route stops.`, icon: id ? 'bi-pencil-square' : 'bi-flower1', tag: 'Bodhi Path Manager' });
         } catch (err) {
             if (window.Swal) await Swal.fire('Unable to save', err.message, 'error'); else alert(err.message);
         } finally {
@@ -236,11 +237,13 @@
             const updated = normalize(response.data || response.heritage || response.bodhiPath || {});
             items = items.map((entry) => entry._id === id ? updated : entry);
             render();
-            if (window.Swal) await Swal.fire('Deleted', 'Route archived and audit log updated.', 'success');
+            celebrate({ title: 'Bodhi Path Entry Archived', subtitle: `${item?.name || 'Heritage entry'} was removed from active routes.`, icon: 'bi-archive-fill', tag: 'Bodhi Path Manager' });
         } catch (err) {
             if (window.Swal) await Swal.fire('Unable to delete', err.message, 'error'); else alert(err.message);
         }
     }
+
+    function celebrate(options) { if (typeof window.showGyanCelebration === 'function') window.showGyanCelebration(options); }
 
     function addStop(value = '') {
         const list = document.getElementById('bpStopList');
