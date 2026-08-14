@@ -1588,8 +1588,8 @@ const buildHeritagePayload = (body = {}) => {
 
 const DEFAULT_BODHI_PATH_SITES = [
     {
-        title: 'Mahabodhi Temple',
-        name: 'Mahabodhi Temple',
+        title: 'Mahabodhi Temple Complex',
+        name: 'Mahabodhi Temple Complex',
         type: 'Temple',
         category: 'temple',
         tagline: 'UNESCO World Heritage sacred temple',
@@ -1600,46 +1600,28 @@ const DEFAULT_BODHI_PATH_SITES = [
         imageUrl: 'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200&auto=format&fit=crop',
         coverImage: 'https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200&auto=format&fit=crop',
         visitingHours: '5:00 AM - 9:00 PM',
+        openingHours: '5:00 AM - 9:00 PM',
         entryFee: 'Free',
         estimatedVisitTime: '2-3 hours',
+        routeDetails: { startingPoint: 'Bodh Gaya Town', keyStops: ['Bodhi Tree Sacred Site', 'Temple Main Altar', 'Museum'], estimatedDuration: '2-3 hours', estimatedKm: '0.5 km' },
+        relatedTemples: ['Bodhi Tree Sacred Site', 'Thai Monastery', 'Japanese Temple Circuit'],
         bestTimeToVisit: 'October to March',
         status: 'Active'
     },
     {
-        title: 'Thai Monastery',
-        name: 'Thai Monastery',
-        type: 'Monastery',
-        category: 'monastery',
-        tagline: 'Peaceful Thai Buddhist monastery near the main circuit',
-        shortDescription: 'A calm monastery known for Thai architecture, meditation atmosphere, and easy access from central Bodhgaya.',
-        fullDescription: 'Thai Monastery brings a graceful international Buddhist presence to Bodh Gaya and is a favorite stop for slow, quiet exploration after the Mahabodhi Temple.',
-        significance: 'A living monastery representing Thai Buddhist devotion in Bodh Gaya.',
-        location: { address: 'Near Mahabodhi Temple, Bodh Gaya' },
-        imageUrl: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80',
-        coverImage: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80',
-        visitingHours: '6:00 AM - 7:00 PM',
-        entryFee: 'Free',
-        estimatedVisitTime: '1-2 hours',
-        bestTimeToVisit: 'Morning and sunset',
-        status: 'Active'
+        title: 'Thai Monastery', name: 'Thai Monastery', type: 'Monastery', category: 'monastery', tagline: 'Peaceful Thai Buddhist monastery near the main circuit', shortDescription: 'A calm monastery known for Thai architecture, meditation atmosphere, and easy access from central Bodhgaya.', fullDescription: 'Thai Monastery brings a graceful international Buddhist presence to Bodh Gaya and is a favorite stop for slow, quiet exploration after the Mahabodhi Temple.', significance: 'A living monastery representing Thai Buddhist devotion in Bodh Gaya.', location: { address: 'Near Mahabodhi Temple, Bodh Gaya' }, imageUrl: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80', coverImage: 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=80', visitingHours: '6:00 AM - 7:00 PM', openingHours: '6:00 AM - 7:00 PM', entryFee: 'Free', estimatedVisitTime: '1-2 hours', routeDetails: { startingPoint: 'Thai Monastery Main Gate', keyStops: ['Prayer Hall', 'Meditation Gardens', 'Monks Quarters'], estimatedDuration: '1-2 hours', estimatedKm: '0.3 km' }, relatedTemples: ['Royal Bhutan Monastery', 'Japanese Temple Circuit'], bestTimeToVisit: 'Morning and sunset', status: 'Active'
     },
     {
-        title: 'Great Buddha Statue',
-        name: 'Great Buddha Statue',
-        type: 'Monument',
-        category: 'monument',
-        tagline: 'Iconic open-air Buddha monument',
-        shortDescription: 'A landmark Buddha statue suited for families, first-time visitors, and evening route planning.',
-        fullDescription: "The Great Buddha Statue is one of Bodh Gaya's most recognizable landmarks and pairs naturally with nearby monasteries, cafes, and family-friendly stays.",
-        significance: 'A modern symbol of peace, compassion, and Buddhist devotion.',
-        location: { address: 'Bodh Gaya, Bihar' },
-        imageUrl: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80',
-        coverImage: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80',
-        visitingHours: '6:00 AM - 6:00 PM',
-        entryFee: 'Free',
-        estimatedVisitTime: '1 hour',
-        bestTimeToVisit: 'Late afternoon',
-        status: 'Active'
+        title: 'Great Buddha Statue', name: 'Great Buddha Statue', type: 'Monument', category: 'monument', tagline: 'Iconic open-air Buddha monument', shortDescription: 'A landmark Buddha statue suited for families, first-time visitors, and evening route planning.', fullDescription: "The Great Buddha Statue is one of Bodh Gaya's most recognizable landmarks and pairs naturally with nearby monasteries, cafes, and family-friendly stays.", significance: 'A modern symbol of peace, compassion, and Buddhist devotion.', location: { address: 'Bodh Gaya, Bihar' }, imageUrl: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80', coverImage: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80', visitingHours: '6:00 AM - 6:00 PM', openingHours: '6:00 AM - 6:00 PM', entryFee: 'Free', estimatedVisitTime: '1 hour', routeDetails: { startingPoint: 'Great Buddha Statue Base', keyStops: ['Meditation Platform', 'Viewpoint'], estimatedDuration: '1 hour', estimatedKm: '1 km' }, relatedTemples: ['Thai Monastery', 'Royal Bhutan Monastery'], bestTimeToVisit: 'Late afternoon', status: 'Active'
+    },
+    {
+        title: 'Royal Bhutan Monastery', name: 'Royal Bhutan Monastery', type: 'Monastery', category: 'monastery', tagline: 'Bhutanese spiritual sanctuary', shortDescription: 'An ornate Bhutanese monastery featuring vibrant traditional architecture and authentic Buddhist practices.', fullDescription: 'Royal Bhutan Monastery adds a vivid Bhutanese presence to the Bodh Gaya circuit with prayer halls, detailed murals, and a peaceful stop for reflective visitors.', significance: 'A living expression of Bhutanese Buddhist devotion in Bodh Gaya.', location: { address: 'Bodh Gaya, Bihar' }, imageUrl: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=1200&auto=format&fit=crop', coverImage: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=1200&auto=format&fit=crop', visitingHours: '6:00 AM - 9:00 PM', openingHours: '6:00 AM - 9:00 PM', entryFee: 'Free', estimatedVisitTime: '1.5-2 hours', routeDetails: { startingPoint: 'Royal Bhutan Monastery Gate', keyStops: ['Main Temple', 'Prayer Wheels', 'Monastery Garden'], estimatedDuration: '1.5-2 hours', estimatedKm: '0.8 km' }, relatedTemples: ['Thai Monastery', 'Japanese Temple Circuit'], bestTimeToVisit: 'Morning and sunset', status: 'Active'
+    },
+    {
+        title: 'Japanese Temple Circuit', name: 'Japanese Temple Circuit', type: 'Route', category: 'circuit-route', tagline: 'Japanese Buddhism heritage route', shortDescription: 'A curated pilgrimage route connecting Japanese Buddhist temple experiences in Bodh Gaya.', fullDescription: 'The Japanese Temple Circuit is designed for travelers who want a calm multi-stop path through Japanese Buddhist architecture, meditation spaces, and nearby heritage landmarks.', significance: 'A route highlighting international Buddhist heritage around Bodh Gaya.', location: { address: 'Bodh Gaya temple circuit, Bihar' }, imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c6f2b0991?w=1200&auto=format&fit=crop', coverImage: 'https://images.unsplash.com/photo-1517604931442-7e0c6f2b0991?w=1200&auto=format&fit=crop', visitingHours: '7:00 AM - 6:00 PM', openingHours: '7:00 AM - 6:00 PM', entryFee: 'Free', estimatedVisitTime: '3-4 hours', routeDetails: { startingPoint: 'Mahabodhi Temple Complex', keyStops: ['Japanese Temple', 'Zen Gardens', 'Meditation Center', 'Temple Library'], estimatedDuration: '3-4 hours', estimatedKm: '2.5 km' }, relatedTemples: ['Thai Monastery', 'Royal Bhutan Monastery'], bestTimeToVisit: 'October to March', status: 'Active'
+    },
+    {
+        title: 'Bodhi Tree Sacred Site', name: 'Bodhi Tree Sacred Site', type: 'Sacred Tree', category: 'sacred-tree', tagline: 'The tree of enlightenment', shortDescription: 'The sacred fig tree under which Buddha attained enlightenment 2,600 years ago.', fullDescription: 'The Bodhi Tree Sacred Site is one of the most revered places in the Mahabodhi Temple area, inviting pilgrims to pause at the symbolic heart of the enlightenment story.', significance: 'The living symbol of awakening and Buddhist pilgrimage.', location: { address: 'Inside Mahabodhi Temple Complex, Bodh Gaya' }, imageUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&auto=format&fit=crop', coverImage: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&auto=format&fit=crop', visitingHours: '5:00 AM - 9:00 PM', openingHours: '5:00 AM - 9:00 PM', entryFee: 'Free', estimatedVisitTime: '1-2 hours', routeDetails: { startingPoint: 'Mahabodhi Temple Complex', keyStops: ['Meditation Platform', 'Vajrasana', 'Prayer Walk'], estimatedDuration: '1-2 hours', estimatedKm: '0.1 km' }, relatedTemples: ['Mahabodhi Temple Complex', 'Thai Monastery'], bestTimeToVisit: 'Early morning', status: 'Active'
     }
 ];
 
@@ -7121,20 +7103,7 @@ app.get('/api/bodhi-path', async (req, res) => {
 });
 
 app.get('/api/heritage', async (req, res) => {
-    const fallbackHeritage = [{
-        _id: 'fallback-heritage',
-        title: 'Heritage catalog temporarily unavailable',
-        category: 'temple',
-        shortDescription: 'The heritage catalog is temporarily unavailable. Please try again shortly.',
-        fullDescription: 'The heritage catalog is temporarily unavailable. Please try again shortly.',
-        significance: 'Please try again shortly.',
-        location: { address: 'Bodh Gaya, India' },
-        imageUrl: '',
-        status: 'Active',
-        isLocked: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-    }];
+    const fallbackHeritage = DEFAULT_BODHI_PATH_SITES.map((site, index) => ({ ...site, _id: 'fallback-heritage-' + (index + 1), isLocked: false, createdAt: new Date(), updatedAt: new Date() }));
 
     try {
         await ensureDefaultBodhiPathData();
@@ -7147,15 +7116,16 @@ app.get('/api/heritage', async (req, res) => {
         const data = await Promise.race([
             queryPromise,
             new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Heritage query timed out after 4000ms')), 4000);
+                setTimeout(() => reject(new Error('Heritage query timed out after 7000ms')), 7000);
             })
         ]);
 
-        res.json({ success: true, data, heritage: data, bodhiPaths: data, temples: data });
+        res.json({ success: true, count: data.length, data, heritage: data, bodhiPaths: data, temples: data });
     } catch (err) {
         console.error('Error fetching heritage catalog:', err);
         res.status(200).json({
             success: true,
+            count: fallbackHeritage.length,
             data: fallbackHeritage,
             heritage: fallbackHeritage,
             bodhiPaths: fallbackHeritage,

@@ -18,6 +18,16 @@
         { _id: 'default-5', name: 'Japanese Temple Circuit', title: 'Japanese Temple Circuit', category: 'route', type: 'Route', shortDescription: 'A curated pilgrimage route connecting beautiful Japanese Buddhist temples in Bodh Gaya.', tagline: 'Japanese Buddhism heritage route', imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c6f2b0991?w=800', coverImage: 'https://images.unsplash.com/photo-1517604931442-7e0c6f2b0991?w=800', images: ['https://images.unsplash.com/photo-1517604931442-7e0c6f2b0991?w=800'], visitingHours: '7:00 AM - 6:00 PM', openingHours: '7:00 AM - 6:00 PM', entryFee: 'Free', estimatedVisitTime: '3-4 hours', estimatedDuration: '3-4 hours', routeDetails: { startingPoint: 'Mahabodhi Temple Complex', keyStops: ['Japanese Temple', 'Zen Gardens', 'Meditation Center', 'Temple Library'], estimatedDuration: '3-4 hours', estimatedKm: '2.5 km' }, relatedTemples: ['Thai Monastery', 'Chinese Temple', 'Korean Temple'], status: 'Active' },
         { _id: 'default-6', name: 'Bodhi Tree Sacred Site', title: 'Bodhi Tree', category: 'monument', type: 'Monument', shortDescription: 'The sacred fig tree under which Buddha attained enlightenment 2,600 years ago.', tagline: 'The tree of enlightenment', imageUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800', coverImage: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800', images: ['https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800'], visitingHours: '5:00 AM - 9:00 PM', openingHours: '5:00 AM - 9:00 PM', entryFee: 'Free', estimatedVisitTime: '1-2 hours', estimatedDuration: '1-2 hours', routeDetails: { startingPoint: 'Mahabodhi Temple Complex', keyStops: ['Meditation Platform'], estimatedDuration: '1-2 hours', estimatedKm: '0.1 km' }, status: 'Active' }
     ];
+    window.GYAN_GARBH_DEFAULT_HERITAGE_ITEMS = DEFAULT_HERITAGE_ITEMS.map((item) => ({ ...item }));
+
+    function heritageArrayFromResponse(response) {
+        const raw = Array.isArray(response) ? response : (response?.data || response?.heritage || response?.bodhiPaths || response?.temples || []);
+        return Array.isArray(raw) ? raw.filter((item) => item && (item.name || item.title)).map(normalize) : [];
+    }
+
+    function defaultHeritageItems() {
+        return (window.GYAN_GARBH_DEFAULT_HERITAGE_ITEMS || DEFAULT_HERITAGE_ITEMS).map(normalize);
+    }
 
     function injectStyle() {
         if (document.getElementById(STYLE_ID)) return;
@@ -141,7 +151,7 @@
     function ensureInstantItems() {
         if (!items.length) {
             const cached = readCache();
-            items = cached.length ? cached : DEFAULT_HERITAGE_ITEMS.map(normalize);
+            items = cached.length ? cached : defaultHeritageItems();
         }
         isLoaded = true;
         activeContainer = cfg.containerId;
@@ -151,8 +161,9 @@
         if (heritageSyncPromise && !force) return heritageSyncPromise;
         heritageSyncPromise = request('/api/heritage?includeInactive=true')
             .then((response) => {
-                const nextItems = (response.data || response.heritage || response.bodhiPaths || response.temples || []).map(normalize);
-                if (nextItems.length || !items.length) items = nextItems;
+                const nextItems = heritageArrayFromResponse(response);
+                if (nextItems.length) items = nextItems;
+                else if (!items.length) items = defaultHeritageItems();
                 writeCache(items);
                 isLoaded = true;
                 activeContainer = cfg.containerId;
@@ -161,8 +172,11 @@
             })
             .catch((err) => {
                 console.warn('Bodhi Path background sync skipped:', err.message);
-                const cached = items.length ? items : readCache();
-                if (cached.length) { items = cached; isLoaded = true; activeContainer = cfg.containerId; render(); }
+                items = defaultHeritageItems();
+                isLoaded = true;
+                activeContainer = cfg.containerId;
+                writeCache(items);
+                render();
                 return items;
             })
             .finally(() => { heritageSyncPromise = null; });
