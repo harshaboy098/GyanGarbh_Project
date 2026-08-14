@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const USER_ROLES = ['admin', 'assistant', 'support', 'specialist', 'driver', 'customer', 'mitra'];
+const MITRA_ROLE_CATEGORIES = ['Heritage Guide', 'Travel Partner / Driver', 'Stay Escort', 'Market & Craft Guide'];
+const MITRA_KYC_STATUSES = ['Pending Verification', 'Verified', 'Rejected'];
 
 const userSchema = new mongoose.Schema({
     name: {
