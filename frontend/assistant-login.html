@@ -89,11 +89,32 @@
 <script src="api-client.js"></script>
 <script>
     const API_URL = (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '')).replace(/\/$/, '');
+    const ASSISTANT_TOKEN_KEY = 'gyan_assistant_token';
+    const ASSISTANT_USER_KEY = 'gyan_assistant_user';
+    const ASSISTANT_STATS_KEY = 'gyan_assistant_dashboard_stats';
     const message = document.getElementById('message');
     const form = document.getElementById('assistantLoginForm');
     const button = document.getElementById('loginButton');
     function showMessage(type, text) { message.className = `message ${type}`; message.textContent = text; }
-    function clearAssistantSession() { ['assistantEmail','assistantName','assistantRole','assistantPermissions','assistantId','assistantToken','authToken'].forEach(key => localStorage.removeItem(key)); }
+    function clearAssistantSession() { [ASSISTANT_TOKEN_KEY, ASSISTANT_USER_KEY, ASSISTANT_STATS_KEY, 'assistantEmail','assistantName','assistantRole','assistantPermissions','assistantId','assistantToken','authToken'].forEach(key => localStorage.removeItem(key)); }
+    function assistantToken() { return localStorage.getItem(ASSISTANT_TOKEN_KEY) || ''; }
+    async function verifyExistingSession() {
+        const existingToken = assistantToken();
+        if (!existingToken) return;
+        try {
+            const response = await fetch(`${API_URL}/api/assistants/dashboard-stats`, {
+                cache: 'no-store',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${existingToken}` }
+            });
+            if (response.status === 401) {
+                clearAssistantSession();
+                return;
+            }
+            if (response.ok) window.location.replace('assistant-dashboard.html');
+        } catch (error) {
+            console.warn('Assistant session verification skipped:', error.message);
+        }
+    }
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         button.disabled = true;
@@ -113,15 +134,17 @@
             const assistant = data.assistant || {};
             const token = data.token || data.sessionToken;
             clearAssistantSession();
-            localStorage.setItem('assistantEmail', assistant.email || '');
-            localStorage.setItem('assistantName', assistant.name || 'Assistant');
-            localStorage.setItem('assistantRole', 'assistant');
-            localStorage.setItem('assistantPermissions', JSON.stringify(assistant.permissions || {}));
-            localStorage.setItem('assistantId', assistant._id || '');
-            localStorage.setItem('assistantToken', token || '');
-            localStorage.setItem('authToken', token || '');
+            const user = {
+                id: assistant._id || assistant.id || '',
+                email: assistant.email || '',
+                name: assistant.name || 'Assistant',
+                role: 'assistant',
+                permissions: assistant.permissions || {}
+            };
+            localStorage.setItem(ASSISTANT_TOKEN_KEY, token || '');
+            localStorage.setItem(ASSISTANT_USER_KEY, JSON.stringify(user));
             showMessage('success', 'Login successful. Opening assistant portal...');
-            setTimeout(() => { window.location.href = 'assistant-dashboard.html'; }, 650);
+            setTimeout(() => { window.location.replace('assistant-dashboard.html'); }, 650);
         } catch (error) {
             showMessage('error', error.message || 'Unable to login right now.');
         } finally {
@@ -129,9 +152,7 @@
             button.innerHTML = '<i class="bi bi-box-arrow-in-right"></i>Login to Portal';
         }
     });
-    window.addEventListener('load', () => {
-        if (localStorage.getItem('authToken') && localStorage.getItem('assistantEmail')) window.location.href = 'assistant-dashboard.html';
-    });
+    window.addEventListener('load', verifyExistingSession);
 </script>
 </body>
 </html>

@@ -40,10 +40,10 @@
 
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
     const apiBase = () => (cfg.apiBase || (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : ''))).replace(/\/$/, '');
-    const token = () => cfg.token || localStorage.getItem('assistantToken') || localStorage.getItem('authToken') || localStorage.getItem('sessionToken') || '';
-    function redirectLogin(reason = 'Session expired. Please log in again.') { console.warn(reason); window.location.href = 'assistant-login.html'; }
+    const token = () => cfg.token || localStorage.getItem('gyan_assistant_token') || localStorage.getItem('sessionToken') || '';
+    function redirectLogin(reason = 'Session expired. Please log in again.') { console.warn(reason); window.location.replace('assistant-login.html'); }
     const headers = () => { const activeToken = token(); if (!activeToken) redirectLogin('Missing assistant token.'); return { 'Content-Type':'application/json', Authorization:`Bearer ${activeToken}`, 'x-gyangarbh-admin-shield': window.GYAN_GARBH_ADMIN_SHIELD || 'gg-admin-shield-v1-9821' }; };
-    const currentActor = () => ({ name: cfg.actorName || localStorage.getItem('assistantName') || localStorage.getItem('mitraName') || localStorage.getItem('adminName') || 'User', email: cfg.actorEmail || localStorage.getItem('assistantEmail') || localStorage.getItem('mitraEmail') || localStorage.getItem('adminEmail') || '', role: cfg.role || 'assistant' });
+    const currentActor = () => { let assistant = {}; try { assistant = JSON.parse(localStorage.getItem('gyan_assistant_user') || '{}') || {}; } catch (_) {} return { name: cfg.actorName || assistant.name || localStorage.getItem('mitraName') || localStorage.getItem('adminName') || 'User', email: cfg.actorEmail || assistant.email || localStorage.getItem('mitraEmail') || localStorage.getItem('adminEmail') || '', role: cfg.role || 'assistant' }; };
     const asArray = (value) => Array.isArray(value) ? value.filter(Boolean) : String(value || '').split(/\r?\n|,/).map((x) => x.trim()).filter(Boolean);
     const normalize = (item) => ({ ...item, name: item.name || item.title || 'Untitled Heritage', coverImage: item.coverImage || item.imageUrl || (item.images || [])[0] || fallbackImage, galleryImages: item.galleryImages || item.images || [], routeDetails: item.routeDetails || {}, openingHours: item.openingHours || item.visitingHours || '', tagline: item.tagline || item.shortDescription || '' });
     const money = (v) => v || 'Free / NA';
@@ -59,7 +59,8 @@
             try {
                 const res = await Promise.race([fetch(`${apiBase()}${path}`, { cache: 'no-store', ...options, headers: { ...headers(), ...(options.headers || {}) } }), timeout(12000)]);
                 const data = await res.json().catch(() => ({}));
-                if (res.status === 401 || res.status === 403) { redirectLogin(data.message || 'Session expired or permission denied.'); throw new Error(data.message || `Request failed: ${res.status}`); }
+                if (res.status === 401) { redirectLogin(data.message || 'Session expired. Please log in again.'); throw new Error(data.message || 'Unauthorized'); }
+                if (res.status === 403) throw new Error(data.message || 'Permission denied.');
                 if (!res.ok || data.success === false) throw new Error(data.message || `Request failed: ${res.status}`);
                 return data;
             } catch (error) {
@@ -205,13 +206,17 @@
         if (!form.reportValidity()) return;
         const button = document.getElementById('bpSaveButton');
         const id = form.elements.id.value;
+        if (typeof window.confirmGyanDeployment === 'function') {
+            const confirmed = await window.confirmGyanDeployment();
+            if (!confirmed) return;
+        }
+        celebrate({ tag: 'Bodhi Path Manager' });
         try {
             if (button) { button.disabled = true; button.textContent = 'Saving...'; }
             const body = await payloadFromForm(form);
             await request(id ? `/api/heritage/${id}` : '/api/heritage', { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
             close('bpFormModal');
             await load(true);
-            celebrate({ title: id ? 'Bodhi Path Updated' : 'Temple Catalog Synced', subtitle: `${body.name || 'Heritage entry'} saved with ${(body.routeDetails?.keyStops || []).length} route stops.`, icon: id ? 'bi-pencil-square' : 'bi-flower1', tag: 'Bodhi Path Manager' });
         } catch (err) {
             if (window.Swal) await Swal.fire('Unable to save', err.message, 'error'); else alert(err.message);
         } finally {

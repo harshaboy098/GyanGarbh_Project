@@ -171,15 +171,18 @@
         { id: 'reports', label: 'Reports', icon: 'bi-graph-up-arrow', permission: 'viewReports', loader: loadReports },
         { id: 'permissions', label: 'Permissions', icon: 'bi-shield-lock', loader: renderPermissions }
     ];
-    function token() { return localStorage.getItem('authToken') || localStorage.getItem('assistantToken') || ''; }
-    function assistant() { return { name: localStorage.getItem('assistantName') || 'Mukesh Assistant', email: localStorage.getItem('assistantEmail') || '', permissions: parsePermissions() }; }
-    function parsePermissions() { try { return JSON.parse(localStorage.getItem('assistantPermissions') || '{}') || {}; } catch { return {}; } }
+    const ASSISTANT_TOKEN_KEY = 'gyan_assistant_token';
+    const ASSISTANT_USER_KEY = 'gyan_assistant_user';
+    function token() { return localStorage.getItem(ASSISTANT_TOKEN_KEY) || ''; }
+    function assistantUser() { try { return JSON.parse(localStorage.getItem(ASSISTANT_USER_KEY) || '{}') || {}; } catch { return {}; } }
+    function assistant() { const user = assistantUser(); return { name: user.name || 'Mukesh Assistant', email: user.email || '', permissions: user.permissions || {} }; }
+    function parsePermissions() { return assistant().permissions || {}; }
     function hasPermission(key) { const p = parsePermissions(); if (!key) return true; if (key === 'manageMitra' || key === 'manageMitras') return p.manageMitra === true || p.manageMitras === true; return p[key] === true; }
     function headers(extra = {}) { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, [ADMIN_SHIELD_HEADER]: ADMIN_SHIELD_SECRET, ...extra }; }
     async function api(path, options = {}) { const response = await fetch(`${API_URL}${path}`, { ...options, headers: headers(options.headers || {}) }); const data = await response.json().catch(() => ({})); if (!response.ok || data.success === false) throw new Error(data.message || `Request failed: ${response.status}`); return data; }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
     function statusBadge(value, locked = false) { if (locked) return '<span class="badge badge-locked">Locked</span>'; const text = String(value || 'Active'); const cls = /pending|review/i.test(text) ? 'badge-pending' : 'badge-active'; return `<span class="badge ${cls}">${escapeHtml(text)}</span>`; }
-    function requireAuth() { if (!token() || !localStorage.getItem('assistantEmail')) window.location.href = 'assistant-login.html'; }
+    function requireAuth() { if (!token()) window.location.replace('assistant-login.html'); }
     function initShell() { const user = assistant(); document.getElementById('assistantName').textContent = user.name; document.getElementById('assistantEmail').textContent = user.email; document.getElementById('avatarInitial').textContent = (user.name || 'M').trim().charAt(0).toUpperCase(); renderNav(); renderPermissions(); loadAll(); }
     function renderNav() { const activePermissions = Object.values(parsePermissions()).filter(Boolean).length; document.getElementById('permissionCount').textContent = `${activePermissions} permissions active`; document.getElementById('sidebarNav').innerHTML = navItems.filter(i => hasPermission(i.permission)).map(i => `<button class="${i.id === 'dashboard' ? 'active' : ''}" onclick="showSection('${i.id}')"><i class="bi ${i.icon}"></i>${i.label}</button>`).join(''); }
     function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id)); document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.textContent.trim().toLowerCase() === navItems.find(i => i.id === id)?.label.toLowerCase())); closeDrawer(); const item = navItems.find(i => i.id === id); if (item?.loader) item.loader(); }
@@ -201,7 +204,7 @@
     async function editCustomer(id) { const item = state.customers.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Customer', { customerName: item.customerName || item.name || '', customerEmail: item.customerEmail || item.email || '', customerPhone: item.customerPhone || item.phone || '', status: item.status || 'Active' }); if (!form) return; await api('/admin/update-customer', { method:'PUT', body: JSON.stringify({ customerId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadCustomers(); }
     async function editMitra(id) { const item = state.mitras.find(x => x._id === id); if (!item) return; const form = await promptFields('Edit Mitra', { name: item.name || '', email: item.email || '', phone: item.phone || '', experience: item.experience || '' }); if (!form) return; await api('/admin/update-mitra', { method:'PUT', body: JSON.stringify({ mitraId:id, ...form, updatedBy: assistant().email, updatedByRole:'assistant' }) }); await loadMitras(); }
     async function promptFields(title, fields) { if (!window.Swal) return null; const html = Object.entries(fields).map(([key, value]) => `<input id="field-${key}" class="swal2-input" placeholder="${key}" value="${escapeHtml(value)}">`).join(''); const result = await Swal.fire({ title, html, showCancelButton:true, confirmButtonText:'Save', focusConfirm:false, preConfirm: () => Object.fromEntries(Object.keys(fields).map(key => [key, document.getElementById(`field-${key}`).value])) }); return result.isConfirmed ? result.value : null; }
-    function logout() { ['assistantEmail','assistantName','assistantRole','assistantPermissions','assistantId','assistantToken','authToken'].forEach(k => localStorage.removeItem(k)); window.location.href = 'assistant-login.html'; }
+    function logout() { ['gyan_assistant_token','gyan_assistant_user','gyan_assistant_dashboard_stats','assistantEmail','assistantName','assistantRole','assistantPermissions','assistantId','assistantToken','authToken'].forEach(k => localStorage.removeItem(k)); window.location.replace('assistant-login.html'); }
     window.addEventListener('load', () => { requireAuth(); initShell(); window.GyanGarbhApi?.connectRealtime?.(); });
     window.addEventListener('gyangarbh:realtime', () => loadAll());
 </script>

@@ -13,7 +13,7 @@
 
     const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
     const apiBase = (cfg) => (cfg.apiBase || window.GYAN_GARBH_API_URL || DEFAULT_API).replace(/\/$/, '');
-    const authToken = (cfg) => cfg.token || localStorage.getItem('authToken') || localStorage.getItem('assistantToken') || localStorage.getItem('adminToken') || localStorage.getItem('sessionToken') || '';
+    const authToken = (cfg) => cfg.token || localStorage.getItem('gyan_assistant_token') || localStorage.getItem('adminToken') || localStorage.getItem('sessionToken') || '';
     const canMarkRead = (role) => role === 'admin' || role === 'assistant';
 
     async function request(cfg, requestPath, options = {}) {

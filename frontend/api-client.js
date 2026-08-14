@@ -63,6 +63,7 @@
 
     function getToken() {
         return (
+            localStorage.getItem('gyan_assistant_token') ||
             localStorage.getItem('authToken') ||
             sessionStorage.getItem('authToken') ||
             localStorage.getItem('hotelToken') ||
@@ -102,7 +103,7 @@
     }
 
     function getLocalStorageJwtToken() {
-        const tokenKeys = ['authToken', 'hotelToken', 'token', 'adminToken'];
+        const tokenKeys = ['gyan_assistant_token', 'authToken', 'hotelToken', 'token', 'adminToken'];
         for (const key of tokenKeys) {
             const token = localStorage.getItem(key);
             if (isUsableStoredToken(token)) return token;
@@ -112,7 +113,7 @@
     }
 
     function removeInvalidLocalStorageToken(token) {
-        ['authToken', 'hotelToken', 'token', 'adminToken'].forEach((key) => {
+        ['gyan_assistant_token', 'authToken', 'hotelToken', 'token', 'adminToken'].forEach((key) => {
             if (!token || localStorage.getItem(key) === token) {
                 localStorage.removeItem(key);
             }
