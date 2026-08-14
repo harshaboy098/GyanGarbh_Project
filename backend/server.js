@@ -7118,13 +7118,29 @@ app.get('/admin/all-bodhi-paths', verifyAdminOrAssistant('manageHeritage'), asyn
 
 
 app.get('/api/bodhi-path', async (req, res) => {
+    const fallbackBodhiPath = DEFAULT_BODHI_PATH_SITES.map((site, index) => ({ ...site, _id: 'fallback-bodhi-path-' + (index + 1), isLocked: false, createdAt: new Date(), updatedAt: new Date() }));
+
     try {
-        await ensureDefaultBodhiPathData();
-        const items = await BodhiPath.find({ status: { $ne: 'Inactive' } }).sort({ createdAt: -1 });
+        const items = await withDatabaseTimeout((async () => {
+            await ensureDefaultBodhiPathData();
+            return BodhiPath.find({ status: { $ne: 'Inactive' } })
+                .sort({ createdAt: -1 })
+                .maxTimeMS(5000)
+                .exec();
+        })(), 5000, 'Bodhi Path query timed out after 5000ms');
+
         res.json({ success: true, data: items, bodhiPaths: items });
     } catch (err) {
         console.error('Error fetching public Bodhi Path catalog:', err);
-        res.status(500).json({ success: false, message: 'Unable to load Bodhi Path catalog' });
+        res.status(200).json({
+            success: true,
+            count: fallbackBodhiPath.length,
+            data: fallbackBodhiPath,
+            heritage: fallbackBodhiPath,
+            bodhiPaths: fallbackBodhiPath,
+            temples: fallbackBodhiPath,
+            message: 'Bodhi Path catalog temporarily unavailable. Showing fallback data.'
+        });
     }
 });
 
