@@ -7121,17 +7121,47 @@ app.get('/api/bodhi-path', async (req, res) => {
 });
 
 app.get('/api/heritage', async (req, res) => {
+    const fallbackHeritage = [{
+        _id: 'fallback-heritage',
+        title: 'Heritage catalog temporarily unavailable',
+        category: 'temple',
+        shortDescription: 'The heritage catalog is temporarily unavailable. Please try again shortly.',
+        fullDescription: 'The heritage catalog is temporarily unavailable. Please try again shortly.',
+        significance: 'Please try again shortly.',
+        location: { address: 'Bodh Gaya, India' },
+        imageUrl: '',
+        status: 'Active',
+        isLocked: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+    }];
+
     try {
         await ensureDefaultBodhiPathData();
         const session = ensureVerifiedSession(req);
         const isManager = session && ['admin', 'assistant', 'mitra'].includes(session.role);
         const includeInactive = req.query.includeInactive === 'true' && isManager;
         const filter = includeInactive ? {} : { status: { $ne: 'Inactive' }, isLocked: { $ne: true } };
-        const data = await BodhiPath.find(filter).sort({ updatedAt: -1, createdAt: -1 });
+
+        const queryPromise = BodhiPath.find(filter).sort({ updatedAt: -1, createdAt: -1 });
+        const data = await Promise.race([
+            queryPromise,
+            new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Heritage query timed out after 4000ms')), 4000);
+            })
+        ]);
+
         res.json({ success: true, data, heritage: data, bodhiPaths: data, temples: data });
     } catch (err) {
         console.error('Error fetching heritage catalog:', err);
-        res.status(500).json({ success: false, message: 'Unable to load heritage catalog', error: err.message, data: [] });
+        res.status(200).json({
+            success: true,
+            data: fallbackHeritage,
+            heritage: fallbackHeritage,
+            bodhiPaths: fallbackHeritage,
+            temples: fallbackHeritage,
+            message: 'Heritage catalog temporarily unavailable. Showing fallback data.'
+        });
     }
 });
 
