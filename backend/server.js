@@ -2097,6 +2097,28 @@ let cachedMongoose = global.mongoose;
 if (!cachedMongoose) cachedMongoose = global.mongoose = { conn: null, promise: null, initialized: false };
 global.__gyanGarbhMongoose = cachedMongoose;
 
+function withDatabaseTimeout(promise, ms, message) {
+    let timer;
+    return Promise.race([
+        Promise.resolve(promise).finally(() => clearTimeout(timer)),
+        new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(message || 'Database operation timed out')), ms);
+        })
+    ]);
+}
+
+async function waitForAssistantLoginDatabase(timeoutMs = 5000) {
+    cachedMongoose = global.mongoose || cachedMongoose;
+    if (!global.mongoose) global.mongoose = cachedMongoose;
+    global.__gyanGarbhMongoose = cachedMongoose;
+
+    if (cachedMongoose.conn && mongoose.connection.readyState === 1) return cachedMongoose.conn;
+    if (mongoose.connection.readyState === 2 && cachedMongoose.promise) {
+        return withDatabaseTimeout(cachedMongoose.promise, timeoutMs, 'Assistant login database reconnect timed out');
+    }
+    return withDatabaseTimeout(connectDatabase(), timeoutMs, 'Assistant login database connection timed out');
+}
+
 async function connectDatabase() {
 
     if (cachedMongoose.conn && mongoose.connection.readyState === 1) return cachedMongoose.conn;
@@ -6572,9 +6594,13 @@ app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/
 
         try {
 
-            await connectDatabase();
+            await waitForAssistantLoginDatabase(5000);
 
-            assistant = await Assistant.findOne({ email: normalizedEmail });
+            assistant = await withDatabaseTimeout(
+                Assistant.findOne({ email: normalizedEmail }).maxTimeMS(5000).exec(),
+                5000,
+                'Assistant login lookup timed out'
+            );
 
             const passwordMatches = assistant && await assistant.comparePassword(password);
 
@@ -6586,9 +6612,9 @@ app.post(['/assistant-login', '/assistant/login', '/api/assistant-login', '/api/
 
         } catch (err) {
 
-            console.error('ASSISTANT LOGIN CRASH:', err);
+            console.error('ASSISTANT LOGIN DB ERROR:', err);
 
-            return res.status(401).json({ success: false, message: 'Invalid assistant credentials' });
+            return res.status(503).json({ success: false, message: 'Assistant login is temporarily unavailable while the database reconnects. Please try again shortly.' });
 
         }
 
