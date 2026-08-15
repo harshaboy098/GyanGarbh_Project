@@ -20,7 +20,7 @@ const HotelSchema = new mongoose.Schema({
     location: { type: String, required: true },
     rooms: { type: [roomSchema], default: [] },
     
-    // 👈 NEW FIELDS FOR HOTEL DETAILS
+    // ðŸ‘ˆ NEW FIELDS FOR HOTEL DETAILS
     totalRooms: { type: Number, default: 10 },
     acRoomPrice: { type: Number, default: 2000 },
     nonAcRoomPrice: { type: Number, default: 1200 },
@@ -37,7 +37,7 @@ const HotelSchema = new mongoose.Schema({
     imageUrl3: { type: String, default: "" },
     images: { type: [String], default: [] },
     
-    // 🆕 NEW FIELDS - Distance from Landmark & Gyan Garbh Highlights
+    // ðŸ†• NEW FIELDS - Distance from Landmark & Gyan Garbh Highlights
     distanceFromLandmark: {
         value: { type: Number, default: 0 },
         unit: { type: String, default: 'km' },
@@ -54,7 +54,7 @@ const HotelSchema = new mongoose.Schema({
     description: { type: String, default: "Luxury stay in the heart of Bodhgaya" },
     createdAt: { type: Date, default: Date.now },
     
-    // ⭐ NEW FIELDS FOR ACTIVITY TRACKING
+    // â­ NEW FIELDS FOR ACTIVITY TRACKING
     updatedBy: { type: String, default: null }, // Email of who last updated
     updatedAt: { type: Date, default: Date.now },
     isLocked: { type: Boolean, default: false }, // Status toggle for lock
@@ -66,6 +66,15 @@ const HotelSchema = new mongoose.Schema({
     }],
     averageRating: { type: Number, default: 4.0 },
     totalReviews: { type: Number, default: 0 },
+    gvsScore: { type: Number, default: 0, index: true },
+    gvsRankStatus: { type: String, default: 'New Property' },
+    categoryRatings: {
+        cleanliness: { type: Number, default: 0 },
+        staffBehavior: { type: Number, default: 0 },
+        amenitiesAccuracy: { type: Number, default: 0 },
+        location: { type: Number, default: 0 },
+        valueForMoney: { type: Number, default: 0 }
+    },
     applicationRequestId: { type: String, default: '' },
     applicationTrackingLink: { type: String, default: '' },
     applicationSubmittedAt: { type: Date, default: null }

@@ -1,6 +1,6 @@
 const dns = require('dns');
 
-// 🚀 Google DNS ko force karein taaki local internet block bypass ho jaye
+// ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Google DNS ko force karein taaki local internet block bypass ho jaye
 
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
@@ -32,6 +32,7 @@ const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 
 const crypto = require('crypto');
+const https = require('https');
 
 const bcrypt = require('bcryptjs');
 
@@ -67,6 +68,8 @@ const Taxi = require('./models/Taxi');
 
 const RideRequest = require('./models/RideRequest');
 const SiteSettings = require('./models/SiteSettings');
+const Review = require('./models/Review');
+const MitraKyc = require('./models/MitraKyc');
 const templeRoutes = require('./routes/templeRoutes');
 const mitraKycRoutes = require('./routes/mitraKycRoutes');
 
@@ -77,6 +80,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[+]?[\d\s()-]{7,20}$/;
 
 const PASSWORD_MIN_LENGTH = 8;
+const MITRA_KYC_STATUS_VALUES = ['Pending Verification', 'Verified', 'Rejected'];
 
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -94,6 +98,159 @@ const isValidPhone = (value) => !value || PHONE_PATTERN.test(String(value).trim(
 
 const isStrongEnoughPassword = (value) => typeof value === 'string' && value.length >= PASSWORD_MIN_LENGTH;
 
+
+const REFUND_METHODS = ['upi', 'bank', 'wallet'];
+const UPI_ID_PATTERN = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
+const IFSC_PATTERN = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const BANK_ACCOUNT_PATTERN = /^\d{9,18}$/;
+const ACCOUNT_HOLDER_PATTERN = /^[A-Za-z][A-Za-z\s.'-]{1,79}$/;
+
+const normalizeRefundDetails = (payload = {}, existing = {}) => {
+    const source = payload.refundDetails && typeof payload.refundDetails === 'object' ? payload.refundDetails : payload;
+    const existingBank = existing.bankInfo || {};
+    const cleanMethod = String(source.preferredMethod || existing.preferredMethod || 'wallet').trim().toLowerCase();
+    const preferredMethod = cleanMethod === 'bank_account' ? 'bank' : cleanMethod;
+    const upiId = String(source.upiId ?? existing.upiId ?? '').trim();
+    const bankSource = source.bankInfo && typeof source.bankInfo === 'object' ? source.bankInfo : source;
+    const bankInfo = {
+        accountNumber: String(bankSource.accountNumber ?? existingBank.accountNumber ?? '').replace(/\s/g, '').trim(),
+        ifsc: String(bankSource.ifsc ?? existingBank.ifsc ?? '').replace(/\s/g, '').trim().toUpperCase(),
+        accountHolderName: String(bankSource.accountHolderName ?? existingBank.accountHolderName ?? '').trim()
+    };
+    const errors = [];
+
+    if (!REFUND_METHODS.includes(preferredMethod)) errors.push('Default refund method must be UPI, Bank Account, or Gyan Garbh Wallet.');
+    if ((upiId || preferredMethod === 'upi') && !UPI_ID_PATTERN.test(upiId)) errors.push('Enter a valid UPI ID, for example name@bank.');
+
+    const hasAnyBankInfo = Boolean(bankInfo.accountNumber || bankInfo.ifsc || bankInfo.accountHolderName);
+    if (hasAnyBankInfo || preferredMethod === 'bank') {
+        if (!BANK_ACCOUNT_PATTERN.test(bankInfo.accountNumber)) errors.push('Bank account number must be 9 to 18 digits.');
+        if (!IFSC_PATTERN.test(bankInfo.ifsc)) errors.push('IFSC must be 11 characters, for example SBIN0001234.');
+        if (!ACCOUNT_HOLDER_PATTERN.test(bankInfo.accountHolderName)) errors.push('Account holder name must contain 2 to 80 valid characters.');
+    }
+
+    return {
+        errors,
+        refundDetails: {
+            upiId,
+            bankInfo,
+            preferredMethod: REFUND_METHODS.includes(preferredMethod) ? preferredMethod : 'wallet',
+            updatedAt: new Date()
+        }
+    };
+};
+
+const BOOKING_ADDON_FEES = {
+    mitraAssistance: Number(process.env.MITRA_ASSISTANCE_FEE || 700),
+    pickupDrop: Number(process.env.PICKUP_DROP_FEE || 1200),
+    taxRate: Number(process.env.BOOKING_TAX_RATE || 0.12)
+};
+
+const normalizeBookingAddons = (body = {}, customer = {}) => {
+    const source = body.selectedAddons && typeof body.selectedAddons === 'object' ? body.selectedAddons : body;
+    const mitraSelected = source.mitraAssistance === true || source.mitraAssistance?.selected === true;
+    const pickupSelected = source.pickupDrop === true || source.pickupDrop?.selected === true;
+    const mitraFee = mitraSelected ? Math.max(Number(source.mitraAssistance?.fee ?? body.mitraFee ?? BOOKING_ADDON_FEES.mitraAssistance) || 0, 0) : 0;
+    const pickupFee = pickupSelected ? Math.max(Number(source.pickupDrop?.fee ?? body.pickupDropFee ?? BOOKING_ADDON_FEES.pickupDrop) || 0, 0) : 0;
+    const roomSubtotal = Math.max(Number(body.roomSubtotal || body.baseRoomTotal || body.totalPrice || body.price || 0) || 0, 0);
+    const addonTotal = mitraFee + pickupFee;
+    const taxAmount = Math.round((roomSubtotal + addonTotal) * BOOKING_ADDON_FEES.taxRate);
+    const grandTotal = Math.max(Number(body.grandTotal || body.finalTotal || 0) || 0, roomSubtotal + addonTotal + taxAmount);
+
+    return {
+        selectedAddons: {
+            mitraAssistance: {
+                selected: mitraSelected,
+                fee: mitraFee,
+                status: mitraSelected ? 'requested' : 'not_requested'
+            },
+            pickupDrop: {
+                selected: pickupSelected,
+                fee: pickupFee,
+                vehicleType: String(source.pickupDrop?.vehicleType || body.vehicleType || 'Standard Cab').trim(),
+                status: pickupSelected ? 'requested' : 'not_requested'
+            },
+            remarks: String(source.remarks || body.remarks || '').trim().slice(0, 500)
+        },
+        guestDetails: {
+            name: String(body.guestDetails?.name || body.guestName || customer.fullName || customer.name || '').trim(),
+            phone: String(body.guestDetails?.phone || body.guestPhone || customer.phone || '').trim(),
+            email: normalizeEmail(body.guestDetails?.email || body.guestEmail || customer.email || ''),
+            guests: Math.max(Number(body.guestDetails?.guests || body.guests || 1) || 1, 1)
+        },
+        pricingBreakdown: { roomSubtotal, addonTotal, taxAmount, grandTotal }
+    };
+};
+const RAZORPAY_KEY_ID = String(process.env.RAZORPAY_KEY_ID || '').trim();
+const RAZORPAY_KEY_SECRET = String(process.env.RAZORPAY_KEY_SECRET || '').trim();
+const RAZORPAY_MOCK_MODE = !(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
+const FREE_CANCELLATION_HOURS = Math.max(1, Number(process.env.FREE_CANCELLATION_HOURS || 24));
+
+const sha256Hex = (value) => crypto.createHash('sha256').update(String(value || '')).digest('hex');
+
+const toMoneyAmount = (value) => Math.max(0, Math.round(Number(value || 0)));
+
+const toPaise = (value) => Math.max(100, Math.round(Number(value || 0) * 100));
+
+const createBookingReference = (booking) => {
+    const id = String(booking?._id || '').slice(-8).toUpperCase();
+    return booking?.bookingReference || `GG-${id || crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+};
+
+const calculateFreeCancellationUntil = (booking) => {
+    const checkInDate = new Date(`${booking.checkIn}T00:00:00+05:30`);
+    if (!Number.isNaN(checkInDate.getTime())) {
+        return new Date(checkInDate.getTime() - (FREE_CANCELLATION_HOURS * 60 * 60 * 1000));
+    }
+    return new Date(Date.now() + (FREE_CANCELLATION_HOURS * 60 * 60 * 1000));
+};
+
+const buildBookingPass = (booking) => {
+    const reference = createBookingReference(booking);
+    const seed = `${booking._id}|${booking.userEmail}|${booking.createdAt ? new Date(booking.createdAt).getTime() : ''}`;
+    const token = crypto.createHmac('sha256', JWT_SECRET).update(`booking-pass:${seed}`).digest('hex').slice(0, 32);
+    return {
+        reference,
+        token,
+        payload: JSON.stringify({ type: 'gyan-garbh-stay-pass', bookingId: String(booking._id), reference, token })
+    };
+};
+
+const decorateBookingForClient = (booking) => {
+    const doc = typeof booking?.toObject === 'function' ? booking.toObject() : { ...(booking || {}) };
+    delete doc.qrPassTokenHash;
+    doc.bookingPass = buildBookingPass(doc);
+    return doc;
+};
+
+const razorpayRequest = (method, endpoint, body = {}) => new Promise((resolve, reject) => {
+    if (RAZORPAY_MOCK_MODE) return reject(new Error('Razorpay keys are not configured'));
+    const payload = JSON.stringify(body || {});
+    const req = https.request({
+        hostname: 'api.razorpay.com',
+        path: endpoint,
+        method,
+        auth: `${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`,
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+    }, (res) => {
+        let raw = '';
+        res.on('data', (chunk) => { raw += chunk; });
+        res.on('end', () => {
+            const parsed = raw ? JSON.parse(raw) : {};
+            if (res.statusCode >= 200 && res.statusCode < 300) return resolve(parsed);
+            reject(new Error(parsed?.error?.description || parsed?.message || `Razorpay request failed with ${res.statusCode}`));
+        });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+});
+
+const verifyRazorpaySignature = ({ orderId, paymentId, signature }) => {
+    if (RAZORPAY_MOCK_MODE || String(orderId || '').startsWith('order_mock_')) return true;
+    const expected = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET).update(`${orderId}|${paymentId}`).digest('hex');
+    return timingSafeEquals(expected, signature);
+};
 const validateBookingPayload = ({ userName, hotelName, roomType, price, checkIn, checkOut }) => {
 
     if (![userName, hotelName, roomType, checkIn, checkOut].every((value) => String(value || '').trim())) {
@@ -118,6 +275,109 @@ const validateBookingPayload = ({ userName, hotelName, roomType, price, checkIn,
 
 };
 
+const REVIEW_CATEGORY_KEYS = ['cleanliness', 'staffBehavior', 'amenitiesAccuracy', 'location', 'valueForMoney'];
+const COMPLETED_STAY_STATUSES = ['completed', 'checked_out'];
+const BAYESIAN_MIN_STAYS = Math.max(3, Number(process.env.GVS_MIN_STAYS || 5));
+const GVS_BASELINE_RATING = Number(process.env.GVS_BASELINE_RATING || 4.1);
+
+const normalizeReviewCategories = (body = {}) => {
+    const source = body.categories && typeof body.categories === 'object' ? body.categories : body;
+    const categories = {
+        cleanliness: Number(source.cleanliness),
+        staffBehavior: Number(source.staffBehavior),
+        amenitiesAccuracy: Number(source.amenitiesAccuracy),
+        location: Number(source.location),
+        valueForMoney: Number(source.valueForMoney)
+    };
+    const invalid = REVIEW_CATEGORY_KEYS.find((key) => !Number.isFinite(categories[key]) || categories[key] < 1 || categories[key] > 5);
+    if (invalid) return { error: 'All review categories must be rated from 1 to 5.' };
+    Object.keys(categories).forEach((key) => { categories[key] = Math.round(categories[key]); });
+    const rating = Number((REVIEW_CATEGORY_KEYS.reduce((sum, key) => sum + categories[key], 0) / REVIEW_CATEGORY_KEYS.length).toFixed(1));
+    return { categories, rating };
+};
+
+const isCompletedStayBooking = (booking) => {
+    const status = String(booking?.status || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return COMPLETED_STAY_STATUSES.includes(status) || (booking?.checkedIn === true && status === 'completed');
+};
+
+const summarizeVerifiedReviews = (reviews = []) => {
+    const verified = reviews.filter((review) => review.isVerifiedStay !== false);
+    const average = verified.length ? verified.reduce((sum, review) => sum + Number(review.rating || 0), 0) / verified.length : GVS_BASELINE_RATING;
+    const categoryTotals = REVIEW_CATEGORY_KEYS.reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+    verified.forEach((review) => REVIEW_CATEGORY_KEYS.forEach((key) => { categoryTotals[key] += Number(review.categories?.[key] || review.rating || 0); }));
+    const categoryBreakdown = REVIEW_CATEGORY_KEYS.reduce((acc, key) => {
+        acc[key] = verified.length ? Number((categoryTotals[key] / verified.length).toFixed(1)) : 0;
+        return acc;
+    }, {});
+    return { verified, average, categoryBreakdown };
+};
+
+const calculateHotelGvs = ({ hotel, reviews = [], bookings = [] }) => {
+    const reviewSummary = summarizeVerifiedReviews(reviews);
+    const totalBookings = bookings.length;
+    const completedBookings = bookings.filter(isCompletedStayBooking).length;
+    const confirmedBookings = bookings.filter((booking) => ['confirmed', 'completed'].includes(String(booking.status || '').toLowerCase()) || booking.checkedIn).length;
+    const cancelledBookings = bookings.filter((booking) => String(booking.status || '').toLowerCase() === 'cancelled').length;
+    const stayBuffer = Math.min(1, completedBookings / BAYESIAN_MIN_STAYS);
+    const bayesianRating = ((reviewSummary.average * reviewSummary.verified.length) + (GVS_BASELINE_RATING * BAYESIAN_MIN_STAYS)) / (reviewSummary.verified.length + BAYESIAN_MIN_STAYS);
+    const fulfillmentRate = totalBookings ? (completedBookings / totalBookings) * 5 : 4;
+    const conversionRate = totalBookings ? (confirmedBookings / totalBookings) * 5 : 3.8;
+    const lowReviewPenalty = reviewSummary.verified.filter((review) => Number(review.rating || 0) <= 2).length * 0.35;
+    const cancelPenalty = totalBookings ? (cancelledBookings / totalBookings) * 3 : 0;
+    const visibilityPenalty = Math.min(5, (lowReviewPenalty + cancelPenalty) * stayBuffer);
+    const rawScore = (bayesianRating * 0.40) + (fulfillmentRate * 0.30) + (conversionRate * 0.20) - (visibilityPenalty * 0.10);
+    const gvsScore = Number(Math.max(0, Math.min(5, rawScore)).toFixed(2));
+    return {
+        gvsScore,
+        gvsRankStatus: gvsScore >= 4.3 ? 'Top Ranked' : (gvsScore >= 3.6 ? 'Healthy' : (gvsScore >= 3 ? 'Watchlist' : 'Needs Review')),
+        avgVerifiedRating: Number(reviewSummary.average.toFixed(1)),
+        bayesianRating: Number(bayesianRating.toFixed(2)),
+        verifiedReviewCount: reviewSummary.verified.length,
+        completedStayCount: completedBookings,
+        fulfillmentRate: Number(fulfillmentRate.toFixed(2)),
+        conversionRate: Number(conversionRate.toFixed(2)),
+        penaltyScore: Number(visibilityPenalty.toFixed(2)),
+        categoryBreakdown: reviewSummary.categoryBreakdown
+    };
+};
+
+const enrichHotelsWithGvs = async (hotels = []) => {
+    const docs = hotels.map((hotel) => (typeof hotel?.toObject === 'function' ? hotel.toObject() : { ...(hotel || {}) }));
+    const ids = docs.map((hotel) => hotel._id).filter(Boolean);
+    const names = docs.map((hotel) => hotel.hotelName).filter(Boolean);
+    const [reviews, bookings] = await Promise.all([
+        ids.length ? Review.find({ hotelId: { $in: ids } }).sort({ createdAt: -1 }).lean() : [],
+        (ids.length || names.length) ? Booking.find({ $or: [{ hotelId: { $in: ids } }, { hotelName: { $in: names } }] }).select('hotelId hotelName status checkedIn createdAt').lean() : []
+    ]);
+    const reviewsByHotel = new Map();
+    reviews.forEach((review) => {
+        const key = String(review.hotelId);
+        if (!reviewsByHotel.has(key)) reviewsByHotel.set(key, []);
+        reviewsByHotel.get(key).push(review);
+    });
+    const bookingsByHotel = new Map();
+    bookings.forEach((booking) => {
+        const keys = [booking.hotelId ? String(booking.hotelId) : '', booking.hotelName || ''].filter(Boolean);
+        keys.forEach((key) => {
+            if (!bookingsByHotel.has(key)) bookingsByHotel.set(key, []);
+            bookingsByHotel.get(key).push(booking);
+        });
+    });
+    return docs.map((hotel) => {
+        const hotelReviews = reviewsByHotel.get(String(hotel._id)) || [];
+        const hotelBookings = bookingsByHotel.get(String(hotel._id)) || bookingsByHotel.get(hotel.hotelName) || [];
+        const gvs = calculateHotelGvs({ hotel, reviews: hotelReviews, bookings: hotelBookings });
+        return {
+            ...hotel,
+            reviews: hotelReviews.slice(0, 20),
+            averageRating: gvs.avgVerifiedRating || hotel.averageRating || hotel.rating || 0,
+            totalReviews: gvs.verifiedReviewCount,
+            categoryRatings: gvs.categoryBreakdown,
+            gvs
+        };
+    }).sort((a, b) => (b.gvs?.gvsScore || 0) - (a.gvs?.gvsScore || 0));
+};
 const publicHotelQuery = (query) => query.where({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }).select('-password');
 
 const publicUserQuery = (query) => query.select('-password');
@@ -194,7 +454,7 @@ const buildSafeUserProfile = (user) => {
 
 
 
-// ⭐ NAYA MODEL: Gyan Garbh Control System
+// ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â NAYA MODEL: Gyan Garbh Control System
 
 const enquirySchema = new mongoose.Schema({
 
@@ -222,7 +482,7 @@ const Enquiry = mongoose.models.Enquiry || mongoose.model('Enquiry', enquirySche
 
 
 
-// ⭐ ACTIVITY LOG MODEL - Track all changes by Admin/Assistant
+// ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ACTIVITY LOG MODEL - Track all changes by Admin/Assistant
 
 const systemNotificationSchema = new mongoose.Schema({
     title: { type: String, required: true },
@@ -824,7 +1084,7 @@ const createSystemNotification = async ({ title, message, type = 'system', entit
 
 
 
-// ⭐ ROLE-BASED ACCESS CONTROL MIDDLEWARE
+// ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ROLE-BASED ACCESS CONTROL MIDDLEWARE
 
 const checkRole = (allowedRoles) => {
 
@@ -2217,7 +2477,7 @@ app.get('/health', (req, res) => {
 
 // ---------------------------------------------------------
 
-// --- 🔑 ADMIN LOGIN ROUTE ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¹Ãƒâ€¦Ã¢â‚¬Å“ ADMIN LOGIN ROUTE ---
 
 // ---------------------------------------------------------
 
@@ -2399,7 +2659,7 @@ app.post(['/admin-login', '/admin/login', '/api/admin-login', '/api/admin/login'
 
 // ---------------------------------------------------------
 
-// --- 📩🔐 OTP ROUTES (Signup + Reset) ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â OTP ROUTES (Signup + Reset) ---
 
 // ---------------------------------------------------------
 
@@ -2878,7 +3138,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
 
 
-        // 🔒 FORGOT PASSWORD / PASSWORD RESET FLOW
+        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ FORGOT PASSWORD / PASSWORD RESET FLOW
 
         if (!pending) {
 
@@ -2902,7 +3162,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
 
 
-        // 🔒 NEW HOTEL PARTNER ACCOUNT CREATION
+        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ NEW HOTEL PARTNER ACCOUNT CREATION
 
         if (pending.role === 'hotel') {
 
@@ -2988,9 +3248,9 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
 
 
-        // 🔒 NEW CUSTOMER / MITRA REGISTRATION
+        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ NEW CUSTOMER / MITRA REGISTRATION
 
-        // ⭐ VALIDATE PENDING DATA BEFORE CREATING USER
+        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â VALIDATE PENDING DATA BEFORE CREATING USER
 
         const cleanName = String(pending.name || pending.fullName || '').trim();
 
@@ -3088,7 +3348,7 @@ app.post(['/verify-otp', '/api/verify-otp'], async (req, res) => {
 
 // ---------------------------------------------------------
 
-// --- 👤 USER & MITRA ROUTES ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¹Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤ USER & MITRA ROUTES ---
 
 // ---------------------------------------------------------
 
@@ -3270,60 +3530,191 @@ app.get('/api/user/profile', requireSession(['customer', 'mitra', 'support', 'dr
 
 
 app.put('/api/user/profile', requireSession(['customer', 'mitra', 'support', 'driver']), async (req, res) => {
-
     try {
-
         const { fullName, name, dob, villageCity, city, pinCode, profilePic, phone, bio } = req.body;
+        const updateData = { updatedAt: new Date() };
+        const finalName = String(fullName || name || '').trim();
 
-        const updateData = {
-
-            ...mitraKycData,
-
-            updatedBy: actorEmail,
-
-            updatedAt: new Date()
-
-        };
-const updatedMitra = await User.findByIdAndUpdate(
-
-            mitraId,
-
-            updateData,
-
-            { new: true, strict: false }
-
-        );
-
-
-
-        if (!updatedMitra) {
-
-            return res.status(404).json({ success: false, message: 'Mitra not found' });
-
+        if (finalName) {
+            updateData.name = finalName;
+            updateData.fullName = finalName;
         }
+        if (dob !== undefined) updateData.dob = parseDob(dob);
+        if (villageCity !== undefined || city !== undefined) {
+            updateData.villageCity = String(villageCity || city || '').trim();
+            updateData.address = updateData.villageCity;
+        }
+        if (pinCode !== undefined) updateData.pinCode = String(pinCode || '').trim();
+        if (bio !== undefined) updateData.bio = String(bio || '').trim();
+        if (profilePic !== undefined) {
+            updateData.profilePic = String(profilePic || '').trim();
+            updateData.photoURL = updateData.profilePic;
+        }
+        if (phone !== undefined && req.session.role !== 'customer') updateData.phone = normalizePhone(phone);
 
+        const updatedUser = await User.findOneAndUpdate(
+            { email: normalizeEmail(req.session.email) },
+            updateData,
+            { new: true, runValidators: true }
+        ).select(publicUserFields);
 
-
-        await logActivity('UPDATE', 'Mitra', mitraId, updatedMitra.name, actorEmail, actorRole, { email, phone, address, experience });
-
-        emitRealtime('mitra-updated', { mitra: updatedMitra, updatedBy: actorEmail, actorRole });
-
-
-
-        res.json({ success: true, message: 'Mitra updated successfully', mitra: updatedMitra });
-
+        if (!updatedUser) return res.status(404).json({ success: false, message: 'Profile not found' });
+        res.json({ success: true, message: 'Profile updated successfully', profile: buildSafeUserProfile(updatedUser) });
     } catch (err) {
-
-        console.error('Error updating mitra:', err);
-
-        res.status(500).json({ success: false, message: 'Error updating mitra' });
-
+        res.status(500).json({ success: false, message: err.message });
     }
-
 });
 
+app.get('/api/user/refund-preferences', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    try {
+        const user = await User.findOne({ email: normalizeEmail(req.session.email) }).select('refundDetails');
+        if (!user) return res.status(404).json({ success: false, message: 'Customer account not found' });
+        res.json({
+            success: true,
+            refundDetails: user.refundDetails || { upiId: '', bankInfo: { accountNumber: '', ifsc: '', accountHolderName: '' }, preferredMethod: 'wallet' }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 
+app.put('/api/user/refund-preferences', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    try {
+        const currentUser = await User.findOne({ email: normalizeEmail(req.session.email) }).select('refundDetails');
+        if (!currentUser) return res.status(404).json({ success: false, message: 'Customer account not found' });
 
+        const { errors, refundDetails } = normalizeRefundDetails(req.body, currentUser.refundDetails || {});
+        if (errors.length) {
+            return res.status(400).json({ success: false, message: errors[0], errors });
+        }
+
+        const updatedUser = await User.findOneAndUpdate(
+            { email: normalizeEmail(req.session.email) },
+            { $set: { refundDetails, updatedAt: new Date() } },
+            { new: true, runValidators: true }
+        ).select(publicUserFields);
+
+        res.json({
+            success: true,
+            message: 'Refund payout preferences saved successfully.',
+            refundDetails: updatedUser.refundDetails,
+            profile: buildSafeUserProfile(updatedUser)
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// Create mitra (Admin / Assistant)
+app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
+    try {
+        const { name, email, phone, address, experience, imageUrl, createdBy, createdByRole } = req.body;
+        const actorEmail = req.actor?.email || createdBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || createdByRole);
+
+        if (!actorRole) {
+            await logSecurityEvent('Unauthorized Mitra Creation', name || 'Unknown Mitra', actorEmail || 'unknown', req.actor?.role || createdByRole || 'unknown', 'Actor cannot create mitras');
+            return res.status(403).json({ success: false, message: 'Unauthorized to create mitras' });
+        }
+
+        if (!name || !isValidEmail(email) || !isValidPhone(phone)) {
+            return res.status(400).json({ success: false, message: 'Name, valid email and active mobile number are required.' });
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(400).json({ success: false, message: 'Email already exists' });
+        }
+
+        const generatedPassword = generateDefaultPassword();
+        const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+        const placeholderPhoto = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1';
+        const cleanName = String(name || '').trim();
+        const cleanAddress = String(address || '').trim();
+        const newMitra = new User({
+            name: cleanName,
+            fullName: cleanName,
+            email: normalizedEmail,
+            password: hashedPassword,
+            phone: normalizePhone(phone),
+            address: cleanAddress,
+            villageCity: cleanAddress,
+            role: 'mitra',
+            experience: String(experience || '').trim(),
+            photoURL: imageUrl || placeholderPhoto,
+            profilePic: imageUrl || placeholderPhoto,
+            updatedBy: actorEmail,
+            updatedAt: new Date(),
+            isLocked: false
+        });
+
+        await newMitra.save();
+        await logActivity('CREATE', 'Mitra', newMitra._id, newMitra.name, actorEmail, actorRole);
+        emitRealtime('mitra-created', { mitra: newMitra, createdBy: actorEmail, actorRole });
+
+        res.status(201).json({
+            success: true,
+            message: 'Mitra created successfully',
+            mitra: newMitra,
+            credentials: { email: newMitra.email, password: generatedPassword }
+        });
+    } catch (err) {
+        console.error('Error creating mitra:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+// Update mitra details
+app.put('/admin/update-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
+    try {
+        const { mitraId, name, email, phone, address, experience, imageUrl, updatedBy, updatedByRole } = req.body;
+        const actorEmail = req.actor?.email || updatedBy;
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || updatedByRole);
+
+        if (!actorRole) {
+            return res.status(403).json({ success: false, message: 'Unauthorized access' });
+        }
+
+        if (!mitraId) {
+            return res.status(400).json({ success: false, message: 'Mitra ID is required' });
+        }
+
+        const updateData = { updatedBy: actorEmail, updatedAt: new Date() };
+        if (name !== undefined) {
+            const cleanName = String(name || '').trim();
+            updateData.name = cleanName;
+            updateData.fullName = cleanName;
+        }
+        if (email !== undefined) updateData.email = normalizeEmail(email);
+        if (phone !== undefined) updateData.phone = normalizePhone(phone);
+        if (address !== undefined) {
+            updateData.address = String(address || '').trim();
+            updateData.villageCity = updateData.address;
+        }
+        if (experience !== undefined) updateData.experience = String(experience || '').trim();
+        if (imageUrl !== undefined) {
+            updateData.photoURL = String(imageUrl || '').trim();
+            updateData.profilePic = updateData.photoURL;
+        }
+
+        const updatedMitra = await User.findByIdAndUpdate(
+            mitraId,
+            updateData,
+            { new: true, runValidators: true, strict: false }
+        ).select('-password');
+
+        if (!updatedMitra) {
+            return res.status(404).json({ success: false, message: 'Mitra not found' });
+        }
+
+        await logActivity('UPDATE', 'Mitra', mitraId, updatedMitra.name || updatedMitra.fullName, actorEmail, actorRole, { email, phone, address, experience });
+        emitRealtime('mitra-updated', { mitra: updatedMitra, updatedBy: actorEmail, actorRole });
+        res.json({ success: true, message: 'Mitra updated successfully', mitra: updatedMitra });
+    } catch (err) {
+        console.error('Error updating mitra:', err);
+        res.status(500).json({ success: false, message: 'Error updating mitra' });
+    }
+});
 // Delete mitra
 
 app.delete('/admin/delete-mitra', verifyAdmin, async (req, res) => {
@@ -3690,7 +4081,7 @@ app.delete('/admin/delete-guest', verifyAdmin, async (req, res) => {
 
 // ---------------------------------------------------------
 
-// --- 🏨 HOTEL PARTNER ROUTES ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ HOTEL PARTNER ROUTES ---
 
 // ---------------------------------------------------------
 
@@ -3750,7 +4141,10 @@ app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
 
 app.get('/all-hotels', async (req, res) => {
 
-    try { res.json(await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }))); } catch (err) { res.status(500).send(err.message); }
+    try {
+        const hotels = await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
+        res.json(await enrichHotelsWithGvs(hotels));
+    } catch (err) { res.status(500).send(err.message); }
 
 });
 
@@ -3759,8 +4153,9 @@ app.get('/api/hotels', async (req, res) => {
     try {
 
         const hotels = await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
+        const rankedHotels = await enrichHotelsWithGvs(hotels);
 
-        res.json({ success: true, data: hotels, hotels });
+        res.json({ success: true, data: rankedHotels, hotels: rankedHotels });
 
     } catch (err) {
 
@@ -3790,7 +4185,8 @@ app.get('/api/hotels/:id', async (req, res) => {
 
         }
 
-        res.json({ success: true, hotel });
+        const [enrichedHotel] = await enrichHotelsWithGvs([hotel]);
+        res.json({ success: true, hotel: enrichedHotel });
 
     } catch (err) {
 
@@ -3952,424 +4348,240 @@ app.put('/api/hotels/:id', requireSession(['hotel', 'admin', 'assistant']), asyn
 
 });
 
-app.post('/api/hotels/:id/reviews', async (req, res) => {
+async function recomputeHotelReviewMetrics(hotelId) {
+    const hotel = await Hotel.findById(hotelId).select('-password');
+    if (!hotel) return null;
+    const [enriched] = await enrichHotelsWithGvs([hotel]);
+    hotel.averageRating = Number(enriched.averageRating || 0);
+    hotel.totalReviews = Number(enriched.totalReviews || 0);
+    hotel.gvsScore = Number(enriched.gvs?.gvsScore || 0);
+    hotel.gvsRankStatus = enriched.gvs?.gvsRankStatus || 'New Property';
+    hotel.categoryRatings = enriched.categoryRatings || {};
+    hotel.updatedAt = new Date();
+    await hotel.save();
+    return enriched;
+}
 
+app.post('/api/reviews/submit', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
     try {
+        const hotelId = String(req.body.hotelId || '').trim();
+        const bookingId = String(req.body.bookingId || '').trim();
+        const comment = String(req.body.comment || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) return res.status(400).json({ success: false, message: 'Valid hotel ID is required' });
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid completed booking ID is required' });
+        if (!comment || comment.length > 1000) return res.status(400).json({ success: false, message: 'Review comment is required and must be under 1000 characters' });
 
-        const hotelId = String(req.params.id || '').trim();
-        const rating = Number(req.body?.rating);
-        const comment = String(req.body?.comment || '').trim();
+        const categoryResult = normalizeReviewCategories(req.body);
+        if (categoryResult.error) return res.status(400).json({ success: false, message: categoryResult.error });
 
-        if (!mongoose.Types.ObjectId.isValid(hotelId)) {
-
-            return res.status(400).json({ success: false, message: 'Invalid hotel id' });
-
+        const booking = await Booking.findOne({ _id: bookingId, userEmail: req.session.email, hotelId, status: { $ne: 'Cancelled' } });
+        if (!booking || !isCompletedStayBooking(booking)) {
+            return res.status(403).json({ success: false, message: 'Verified reviews unlock only after this stay is checked out/completed.' });
         }
 
-        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        const duplicate = await Review.findOne({ bookingId: booking._id });
+        if (duplicate) return res.status(409).json({ success: false, message: 'A verified review has already been submitted for this stay.' });
 
-            return res.status(400).json({ success: false, message: 'Rating must be a number from 1 to 5' });
-
-        }
-
-        if (!comment || comment.length > 1000) {
-
-            return res.status(400).json({ success: false, message: 'Review comment is required and must be under 1000 characters' });
-
-        }
-
-        const hotel = await Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }).select('-password');
-
-        if (!hotel) {
-
-            return res.status(404).json({ success: false, message: 'Hotel not found' });
-
-        }
-
-        hotel.reviews.push({ rating, comment });
-
-        const totalRating = hotel.reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
-        hotel.totalReviews = hotel.reviews.length;
-        hotel.averageRating = Number((totalRating / hotel.totalReviews).toFixed(1));
-        hotel.updatedAt = new Date();
-
-        await hotel.save();
-
-        const updatedHotel = hotel.toObject();
-        delete updatedHotel.password;
-
-        res.status(201).json({ success: true, hotel: updatedHotel });
-
-    } catch (err) {
-
-        res.status(500).json({ success: false, message: err.message });
-
-    }
-
-});
-
-
-
-// ⭐ GET HOTEL DETAILS BY EMAIL (for hotel dashboard)
-
-app.get('/hotel-details/:ownerEmail', async (req, res) => {
-
-    try {
-
-        const hotel = await publicHotelQuery(Hotel.findOne({ ownerEmail: normalizeEmail(req.params.ownerEmail), isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
-
-        if (!hotel) {
-
-            return res.status(404).json({ success: false, message: 'Hotel not found' });
-
-        }
-
-        res.json({ success: true, hotel });
-
-    } catch (err) {
-
-        res.status(500).json({ success: false, message: err.message });
-
-    }
-
-});
-
-
-
-app.post(['/admin/add-room', '/api/admin/add-room'], verifyAdminOrAssistant('manageHotels'), (req, res) => {
-
-    uploadRoomImages.array('roomImages', 12)(req, res, async (uploadErr) => {
-
-        try {
-
-            if (uploadErr) {
-
-                const isMulterError = uploadErr instanceof multer.MulterError;
-                const message = isMulterError
-                    ? 'Room image upload failed. Please check image size/count and try again.'
-                    : 'Room image upload failed. Please check image formats and try again.';
-
-                return res.status(400).json({ success: false, message });
-
-            }
-
-            const rawRoomData = req.body?.roomData ? JSON.parse(req.body.roomData) : req.body;
-            const roomData = rawRoomData && typeof rawRoomData === 'object' ? rawRoomData : null;
-
-            if (!roomData) {
-
-                return res.status(400).json({ success: false, message: 'Room data is required.' });
-
-            }
-
-            const uploadedUrls = (req.files || [])
-                .map((file) => file.path || file.secure_url || file.url)
-                .filter(Boolean)
-                .map((url) => String(url).trim())
-                .filter(Boolean);
-
-            if (uploadedUrls.length) {
-                const existingImages = Array.isArray(roomData.images) ? roomData.images : [];
-                roomData.images = [...new Set([...existingImages, ...uploadedUrls])];
-            }
-
-            let hotel;
-
-            if (req.session?.role === 'hotel') {
-
-                hotel = await Hotel.findOne({ ownerEmail: normalizeEmail(req.session.email) });
-
-            } else if (roomData.hotelId) {
-
-                hotel = await Hotel.findById(roomData.hotelId);
-
-            } else if (roomData.ownerEmail) {
-
-                hotel = await Hotel.findOne({ ownerEmail: normalizeEmail(roomData.ownerEmail) });
-
-            }
-
-            if (hotel) {
-
-                const { ownerEmail, hotelId, roomData: ignoredRoomData, ...roomToAdd } = roomData;
-
-                hotel.rooms.push({
-                    roomType: String(roomToAdd.roomType || 'Room').trim(),
-                    price: Number(roomToAdd.price) || 0,
-                    roomsAvailable: Number(roomToAdd.roomsAvailable) || 1,
-                    amenities: Array.isArray(roomToAdd.amenities) ? roomToAdd.amenities : [],
-                    images: Array.isArray(roomToAdd.images) ? roomToAdd.images : [],
-                    status: roomToAdd.status || 'Available',
-                    isAC: roomToAdd.isAC === true || roomToAdd.roomType === 'AC',
-                    acType: roomToAdd.acType || roomToAdd.roomType || 'Room'
-                });
-
-                await hotel.save();
-
-                emitRealtime('hotel-room-added', { hotelId: hotel._id, hotelName: hotel.hotelName, ownerEmail: hotel.ownerEmail });
-
-                return res.status(200).json({ success: true, message: 'Room added to hotel.', hotel });
-
-            }
-
-            return res.status(404).json({ success: false, message: 'Hotel account was not found for this room.' });
-
-        } catch (err) {
-
-            console.error('admin/add-room error:', err);
-
-            const message = err instanceof SyntaxError
-                ? 'Invalid room details submitted. Please refresh and try again.'
-                : 'Failed to save room details. Please check image formats and try again.';
-
-            return res.status(500).json({ success: false, message });
-
-        }
-
-    });
-
-});
-// ---------------------------------------------------------
-
-// --- 🛠️ PASSWORD RESET ---
-
-// ---------------------------------------------------------
-
-
-
-app.post(['/reset-password', '/api/reset-password'], async (req, res) => {
-
-    try {
-
-        const { email, newPassword, userType, resetToken } = req.body;
-
-        if (!['user', 'hotel'].includes(userType)) {
-
-            return res.status(400).json({ success: false, message: 'Valid account type is required' });
-
-        }
-
-        const normalizedEmail = normalizeEmail(email);
-
-        const authorization = resetAuthorizationStore[normalizedEmail];
-
-        const tokenHash = crypto.createHash('sha256').update(String(resetToken || '')).digest('hex');
-
-        if (!authorization || authorization.expiresAt < Date.now() || tokenHash !== authorization.tokenHash) {
-
-            return res.status(403).json({ success: false, message: 'Password reset authorization is invalid or expired' });
-
-        }
-
-        if (!isStrongEnoughPassword(newPassword)) {
-
-            return res.status(400).json({ success: false, message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` });
-
-        }
-
-        let account = (userType === 'hotel')
-
-            ? await Hotel.findOne({ $or: [{ ownerEmail: normalizedEmail }, { email: normalizedEmail }] })
-
-            : await User.findOne({ email: normalizedEmail });
-
-
-
-        if (!account) return res.status(404).json({ success: false, message: 'Account not found for this email address' });
-
-        account.password = await bcrypt.hash(newPassword, 10);
-
-        await account.save();
-
-        delete resetAuthorizationStore[normalizedEmail];
-
-        res.json({ success: true, message: 'Password reset successfully' });
-
-    } catch (err) {
-        console.error('Reset password error:', err);
-        res.status(500).json({ success: false, message: 'Unable to reset password. Please try again.' });
-    }
-
-});
-
-
-
-// ---------------------------------------------------------
-
-// --- 📅 BOOKING ROUTES ---
-
-// ---------------------------------------------------------
-
-
-
-app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
-
-    try {
-
-        const customer = await User.findOne({ email: normalizeEmail(req.session.email) }).select('_id name fullName email phone');
-
-        if (!customer) return res.status(404).json({ success: false, message: 'Customer account not found' });
-
-
-
-        const requestedHotelId = String(req.body.hotelId || '').trim();
-
-        const hotel = mongoose.Types.ObjectId.isValid(requestedHotelId)
-
-            ? await Hotel.findById(requestedHotelId).select('hotelName rooms totalRooms')
-
-            : await Hotel.findOne({ hotelName: String(req.body.hotelName || '').trim() }).select('hotelName rooms totalRooms');
-
+        const hotel = await Hotel.findById(hotelId).select('hotelName');
         if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
-
-
-
-        const normalizedBookingPayload = {
-
-            ...req.body,
-
-            price: Number(req.body.price || req.body.totalPrice || 0),
-
-            userId: customer._id,
-
-            userEmail: customer.email,
-
-            userName: customer.fullName || customer.name,
-
+        const user = await User.findOne({ email: req.session.email }).select('_id name fullName email');
+        const disputeStatus = categoryResult.rating <= 2 ? 'flagged_48h' : 'none';
+        const review = await Review.create({
             hotelId: hotel._id,
-
-            hotelName: hotel.hotelName
-
-        };
-
-
-
-        const validationError = validateBookingPayload(normalizedBookingPayload);
-
-        if (validationError) return res.status(400).json({ success: false, message: validationError });
-
-        const checkInDate = new Date(`${normalizedBookingPayload.checkIn}T00:00:00`);
-
-        const checkOutDate = new Date(`${normalizedBookingPayload.checkOut}T00:00:00`);
-
-        const activeBookings = await Booking.find({
-
-            hotelId: hotel._id,
-
-            status: { $nin: ['Cancelled', 'Completed'] }
-
-        }).select('checkIn checkOut');
-
-        const overlappingBookings = activeBookings.filter((booking) => {
-
-            const bookedIn = new Date(`${booking.checkIn}T00:00:00`);
-
-            const bookedOut = new Date(`${booking.checkOut}T00:00:00`);
-
-            return bookedIn < checkOutDate && bookedOut > checkInDate;
-
+            hotelName: hotel.hotelName,
+            bookingId: booking._id,
+            userId: user?._id,
+            userEmail: req.session.email,
+            userName: user?.fullName || user?.name || booking.userName || 'Verified Guest',
+            rating: categoryResult.rating,
+            categories: categoryResult.categories,
+            comment,
+            isVerifiedStay: true,
+            disputeStatus,
+            disputeDeadline: disputeStatus === 'flagged_48h' ? new Date(Date.now() + 48 * 60 * 60 * 1000) : null
         });
 
-        const totalRooms = Array.isArray(hotel.rooms) && hotel.rooms.length
+        const enrichedHotel = await recomputeHotelReviewMetrics(hotel._id);
+        emitRealtime('verified-review-created', { hotelId: hotel._id, hotelName: hotel.hotelName, rating: review.rating, disputeStatus });
+        res.status(201).json({ success: true, message: 'Verified stay review submitted', review, hotel: enrichedHotel });
+    } catch (err) {
+        if (err?.code === 11000) return res.status(409).json({ success: false, message: 'A verified review has already been submitted for this stay.' });
+        res.status(500).json({ success: false, message: err.message || 'Unable to submit verified review' });
+    }
+});
 
-            ? hotel.rooms.reduce((sum, room) => sum + (Number(room.roomsAvailable) || 1), 0)
+app.post('/api/hotels/:id/reviews', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    return res.status(410).json({ success: false, message: 'Use /api/reviews/submit with a completed booking ID for verified stay reviews.' });
+});
 
-            : (Number(hotel.totalRooms) || 1);
+app.get('/api/reviews/hotel/:hotelId', async (req, res) => {
+    try {
+        const hotelId = String(req.params.hotelId || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) return res.status(400).json({ success: false, message: 'Valid hotel ID is required' });
+        const reviews = await Review.find({ hotelId, isVerifiedStay: true }).sort({ createdAt: -1 }).limit(100).lean();
+        const summary = summarizeVerifiedReviews(reviews);
+        res.json({ success: true, reviews, categoryBreakdown: summary.categoryBreakdown, averageRating: Number(summary.average.toFixed(1)), totalReviews: reviews.length });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message || 'Unable to fetch reviews' });
+    }
+});
 
-        if (overlappingBookings.length >= totalRooms) {
+app.get(['/api/assistants/reviews', '/admin/reviews'], verifyAdminOrAssistant('manageBookings'), async (req, res) => {
+    try {
+        const reviews = await Review.find().sort({ createdAt: -1 }).limit(300).lean();
+        res.json({ success: true, reviews });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message || 'Unable to fetch review feed' });
+    }
+});
+app.post('/api/payment/create-order', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    try {
+        const bookingId = String(req.body.bookingId || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
 
-            return res.status(409).json({ success: false, message: 'This hotel is sold out for the selected dates.' });
+        const booking = await Booking.findOne({ _id: bookingId, userEmail: req.session.email, status: { $ne: 'Cancelled' } });
+        if (!booking) return res.status(404).json({ success: false, message: 'Active booking not found for this customer' });
 
+        const amount = toPaise(booking.totalPrice || booking.price);
+        const receipt = createBookingReference(booking);
+        const order = RAZORPAY_MOCK_MODE
+            ? { id: `order_mock_${booking._id}`, amount, currency: 'INR', receipt, status: 'created' }
+            : await razorpayRequest('POST', '/v1/orders', {
+                amount,
+                currency: 'INR',
+                receipt,
+                payment_capture: 0,
+                notes: { bookingId: String(booking._id), mode: 'authorize' }
+            });
+
+        booking.bookingReference = receipt;
+        booking.paymentProvider = RAZORPAY_MOCK_MODE ? 'razorpay_mock' : 'razorpay';
+        booking.paymentMode = 'authorize';
+        booking.paymentOrderId = order.id;
+        booking.paymentStatus = 'Authorization Pending';
+        booking.freeCancellationUntil = booking.freeCancellationUntil || calculateFreeCancellationUntil(booking);
+        await booking.save();
+
+        res.json({ success: true, mock: RAZORPAY_MOCK_MODE, keyId: RAZORPAY_KEY_ID || 'rzp_test_mock', mode: 'authorize', order, booking: decorateBookingForClient(booking) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message || 'Unable to create payment order' });
+    }
+});
+app.post('/api/payment/verify-payment', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    try {
+        const bookingId = String(req.body.bookingId || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
+
+        const orderId = String(req.body.razorpay_order_id || req.body.orderId || '').trim();
+        const paymentId = String(req.body.razorpay_payment_id || req.body.paymentId || '').trim();
+        const signature = String(req.body.razorpay_signature || req.body.signature || '').trim();
+        if (!orderId || !paymentId) return res.status(400).json({ success: false, message: 'Payment order and payment ID are required' });
+        if (!verifyRazorpaySignature({ orderId, paymentId, signature })) return res.status(400).json({ success: false, message: 'Invalid Razorpay payment signature' });
+
+        const booking = await Booking.findOne({ _id: bookingId, userEmail: req.session.email, status: { $ne: 'Cancelled' } });
+        if (!booking) return res.status(404).json({ success: false, message: 'Active booking not found for this customer' });
+        if (booking.paymentOrderId && booking.paymentOrderId !== orderId) return res.status(400).json({ success: false, message: 'Payment order does not match this booking' });
+
+        const pass = buildBookingPass(booking);
+        booking.status = 'Confirmed';
+        booking.paymentProvider = RAZORPAY_MOCK_MODE || orderId.startsWith('order_mock_') ? 'razorpay_mock' : 'razorpay';
+        booking.paymentMode = 'authorize';
+        booking.paymentOrderId = orderId;
+        booking.paymentId = paymentId;
+        booking.paymentAuthorizationId = paymentId;
+        booking.paymentSignature = signature;
+        booking.paymentStatus = 'Authorized';
+        booking.paymentAuthorizedAt = new Date();
+        booking.freeCancellationUntil = booking.freeCancellationUntil || calculateFreeCancellationUntil(booking);
+        booking.bookingReference = createBookingReference(booking);
+        booking.qrPassTokenHash = sha256Hex(pass.token);
+        booking.qrPassIssuedAt = booking.qrPassIssuedAt || new Date();
+        await booking.save();
+
+        emitRealtime('booking-payment-authorized', { bookingId: booking._id, hotelName: booking.hotelName, paymentStatus: booking.paymentStatus });
+        res.json({ success: true, message: 'Payment authorized and booking confirmed', booking: decorateBookingForClient(booking), pass: buildBookingPass(booking), mock: booking.paymentProvider === 'razorpay_mock' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message || 'Unable to verify payment' });
+    }
+});
+
+app.post('/api/payment/capture/:bookingId', verifyAdminOrAssistant('manageBookings'), async (req, res) => {
+    try {
+        const bookingId = String(req.params.bookingId || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+        if (booking.status === 'Cancelled') return res.status(400).json({ success: false, message: 'Cancelled bookings cannot be captured' });
+        if (booking.paymentStatus === 'Captured') return res.json({ success: true, message: 'Payment already captured', booking: decorateBookingForClient(booking) });
+        if (booking.freeCancellationUntil && new Date(booking.freeCancellationUntil).getTime() > Date.now() && req.body.force !== true) {
+            return res.status(409).json({ success: false, message: 'Free cancellation window is still active' });
         }
+        if (!booking.paymentId) return res.status(400).json({ success: false, message: 'No authorized payment found for this booking' });
 
-        const mitras = await User.find(mitraUserFilter);
-
-        mitras.sort((a, b) => (b.experience || '').length - (a.experience || '').length);
-
-        const assignedMitraUser = mitras[0] || null;
-
-        const assignedMitra = assignedMitraUser ? assignedMitraUser.name : 'Auto-Assign';
-
-
-
-        const bookingData = {
-
-            ...normalizedBookingPayload,
-
-            price: Number(req.body.totalPrice || req.body.price || 0),
-
-            nightlyRate: Number(req.body.nightlyRate || req.body.roomPrice || 0),
-
-            totalPrice: Number(req.body.totalPrice || req.body.price || 0),
-
-            guests: Math.max(Number(req.body.guests || 1), 1),
-
-            assignedMitra,
-
-            assignedMitraId: assignedMitraUser?._id,
-
-            mitraEmail: assignedMitraUser?.email || ''
-
-        };
-
-        const newBooking = new Booking(bookingData);
-
-        await newBooking.save();
-
-        emitRealtime('booking-created', { bookingId: newBooking._id, hotelName: newBooking.hotelName });
-
-        emitRealtime('new-booking', { booking: newBooking, assignedMitra });
-
-
-
-        res.status(201).json({ success: true, message: "Booking confirmed", booking: newBooking, assignedMitra });
-
-    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-
+        let capture = { id: `cap_mock_${booking._id}`, status: 'captured' };
+        if (booking.paymentProvider !== 'razorpay_mock' && !RAZORPAY_MOCK_MODE) {
+            capture = await razorpayRequest('POST', `/v1/payments/${encodeURIComponent(booking.paymentId)}/capture`, { amount: toPaise(booking.totalPrice || booking.price), currency: 'INR' });
+        }
+        booking.paymentStatus = 'Captured';
+        booking.paymentCaptureId = capture.id || booking.paymentId;
+        booking.paymentCapturedAt = new Date();
+        booking.status = 'Confirmed';
+        await booking.save();
+        emitRealtime('booking-payment-captured', { bookingId: booking._id, hotelName: booking.hotelName });
+        res.json({ success: true, message: 'Payment captured successfully', capture, booking: decorateBookingForClient(booking) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message || 'Unable to capture payment' });
+    }
 });
 
-async function getBookingsForCustomerSession(req) {
-
-    const user = await User.findOne({ email: req.session.email }).select('_id email');
-
-    return safeSortQuery(Booking.find(user ? { $or: [{ userId: user._id }, { userEmail: req.session.email }] } : { userEmail: req.session.email }), { createdAt: -1 });
-
-}
-
-async function getBookingsForHotelSession(req) {
-
-    const hotel = await Hotel.findOne({ ownerEmail: req.session.email }).select('_id hotelName');
-
-    if (!hotel) return [];
-
-    return safeSortQuery(Booking.find({ $or: [{ hotelId: hotel._id }, { hotelName: hotel.hotelName }] }), { createdAt: -1 });
-
-}
-
-app.get('/api/bookings/my-bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
-
+app.post(['/api/payment/void/:bookingId', '/api/payment/release/:bookingId'], requireSession(['customer', 'guest', 'mitra', 'admin', 'assistant']), async (req, res) => {
     try {
+        const bookingId = String(req.params.bookingId || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
+        const filter = ['admin', 'assistant'].includes(req.session.role) ? { _id: bookingId } : { _id: bookingId, userEmail: req.session.email };
+        const booking = await Booking.findOne({ ...filter, status: { $ne: 'Cancelled' } });
+        if (!booking) return res.status(404).json({ success: false, message: 'Active booking not found' });
+        const freeUntil = booking.freeCancellationUntil || calculateFreeCancellationUntil(booking);
+        if (new Date(freeUntil).getTime() < Date.now()) return res.status(409).json({ success: false, message: 'Free cancellation window has ended' });
 
-        const bookings = await getBookingsForCustomerSession(req);
-
-        res.json({ success: true, bookings });
-
-    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-
+        booking.status = 'Cancelled';
+        booking.paymentStatus = booking.paymentStatus === 'Captured' ? 'Refund Pending' : 'Authorization Released';
+        booking.paymentVoidedAt = new Date();
+        booking.cancelledAt = new Date();
+        booking.cancellationReason = req.body.reason || 'Cancelled inside free cancellation window - zero deduction';
+        booking.autoReleased = false;
+        await booking.save();
+        emitRealtime('booking-cancelled', { bookingId: booking._id, hotelName: booking.hotelName, noFee: true });
+        res.json({ success: true, message: 'Booking cancelled with 100% zero-deduction release', noFee: true, booking: decorateBookingForClient(booking) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message || 'Unable to release authorization' });
+    }
 });
 
-app.get('/api/user/bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
-
+app.post('/api/bookings/:id/verify-pass', verifyAdminOrAssistant('manageBookings'), async (req, res) => {
     try {
+        const bookingId = String(req.params.id || '').trim();
+        const token = String(req.body.token || req.query.token || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
+        if (!token) return res.status(400).json({ success: false, message: 'QR pass token is required' });
 
-        const bookings = await getBookingsForCustomerSession(req);
-
-        res.json({ success: true, bookings });
-
-    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+        const pass = buildBookingPass(booking);
+        if (!timingSafeEquals(token, pass.token) && !timingSafeEquals(sha256Hex(token), booking.qrPassTokenHash)) {
+            return res.status(400).json({ success: false, message: 'Invalid booking pass token' });
+        }
+        booking.checkedIn = true;
+        booking.checkedInAt = new Date();
+        booking.checkedInBy = req.actor?.email || req.session?.email || 'assistant';
+        booking.status = booking.status === 'Completed' ? 'Completed' : 'Confirmed';
+        await booking.save();
+        emitRealtime('booking-checked-in', { bookingId: booking._id, hotelName: booking.hotelName, checkedInBy: booking.checkedInBy });
+        res.json({ success: true, message: 'Booking marked Checked-In', booking: buildOrderBooking(booking) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message || 'Unable to verify booking pass' });
+    }
 });
-
 app.get('/api/hotel/bookings', requireSession(['hotel', 'admin', 'assistant']), async (req, res) => {
 
     try {
@@ -4380,7 +4592,7 @@ app.get('/api/hotel/bookings', requireSession(['hotel', 'admin', 'assistant']), 
 
             : await safeSortQuery(Booking.find(), { createdAt: -1 });
 
-        res.json({ success: true, bookings });
+        res.json({ success: true, bookings: bookings.map(decorateBookingForClient) });
 
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 
@@ -4510,13 +4722,49 @@ if (require.main === module) {
 
 
 
+
+app.patch('/api/bookings/:id/assign-mitra', verifyAdminOrAssistant('manageBookings'), async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ success: false, message: 'Valid booking ID is required' });
+        }
+
+        let mitra = null;
+        const requestedMitraId = String(req.body.mitraId || '').trim();
+        if (requestedMitraId && mongoose.Types.ObjectId.isValid(requestedMitraId)) {
+            mitra = await User.findOne({ _id: requestedMitraId, role: 'mitra', isLocked: { $ne: true } }).select('_id name fullName email');
+        }
+        if (!mitra) {
+            mitra = await User.findOne(mitraUserFilter).where({ isLocked: { $ne: true } }).sort({ experience: -1 }).select('_id name fullName email');
+        }
+        if (!mitra) return res.status(404).json({ success: false, message: 'No active Mitra available for assignment' });
+
+        const booking = await Booking.findByIdAndUpdate(req.params.id, {
+            $set: {
+                assignedMitra: mitra.fullName || mitra.name || mitra.email,
+                assignedMitraId: mitra._id,
+                mitraEmail: mitra.email,
+                assignmentStatus: 'assigned',
+                'selectedAddons.mitraAssistance.selected': true,
+                'selectedAddons.mitraAssistance.status': 'assigned'
+            }
+        }, { new: true });
+
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+        await logActivity('UPDATE', 'Booking', booking._id, booking.hotelName, req.actor?.email || req.session?.email, req.actor?.role || req.session?.role || 'system', { assignedMitra: booking.assignedMitra });
+        emitRealtime('booking-updated', { booking, updatedBy: req.actor?.email || req.session?.email, action: 'mitra-assigned' });
+        res.json({ success: true, message: 'Mitra assigned successfully', booking });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 app.get('/admin/bookings', verifyAdmin, async (req, res) => {
 
     try {
 
         const bookings = await Booking.find().sort({ createdAt: -1 });
 
-        res.json({ success: true, bookings });
+        res.json({ success: true, bookings: bookings.map(decorateBookingForClient) });
 
     } catch (err) {
 
@@ -4686,7 +4934,7 @@ app.get('/all-bookings', requireSession(['admin', 'assistant', 'hotel', 'mitra',
 
 
 
-// ⭐ GET MITRA ASSIGNED BOOKINGS
+// ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â GET MITRA ASSIGNED BOOKINGS
 
 app.get('/mitra-bookings/:mitraEmail', requireSession(['mitra', 'admin', 'assistant']), async (req, res) => {
 
@@ -4710,7 +4958,7 @@ app.get('/mitra-bookings/:mitraEmail', requireSession(['mitra', 'admin', 'assist
 
         }), { createdAt: -1 });
 
-        res.json({ success: true, bookings });
+        res.json({ success: true, bookings: bookings.map(decorateBookingForClient) });
 
     } catch (err) {
 
@@ -4790,7 +5038,7 @@ app.put('/update-booking-status', requireSession(['hotel', 'admin', 'assistant']
 
 // ---------------------------------------------------------
 
-// --- 🛡️ ASSISTANT MANAGEMENT SYSTEM (Admin Control) ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ASSISTANT MANAGEMENT SYSTEM (Admin Control) ---
 
 // ---------------------------------------------------------
 
@@ -4814,7 +5062,7 @@ app.post('/admin/create-assistant', verifyAdmin, async (req, res) => {
 
 
 
-        // ⭐ ADMIN ONLY - Assistants cannot create assistants
+        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ADMIN ONLY - Assistants cannot create assistants
 
         if (req.actor?.role !== 'admin') {
 
@@ -4984,9 +5232,31 @@ const normalizeOrderStatus = (booking) => {
 const buildOrderBooking = (booking) => ({
     _id: booking._id,
     customerName: booking.userName,
+    userName: booking.userName,
+    userEmail: booking.userEmail,
     hotelBooked: booking.hotelName,
+    hotelName: booking.hotelName,
+    roomType: booking.roomType,
     paymentMode: normalizeOrderPaymentMode(booking),
+    paymentStatus: booking.paymentStatus,
+    paymentProvider: booking.paymentProvider,
+    paymentOrderId: booking.paymentOrderId,
+    paymentId: booking.paymentId,
+    bookingReference: createBookingReference(booking),
+    bookingPass: buildBookingPass(booking),
+    freeCancellationUntil: booking.freeCancellationUntil,
+    checkedIn: booking.checkedIn,
+    checkedInAt: booking.checkedInAt,
     status: normalizeOrderStatus(booking),
+    selectedAddons: booking.selectedAddons || {},
+    guestDetails: booking.guestDetails || {},
+    pricingBreakdown: booking.pricingBreakdown || {},
+    assignedMitra: booking.assignedMitra,
+    assignedMitraId: booking.assignedMitraId,
+    mitraEmail: booking.mitraEmail,
+    assignmentStatus: booking.assignmentStatus,
+    totalPrice: booking.totalPrice,
+    price: booking.price,
     createdAt: booking.createdAt
 });
 
@@ -5121,13 +5391,16 @@ app.post('/api/assistants/complaints/:id/warning', verifyAssistantToken(), async
 app.get('/api/assistants/hotel-operations', verifyAssistantToken('manageHotels'), async (req, res) => {
     try {
         const hotels = await Hotel.find().select('-password').sort({ updatedAt: -1 }).lean();
-        const enriched = await Promise.all(hotels.map(async (hotel) => ({
+        const gvsHotels = await enrichHotelsWithGvs(hotels);
+        const enriched = await Promise.all(gvsHotels.map(async (hotel) => ({
             ...hotel,
             verificationStatus: hotel.verificationStatus || (hotel.isVerified === false ? 'Pending Verification' : 'Verified'),
             isActive: hotel.isAvailable !== false && hotel.isLocked !== true,
             complaintsCount: await getHotelComplaintCount(hotel),
-            feedbackLogs: (hotel.reviews || []).slice(-5).reverse(),
-            displayRating: hotel.averageRating || hotel.rating || 0
+            feedbackLogs: (hotel.reviews || []).slice(0, 5),
+            displayRating: hotel.averageRating || hotel.rating || 0,
+            gvsScore: hotel.gvs?.gvsScore || hotel.gvsScore || 0,
+            gvsRankStatus: hotel.gvs?.gvsRankStatus || hotel.gvsRankStatus || 'New Property'
         })));
         res.json({ success: true, hotels: enriched });
     } catch (err) {
@@ -5307,8 +5580,9 @@ app.get(['/admin/all-hotels', '/api/assistants/all-hotels'], verifyAdminOrAssist
     try {
 
         const hotels = await Hotel.find().select('-password');
+        const rankedHotels = await enrichHotelsWithGvs(hotels);
 
-        res.json({ success: true, hotels });
+        res.json({ success: true, hotels: rankedHotels });
 
     } catch (err) {
 
@@ -5382,6 +5656,27 @@ app.get(['/admin/all-customers', '/api/assistants/customers'], verifyAdminOrAssi
 
 
 
+app.get('/api/assistants/mitras/kyc-docs/:filename', verifyAssistantToken('manageMitra'), (req, res) => {
+    const safeFileName = path.basename(String(req.params.filename || '').replace(/\0/g, ''));
+    if (!safeFileName || safeFileName === '.' || safeFileName === '..' || safeFileName.includes('..')) {
+        return res.status(400).json({ success: false, message: 'Invalid file name' });
+    }
+
+    const kycDocsDir = isVercelServerless
+        ? path.join('/tmp', 'gyangarbh-uploads', 'kyc-docs')
+        : path.join(__dirname, 'uploads', 'kyc-docs');
+    const filePath = path.resolve(kycDocsDir, safeFileName);
+
+    if (!filePath.startsWith(path.resolve(kycDocsDir) + path.sep)) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    if (!safePathExists(filePath)) {
+        return res.status(404).json({ success: false, message: 'KYC document not found' });
+    }
+
+    return res.sendFile(filePath);
+});
 app.patch('/api/assistants/mitras/:id/verify', verifyAssistantToken('manageMitra'), async (req, res) => {
     try {
         const requestedStatus = String(req.body.kycStatus || req.body.status || req.body.action || '').trim();
@@ -5389,15 +5684,29 @@ app.patch('/api/assistants/mitras/:id/verify', verifyAssistantToken('manageMitra
         if (!MITRA_KYC_STATUS_VALUES.includes(normalizedStatus) || normalizedStatus === 'Pending Verification') {
             return res.status(400).json({ success: false, message: 'kycStatus must be Verified or Rejected.' });
         }
+        const reviewNotes = String(req.body.notes || req.body.reason || '').trim();
         const mitra = await User.findByIdAndUpdate(req.params.id, {
             kycStatus: normalizedStatus,
-            kycReviewerNotes: String(req.body.notes || req.body.reason || '').trim(),
+            kycReviewerNotes: reviewNotes,
             kycReviewedBy: req.actor?.email || '',
             kycReviewedAt: new Date(),
             updatedBy: req.actor?.email || '',
             updatedAt: new Date()
         }, { new: true, strict: false }).select('-password');
         if (!mitra) return res.status(404).json({ success: false, message: 'Mitra not found' });
+        await MitraKyc.findOneAndUpdate(
+            { mitra: req.params.id },
+            {
+                $set: {
+                    status: normalizedStatus === 'Verified' ? 'verified' : 'rejected',
+                    rejectionReason: normalizedStatus === 'Rejected' ? reviewNotes : '',
+                    reviewRemarks: reviewNotes,
+                    reviewedBy: req.actor?.email || '',
+                    reviewedAt: new Date()
+                }
+            },
+            { new: true, strict: false }
+        ).catch(() => null);
         await logActivity('UPDATE', 'Mitra', mitra._id, mitra.name || mitra.fullName, req.actor?.email, req.actor?.role || 'assistant', { kycStatus: normalizedStatus });
         emitRealtime('mitra-kyc-updated', { mitra, kycStatus: normalizedStatus, reviewedBy: req.actor?.email });
         res.json({ success: true, message: `Mitra KYC ${normalizedStatus.toLowerCase()}`, mitra });
@@ -5410,9 +5719,25 @@ app.get(['/admin/all-mitras', '/api/assistants/mitras'], verifyAdminOrAssistant(
 
     try {
 
-        const mitras = await User.find(mitraUserFilter).select('-password');
+        const mitras = await User.find(mitraUserFilter).select('-password').lean();
+        const mitraIds = mitras.map((mitra) => mitra._id);
+        const kycApplications = mitraIds.length ? await MitraKyc.find({ mitra: { $in: mitraIds } }).lean() : [];
+        const kycByMitra = new Map(kycApplications.map((kyc) => [String(kyc.mitra), kyc]));
+        const statusLabels = { pending: 'Pending Verification', verified: 'Verified', rejected: 'Rejected', resubmission_required: 'Rejected' };
+        const mitrasWithKyc = mitras.map((mitra) => {
+            const kyc = kycByMitra.get(String(mitra._id)) || null;
+            const documents = (kyc?.documents || []).map((doc) => ({
+                ...doc,
+                url: `/api/assistants/mitras/kyc-docs/${encodeURIComponent(doc.filename)}`
+            }));
+            return {
+                ...mitra,
+                kycStatus: mitra.kycStatus || statusLabels[kyc?.status] || 'Not Submitted',
+                kycApplication: kyc ? { ...kyc, documents } : null
+            };
+        });
 
-        res.json({ success: true, mitras });
+        res.json({ success: true, mitras: mitrasWithKyc });
 
     } catch (err) {
 
@@ -5629,7 +5954,7 @@ app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
 
 
 
-        // ⭐ ADMIN ONLY - Assistants cannot delete other assistants
+        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ADMIN ONLY - Assistants cannot delete other assistants
 
         if (!verifyAdminOnly(deletedBy || req.actor?.email, deletedByRole || req.actor?.role)) {
 
@@ -5705,7 +6030,7 @@ app.delete('/admin/delete-assistant', verifyAdmin, async (req, res) => {
 
 // ---------------------------------------------------------
 
-// --- 🏛️ BODHI PATH - SPIRITUAL & HERITAGE SYSTEM ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â BODHI PATH - SPIRITUAL & HERITAGE SYSTEM ---
 
 // ---------------------------------------------------------
 
@@ -6593,7 +6918,7 @@ app.post('/admin/taxis', verifyAdmin, async (req, res) => {
 
 // ---------------------------------------------------------
 
-// --- 🏨 UPDATE HOTEL ENDPOINTS FOR NEW FIELDS ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ UPDATE HOTEL ENDPOINTS FOR NEW FIELDS ---
 
 // ---------------------------------------------------------
 
@@ -6663,7 +6988,7 @@ app.put('/hotel/update-distance-highlights', requireSession(['hotel']), async (r
 
 // ---------------------------------------------------------
 
-// --- 🔒 SECRET ADMIN PANEL ROUTES ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ SECRET ADMIN PANEL ROUTES ---
 
 // ---------------------------------------------------------
 
@@ -6745,7 +7070,7 @@ app.get('/admin/dashboard', verifyAdminOrAssistant('viewReports'), async (req, r
 
 
 
-// ⭐ ACTIVITY LOG ENDPOINT - Admin only
+// ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ACTIVITY LOG ENDPOINT - Admin only
 
 app.get('/admin/activity-log', verifyAdmin, async (req, res) => {
 
@@ -6789,7 +7114,7 @@ app.get('/admin/activity-log', verifyAdmin, async (req, res) => {
 
 // ---------------------------------------------------------
 
-// --- 🌱 SEED BODHI PATH DATA (Run once to populate heritage data) ---
+// --- ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± SEED BODHI PATH DATA (Run once to populate heritage data) ---
 
 // ---------------------------------------------------------
 
@@ -6937,7 +7262,7 @@ app.post('/admin/seed-heritage-data', verifyAdmin, async (req, res) => {
 
                 visitingHours: "6:00 AM - 6:00 PM",
 
-                entryFee: "₹50",
+                entryFee: "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹50",
 
                 estimatedVisitTime: "1-2 hours",
 
@@ -7045,3 +7370,8 @@ module.exports = app;
 module.exports.app = app;
 module.exports.server = server;
 module.exports.connectDatabase = connectDatabase;
+
+
+
+
+

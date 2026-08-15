@@ -91,6 +91,20 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    refundDetails: {
+        upiId: { type: String, default: '', trim: true },
+        bankInfo: {
+            accountNumber: { type: String, default: '', trim: true },
+            ifsc: { type: String, default: '', trim: true, uppercase: true },
+            accountHolderName: { type: String, default: '', trim: true }
+        },
+        preferredMethod: {
+            type: String,
+            enum: ['upi', 'bank', 'wallet'],
+            default: 'wallet'
+        },
+        updatedAt: { type: Date, default: null }
+    },
     date: {
         type: Date,
         default: Date.now

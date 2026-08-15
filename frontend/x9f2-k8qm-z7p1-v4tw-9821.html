@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔐 Gyan Garbh Secret Admin Panel</title>
+    <title>ðŸ” Gyan Garbh Secret Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
@@ -482,7 +482,7 @@
                 <label>Admin Master PIN</label>
                 <input type="password" id="adminPin" placeholder="Enter 6-digit PIN" inputmode="numeric" pattern="\d{6}" maxlength="6">
             </div>
-            <button type="submit" class="login-btn" id="adminLoginButton">🔓 Send Admin OTP</button>
+            <button type="submit" class="login-btn" id="adminLoginButton">ðŸ”“ Send Admin OTP</button>
         </form>
     </div>
 </div>
@@ -490,7 +490,7 @@
 <!-- ADMIN PANEL -->
 <div id="adminPanel" class="admin-panel d-flex">
     <div class="sidebar">
-        <h3>🛡️ ADMIN PANEL</h3>
+        <h3>ðŸ›¡ï¸ ADMIN PANEL</h3>
         <ul class="sidebar-nav">
             <li><a class="nav-link active" onclick="showSection('dashboard')"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
             <li><a class="nav-link" onclick="showSection('assistants')"><i class="bi bi-people-fill"></i> Assistants</a></li>
@@ -499,7 +499,7 @@
             <li><a class="nav-link" onclick="showSection('mitras')"><i class="bi bi-handshake"></i> Mitras</a></li>
             <li><a class="nav-link" onclick="showSection('bodhi-path')"><i class="bi bi-temple2"></i> Bodhi Path</a></li>
             <li><a class="nav-link" onclick="showSection('activity-log')"><i class="bi bi-receipt"></i> Activity Log</a></li>
-            <li><a class="nav-link ai-sidebar-link" onclick="openRoleAIAssistant('admin')"><i class="bi bi-robot"></i> 🤖 Chat with AI</a></li>
+            <li><a class="nav-link ai-sidebar-link" onclick="openRoleAIAssistant('admin')"><i class="bi bi-robot"></i> ðŸ¤– Chat with AI</a></li>
             <li><hr style="border-color: rgba(255,255,255,0.2)"></li>
             <li><a class="nav-link text-danger" onclick="logout()"><i class="bi bi-box-arrow-left"></i> Logout</a></li>
         </ul>
@@ -511,20 +511,20 @@
             <div class="header">
                 <h1>Gyan Garbh Control Center</h1>
                 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                    <button class="ai-navbar-btn" onclick="openRoleAIAssistant('admin')"><i class="bi bi-robot"></i> 🤖 Chat with AI</button>
+                    <button class="ai-navbar-btn" onclick="openRoleAIAssistant('admin')"><i class="bi bi-robot"></i> ðŸ¤– Chat with AI</button>
                     <button class="logout-btn" onclick="logout()">Logout</button>
                 </div>
             </div>
 
             <!-- DASHBOARD SECTION -->
             <div id="dashboard" class="section-content active">
-                <h2 style="margin-bottom: 30px; color: white;">📊 Dashboard</h2>
+                <h2 style="margin-bottom: 30px; color: white;">ðŸ“Š Dashboard</h2>
                 <div class="stats-container" id="statsContainer">
                     <!-- Stats will be loaded here -->
                 </div>
 
                 <div class="table-container">
-                    <h4>📅 Recent Bookings</h4>
+                    <h4>ðŸ“… Recent Bookings</h4>
                     <table id="recentBookingsTable">
                         <thead>
                             <tr>
@@ -532,6 +532,8 @@
                                 <th>Customer</th>
                                 <th>Hotel</th>
                                 <th>Status</th>
+                                <th>Add-ons</th>
+                                <th>Mitra</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
@@ -542,10 +544,10 @@
 
             <!-- ASSISTANTS SECTION -->
             <div id="assistants" class="section-content">
-                <h2 style="margin-bottom: 30px; color: white;">👥 Manage Assistants</h2>
+                <h2 style="margin-bottom: 30px; color: white;">ðŸ‘¥ Manage Assistants</h2>
                 
                 <div class="form-container" style="margin-bottom: 30px;">
-                    <h4>➕ Create New Assistant</h4>
+                    <h4>âž• Create New Assistant</h4>
                     <form id="createAssistantForm" style="margin-top: 20px;">
                         <div class="form-row">
                             <div class="form-group">
@@ -586,12 +588,12 @@
                                 <label><input type="checkbox" id="permViewReports"> View Reports</label>
                             </div>
                         </div>
-                        <button type="submit" class="submit-btn">✅ Create Assistant</button>
+                        <button type="submit" class="submit-btn">âœ… Create Assistant</button>
                     </form>
                 </div>
 
                 <div class="table-container">
-                    <h4>📋 All Assistants</h4>
+                    <h4>ðŸ“‹ All Assistants</h4>
                     <table id="assistantsTable">
                         <thead>
                             <tr>
@@ -609,7 +611,7 @@
 
             <!-- HOTELS SECTION -->
             <div id="hotels" class="section-content">
-                <h2 style="margin-bottom: 30px; color: white;">🏨 Manage Hotels</h2>
+                <h2 style="margin-bottom: 30px; color: white;">ðŸ¨ Manage Hotels</h2>
                 <div class="table-container">
                     <table id="hotelsTable">
                         <thead>
@@ -617,7 +619,7 @@
                                 <th>Hotel Name</th>
                                 <th>Owner Email</th>
                                 <th>Location</th>
-                                <th>Rating</th>
+                                <th>Rating</th><th>GVS</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -629,7 +631,7 @@
 
             <!-- CUSTOMERS SECTION -->
             <div id="customers" class="section-content">
-                <h2 style="margin-bottom: 30px; color: white;">👤 Manage Customers</h2>
+                <h2 style="margin-bottom: 30px; color: white;">ðŸ‘¤ Manage Customers</h2>
                 <div class="table-container">
                     <table id="customersTable">
                         <thead>
@@ -649,7 +651,7 @@
 
             <!-- MITRAS SECTION -->
             <div id="mitras" class="section-content">
-                <h2 style="margin-bottom: 30px; color: white;">🤝 Manage Mitras</h2>
+                <h2 style="margin-bottom: 30px; color: white;">ðŸ¤ Manage Mitras</h2>
                 <div class="table-container">
                     <table id="mitrasTable">
                         <thead>
@@ -669,10 +671,10 @@
 
             <!-- BODHI PATH SECTION -->
             <div id="bodhi-path" class="section-content">
-                <h2 style="margin-bottom: 30px; color: white;">🏛️ Manage Bodhi Path Heritage</h2>
+                <h2 style="margin-bottom: 30px; color: white;">ðŸ›ï¸ Manage Bodhi Path Heritage</h2>
                 
                 <div class="form-container" style="margin-bottom: 30px;">
-                    <h4>➕ Add Heritage Entry</h4>
+                    <h4>âž• Add Heritage Entry</h4>
                     <form id="createBodhiPathForm" style="margin-top: 20px;">
                         <div class="form-row">
                             <div class="form-group">
@@ -709,12 +711,12 @@
                                 <input type="text" id="bodhiVisitTime" placeholder="e.g., October to March">
                             </div>
                         </div>
-                        <button type="submit" class="submit-btn">✅ Add Heritage Entry</button>
+                        <button type="submit" class="submit-btn">âœ… Add Heritage Entry</button>
                     </form>
                 </div>
 
                 <div class="table-container">
-                    <h4>📚 Heritage Entries</h4>
+                    <h4>ðŸ“š Heritage Entries</h4>
                     <table id="bodhiPathTable">
                         <thead>
                             <tr>
@@ -732,9 +734,9 @@
 
             <!-- ACTIVITY LOG SECTION -->
             <div id="activity-log" class="section-content">
-                <h2 style="margin-bottom: 30px; color: white;">📋 Activity Log</h2>
+                <h2 style="margin-bottom: 30px; color: white;">ðŸ“‹ Activity Log</h2>
                 <div style="margin-bottom: 20px;">
-                    <button class="submit-btn" onclick="loadActivityLog()">🔄 Refresh Activity Log</button>
+                    <button class="submit-btn" onclick="loadActivityLog()">ðŸ”„ Refresh Activity Log</button>
                 </div>
                 <div class="table-container">
                     <h4>Recent Changes</h4>
@@ -758,12 +760,12 @@
     </div>
 </div>
 
-<!-- ⭐ EDIT HOTEL MODAL -->
+<!-- â­ EDIT HOTEL MODAL -->
 <div id="editHotelModal" class="modal">
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
             <h2>Edit Hotel</h2>
-            <button class="close-btn" onclick="closeModal('editHotelModal')">✕</button>
+            <button class="close-btn" onclick="closeModal('editHotelModal')">âœ•</button>
         </div>
         <form id="editHotelForm">
             <div class="form-row">
@@ -791,19 +793,19 @@
                 <textarea id="editHotelDescription" rows="3"></textarea>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button type="submit" class="submit-btn">💾 Save Changes</button>
+                <button type="submit" class="submit-btn">ðŸ’¾ Save Changes</button>
                 <button type="button" class="submit-btn" style="background: #999;" onclick="closeModal('editHotelModal')">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- ⭐ EDIT BODHI PATH MODAL -->
+<!-- â­ EDIT BODHI PATH MODAL -->
 <div id="editBodhiPathModal" class="modal">
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
             <h2>Edit Bodhi Path Entry</h2>
-            <button class="close-btn" onclick="closeModal('editBodhiPathModal')">✕</button>
+            <button class="close-btn" onclick="closeModal('editBodhiPathModal')">âœ•</button>
         </div>
         <form id="editBodhiPathForm">
             <div class="form-row">
@@ -831,7 +833,7 @@
                 <textarea id="editBodhiFullDesc" rows="3" required></textarea>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button type="submit" class="submit-btn">💾 Save Changes</button>
+                <button type="submit" class="submit-btn">ðŸ’¾ Save Changes</button>
                 <button type="button" class="submit-btn" style="background: #999;" onclick="closeModal('editBodhiPathModal')">Cancel</button>
             </div>
         </form>
@@ -843,7 +845,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Confirm Delete</h2>
-            <button class="close-btn" onclick="closeModal('deleteModal')">✕</button>
+            <button class="close-btn" onclick="closeModal('deleteModal')">âœ•</button>
         </div>
         <p style="margin-bottom: 20px;">Are you sure you want to delete this item?</p>
         <div style="display: flex; gap: 10px;">
@@ -1030,7 +1032,7 @@
                 resetAdminIdleTimer();
                 loadDashboard();
             } else {
-                alert('❌ Invalid credentials');
+                alert('âŒ Invalid credentials');
             }
         } catch (error) {
             alert('Login error: ' + error.message);
@@ -1063,6 +1065,20 @@
     }
 
     // LOAD DASHBOARD
+
+    function adminBookingAddonSummary(booking = {}) {
+        const addons = booking.selectedAddons || {};
+        const labels = [];
+        if (addons.mitraAssistance?.selected) labels.push(`Mitra: ${addons.mitraAssistance.status || 'requested'}`);
+        if (addons.pickupDrop?.selected) labels.push(`Cab: ${addons.pickupDrop.status || 'requested'}`);
+        return labels.length ? labels.join(' | ') : 'No add-ons';
+    }
+
+    function adminBookingMitraStatus(booking = {}) {
+        if (booking.assignedMitra && !/not requested/i.test(booking.assignedMitra)) return booking.assignedMitra;
+        if (booking.selectedAddons?.mitraAssistance?.selected) return 'Assignment requested';
+        return 'Not requested';
+    }
     async function loadDashboard() {
         try {
             const response = await fetch(`${API_URL}/admin/dashboard?userEmail=${encodeURIComponent(adminEmail)}&userRole=admin`);
@@ -1096,6 +1112,8 @@
                     <td>${booking.customerName}</td>
                     <td>${booking.hotelName}</td>
                     <td><span class="badge badge-${booking.status === 'Confirmed' ? 'success' : 'warning'}">${booking.status}</span></td>
+                    <td>${adminBookingAddonSummary(booking)}</td>
+                    <td>${adminBookingMitraStatus(booking)}</td>
                     <td>${new Date(booking.createdAt).toLocaleDateString()}</td>
                 </tr>
             `).join('');
@@ -1130,14 +1148,14 @@
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ Assistant created successfully!');
+                alert('âœ… Assistant created successfully!');
                 e.target.reset();
                 loadAssistants();
             } else {
-                alert('❌ Error: ' + data.message);
+                alert('âŒ Error: ' + data.message);
             }
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            alert('âŒ Error: ' + error.message);
         }
     });
 
@@ -1207,12 +1225,12 @@
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ Deleted successfully!');
+                alert('âœ… Deleted successfully!');
                 closeModal('deleteModal');
                 loadAssistants();
             }
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            alert('âŒ Error: ' + error.message);
         }
     }
 
@@ -1228,10 +1246,10 @@
                     <td>${hotel.hotelName || hotel.name || 'N/A'}</td>
                     <td>${hotel.ownerEmail || hotel.email || 'N/A'}</td>
                     <td>${hotel.location || hotel.address || 'N/A'}</td>
-                    <td>${hotel.rating || 0}</td>
+                    <td>${hotel.rating || 0}</td><td>${Number(hotel.gvs?.gvsScore || hotel.gvsScore || 0).toFixed(2)}<br><small>${hotel.gvs?.gvsRankStatus || hotel.gvsRankStatus || 'New Property'}</small></td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="openEditHotelModal('${hotel._id}', '${hotel.hotelName}', '${hotel.location}', '${hotel.phone || ''}', ${hotel.rating || 0}, '${hotel.description || ''}')">✏️ Edit</button>
-                        <button class="action-btn delete-btn" onclick="deleteHotel('${hotel._id}')">🗑️ Delete</button>
+                        <button class="action-btn edit-btn" onclick="openEditHotelModal('${hotel._id}', '${hotel.hotelName}', '${hotel.location}', '${hotel.phone || ''}', ${hotel.rating || 0}, '${hotel.description || ''}')">âœï¸ Edit</button>
+                        <button class="action-btn delete-btn" onclick="deleteHotel('${hotel._id}')">ðŸ—‘ï¸ Delete</button>
                     </td>
                 </tr>
             `).join('');
@@ -1308,14 +1326,14 @@
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ Heritage entry added successfully!');
+                alert('âœ… Heritage entry added successfully!');
                 e.target.reset();
                 loadBodhiPath();
             } else {
-                alert('❌ Error: ' + data.message);
+                alert('âŒ Error: ' + data.message);
             }
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            alert('âŒ Error: ' + error.message);
         }
     });
 
@@ -1332,8 +1350,8 @@
                     <td><span class="badge badge-success">${entry.category}</span></td>
                     <td>${entry.shortDescription.substring(0, 50)}...</td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="openEditBodhiPathModal('${entry._id}', '${entry.title}', '${entry.category}', '${entry.shortDescription.replace(/'/g, "\\'")}', '${entry.fullDescription.replace(/'/g, "\\'")}')">✏️ Edit</button>
-                        <button class="action-btn delete-btn" onclick="deleteBodhiPath('${entry._id}')">🗑️ Delete</button>
+                        <button class="action-btn edit-btn" onclick="openEditBodhiPathModal('${entry._id}', '${entry.title}', '${entry.category}', '${entry.shortDescription.replace(/'/g, "\\'")}', '${entry.fullDescription.replace(/'/g, "\\'")}')">âœï¸ Edit</button>
+                        <button class="action-btn delete-btn" onclick="deleteBodhiPath('${entry._id}')">ðŸ—‘ï¸ Delete</button>
                     </td>
                 </tr>
             `).join('');
@@ -1408,7 +1426,7 @@
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ Deleted successfully!');
+                alert('âœ… Deleted successfully!');
                 closeModal('deleteModal');
 
                 if (currentDeleteData.type === 'assistant') loadAssistants();
@@ -1418,11 +1436,11 @@
                 else if (currentDeleteData.type === 'bodhi-path') loadBodhiPath();
             }
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            alert('âŒ Error: ' + error.message);
         }
     };
 
-    // ⭐ EDIT HOTEL FUNCTIONS
+    // â­ EDIT HOTEL FUNCTIONS
     let currentEditHotelId = null;
 
     function openEditHotelModal(hotelId, name, location, phone, rating, description) {
@@ -1455,18 +1473,18 @@
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ Hotel updated successfully!');
+                alert('âœ… Hotel updated successfully!');
                 closeModal('editHotelModal');
                 loadHotels();
             } else {
-                alert('❌ Error: ' + data.message);
+                alert('âŒ Error: ' + data.message);
             }
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            alert('âŒ Error: ' + error.message);
         }
     });
 
-    // ⭐ EDIT BODHI PATH FUNCTIONS
+    // â­ EDIT BODHI PATH FUNCTIONS
     let currentEditBodhiPathId = null;
 
     function openEditBodhiPathModal(bodhiId, title, category, shortDesc, fullDesc) {
@@ -1497,18 +1515,18 @@
 
             const data = await response.json();
             if (data.success) {
-                alert('✅ Bodhi Path entry updated successfully!');
+                alert('âœ… Bodhi Path entry updated successfully!');
                 closeModal('editBodhiPathModal');
                 loadBodhiPath();
             } else {
-                alert('❌ Error: ' + data.message);
+                alert('âŒ Error: ' + data.message);
             }
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            alert('âŒ Error: ' + error.message);
         }
     });
 
-    // ⭐ LOAD ACTIVITY LOG
+    // â­ LOAD ACTIVITY LOG
     async function loadActivityLog() {
         try {
             const response = await fetch(`${API_URL}/admin/activity-log?userEmail=${adminEmail}&userRole=admin`);
@@ -1623,7 +1641,7 @@
                     <td>${escapeHtml(hotel.hotelName || hotel.name || 'N/A')}</td>
                     <td>${escapeHtml(hotel.ownerEmail || hotel.email || 'N/A')}</td>
                     <td>${escapeHtml(hotel.location || hotel.address || 'N/A')}</td>
-                    <td>${escapeHtml(hotel.rating || 0)}</td>
+                    <td>${escapeHtml(hotel.rating || 0)}</td><td>${Number(hotel.gvs?.gvsScore || hotel.gvsScore || 0).toFixed(2)}<br><small>${escapeHtml(hotel.gvs?.gvsRankStatus || hotel.gvsRankStatus || 'New Property')}</small></td>
                     <td>${lockBadge(hotel)}</td>
                     <td>
                         <button class="action-btn edit-btn" onclick="openEditHotelFromCache('${hotel._id}')">Edit</button>

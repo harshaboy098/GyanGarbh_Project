@@ -175,7 +175,8 @@
         .urgency-badge { position: absolute; top: 15px; left: 15px; background: var(--danger); color: white; padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 800; z-index: 10; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        .amenity-badge { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; margin-right: 5px; color: #475569; }
+        .amenity-badge { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; margin-right: 5px; color: #475569; display:inline-flex; align-items:center; gap:4px; margin-bottom:5px; }
+        .verified-hotel-badge { position:absolute; top:15px; right:15px; z-index:10; display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#0d6efd; color:#fff; font-size:.72rem; font-weight:900; box-shadow:0 8px 18px rgba(13,110,253,.28); }
 
         .stay-assist-card {
             background: #0f172a; color: white; border-radius: 28px; overflow: hidden;
@@ -198,7 +199,7 @@
             font-weight: 900; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.22);
         }
 
-        /* 🔐 PRIVACY CONSENT GATE STYLES */
+        /* Ã°Å¸â€Â PRIVACY CONSENT GATE STYLES */
         .consent-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7);
             display: flex; align-items: center; justify-content: center; z-index: 2000;
@@ -249,7 +250,7 @@
             background: #cbd5e1;
         }
 
-        /* 🧠 SELF-LEARNING FEEDBACK STYLES */
+        /* Ã°Å¸Â§Â  SELF-LEARNING FEEDBACK STYLES */
         .feedback-pill {
             display: inline-block; margin: 5px 5px 5px 0; padding: 8px 16px;
             background: #e0e7ff; color: #4f46e5; border-radius: 20px; font-size: 0.85rem;
@@ -267,7 +268,7 @@
         .feedback-section { padding: 80px 0; background: white; border-radius: 60px 60px 0 0; margin-top: 50px; }
         .feedback-card { background: #f8fafc; border-radius: 20px; padding: 25px; border: 1px solid #e2e8f0; }
 
-        /* 🤖 AI TRIP PLANNER CHATBOT STYLES */
+        /* Ã°Å¸Â¤â€“ AI TRIP PLANNER CHATBOT STYLES */
         .ai-chat-window {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;
             width: 380px; height: 550px; background: white;
@@ -437,7 +438,7 @@
 
 <div class="container mb-5">
     <div class="card rounded-5 border-0 overflow-hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); position: relative;">
-        <div style="position: absolute; top: 0; right: 0; opacity: 0.1; font-size: 200px;">🏛️</div>
+        <div style="position: absolute; top: 0; right: 0; opacity: 0.1; font-size: 200px;">Ã°Å¸Ââ€ºÃ¯Â¸Â</div>
         <div class="card-body p-5" style="position: relative; z-index: 2;">
             <div class="row align-items-center">
                 <div class="col-lg-8">
@@ -547,7 +548,7 @@
                         <button type="button" class="btn-close float-end" data-bs-dismiss="modal"></button>
                         <h2 class="fw-bold text-dark mb-1" id="detName"></h2>
                         <p class="text-muted"><i class="bi bi-geo-alt-fill text-danger"></i> <span id="detLoc"></span>, Bodhgaya</p>
-                        <div class="alert alert-info mb-3" id="detRating" style="font-size: 1.1rem;">⭐ 4.5</div>
+                        <div class="alert alert-info mb-3" id="detRating" style="font-size: 1.1rem;">Ã¢Â­Â 4.5</div>
                         <p id="detDescription" class="text-muted small mb-3">Comfort and luxury combined</p>
 
                         <div class="alert alert-light border mb-3">
@@ -604,10 +605,10 @@
 <footer class="text-center">
     <div class="container">
         <div class="mb-3">
-            <a href="hotel-auth.html">Hotel Partner Login</a> •
+            <a href="hotel-auth.html">Hotel Partner Login</a> Ã¢â‚¬Â¢
             <a href="mitra-auth.html">Join as Bodh-Mitra Agent</a>
         </div>
-        <p class="text-muted mb-0">© 2026 Gyan Garbh Bodhgaya • The Enlightenment Network</p>
+        <p class="text-muted mb-0">Ã‚Â© 2026 Gyan Garbh Bodhgaya Ã¢â‚¬Â¢ The Enlightenment Network</p>
     </div>
 </footer>
 
@@ -739,17 +740,37 @@
         await loadMitrasFromDB();
     };
 
+    function isHotelVerified(hotel = {}) {
+        const status = String(hotel.verificationStatus || hotel.kycStatus || '').toLowerCase();
+        return hotel.isVerified === true || status === 'verified' || status === 'approved';
+    }
+
+    function verifiedHotelBadge(hotel = {}) {
+        return isHotelVerified(hotel) ? '<span class="verified-hotel-badge"><i class="bi bi-patch-check-fill"></i> Gyan Garbh Verified</span>' : '';
+    }
+
+    function hotelAmenityBadges(hotel = {}) {
+        const facilities = hotel.facilities || {};
+        const distance = hotel.distanceFromLandmark ? `${hotel.distanceFromLandmark.value || 0} ${hotel.distanceFromLandmark.unit || 'km'} from ${hotel.distanceFromLandmark.landmark || 'Mahabodhi Temple'}` : 'Near Mahabodhi Temple';
+        const badges = [
+            facilities.ac ? '<span class="amenity-badge"><i class="bi bi-snow text-primary"></i>AC</span>' : '',
+            facilities.wifi ? '<span class="amenity-badge"><i class="bi bi-wifi text-primary"></i>Wi-Fi</span>' : '',
+            facilities.geyser || facilities.hotWater ? '<span class="amenity-badge"><i class="bi bi-thermometer-sun text-primary"></i>Geyser</span>' : '',
+            `<span class="amenity-badge"><i class="bi bi-signpost-split text-primary"></i>${escapeHTML(distance)}</span>`
+        ].filter(Boolean);
+        return badges.join('');
+    }
     function getAmenityIcons(facilities) {
         let icons = '';
-        if (facilities?.wifi) icons += '📶 ';
-        if (facilities?.ac) icons += '❄️ ';
-        if (facilities?.food) icons += '🍽️ ';
-        if (facilities?.parking) icons += '🅿️ ';
-        return icons || '✨';
+        if (facilities?.wifi) icons += 'Ã°Å¸â€œÂ¶ ';
+        if (facilities?.ac) icons += 'Ã¢Ââ€žÃ¯Â¸Â ';
+        if (facilities?.food) icons += 'Ã°Å¸ÂÂ½Ã¯Â¸Â ';
+        if (facilities?.parking) icons += 'Ã°Å¸â€¦Â¿Ã¯Â¸Â ';
+        return icons || 'Ã¢Å“Â¨';
     }
 
     function getPriceDisplay(price) {
-        return price && price > 0 ? `₹${price}/Night` : 'Price on Request';
+        return price && price > 0 ? `Ã¢â€šÂ¹${price}/Night` : 'Price on Request';
     }
 
     function escapeHTML(value) {
@@ -866,7 +887,8 @@
                 const priceValue = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
                 const priceDisplay = getPriceDisplay(priceValue);
                 const amenityIcons = getAmenityIcons(h.facilities);
-                const rating = h.rating || 4.5;
+                const rating = h.averageRating || h.gvs?.avgVerifiedRating || h.rating || 4.5;
+                const gvsLabel = h.gvs?.gvsRankStatus ? ` | GVS ${Number(h.gvs.gvsScore || 0).toFixed(2)} ${h.gvs.gvsRankStatus}` : '';
                 const description = h.description || 'Comfort and luxury combined';
                 const locationText = h.location || 'Bodhgaya';
                 
@@ -885,6 +907,7 @@
                     <div class="col-md-4 hotel-item">
                         <div class="hotel-card" onclick="openHotelDetailsPage('${safeId}')">
                             <span class="urgency-badge">Filling Fast!</span>
+                            ${verifiedHotelBadge(h)}
                             <div class="img-box">
                                 <button type="button" class="slider-arrow prev-arr prev-btn" data-gallery="${galleryData}" data-direction="prev" onclick="event.stopPropagation(); event.preventDefault(); slideHotelCardImage(this, -1);" aria-label="Previous image">
                                     <i class="fas fa-chevron-left"></i>
@@ -902,15 +925,15 @@
                                         <i class="fas fa-chevron-down"></i>
                                     </button>
                                 </div>
-                                <div class="small text-warning mb-2">⭐ ${rating} | <i class="bi bi-geo-alt"></i> ${locationText}</div>
+                                <div class="small text-warning mb-2">Ã¢Â­Â ${rating} | <i class="bi bi-geo-alt"></i> ${locationText}</div>
                                 <div class="quick-view-panel">
                                     <div class="quick-view-panel-inner">
                                         <strong>${safeName}</strong>
-                                        <span>${landmarkText} • ${highlightsText.substring(0, 72)}${highlightsText.length > 72 ? '…' : ''}</span>
+                                        <span>${landmarkText} Ã¢â‚¬Â¢ ${highlightsText.substring(0, 72)}${highlightsText.length > 72 ? 'Ã¢â‚¬Â¦' : ''}</span>
                                     </div>
                                 </div>
                                 <p class="small text-muted mb-2 mt-2" style="min-height: 30px;">${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</p>
-                                <div class="mb-2 small">${amenityIcons}</div>
+                                <div class="mb-2 small">${hotelAmenityBadges(h) || amenityIcons}</div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="h6 fw-bold text-success mb-0">${priceDisplay}</span>
                                     <div class="d-flex gap-2">
@@ -1015,7 +1038,7 @@
 
     function openHotelDetails(name, loc, price, img, rating, description, hotelId = '', landmark = 'Mahabodhi Temple: 0.5 km', highlights = 'Peaceful environment, vegetarian meals available') {
         selectedHotelId = hotelId;
-        const priceText = price && price > 0 ? '₹' + price : 'Price on Request';
+        const priceText = price && price > 0 ? 'Ã¢â€šÂ¹' + price : 'Price on Request';
         document.getElementById('detName').innerText = name;
         document.getElementById('detLoc').innerText = loc;
         document.getElementById('detPrice').innerText = priceText;
@@ -1023,7 +1046,7 @@
         
         const ratingEl = document.getElementById('detRating');
         const descEl = document.getElementById('detDescription');
-        if (ratingEl) ratingEl.innerText = `⭐ ${rating || 4.5}`;
+        if (ratingEl) ratingEl.innerText = `Ã¢Â­Â ${rating || 4.5}`;
         if (descEl) descEl.innerText = description || 'Comfort and luxury combined';
 
         const detDistance = document.getElementById('detDistance');
@@ -1036,15 +1059,15 @@
 
     function openBodhiPathInfo() {
         Swal.fire({
-            title: '🏛️ Bodhi Path Heritage',
+            title: 'Ã°Å¸Ââ€ºÃ¯Â¸Â Bodhi Path Heritage',
             html: `
                 <div class="text-start">
                     <p><strong>Discover the spiritual essence of Bodh Gaya through our Bodhi Path program.</strong></p>
                     <ul>
-                        <li>🏛️ Learn about Mahabodhi Temple and other sacred sites</li>
-                        <li>📚 Explore the history and significance of Buddhist traditions</li>
-                        <li>🧘 Understand meditation practices and spiritual teachings</li>
-                        <li>🎭 Experience the culture and festivals of Bodh Gaya</li>
+                        <li>Ã°Å¸Ââ€ºÃ¯Â¸Â Learn about Mahabodhi Temple and other sacred sites</li>
+                        <li>Ã°Å¸â€œÅ¡ Explore the history and significance of Buddhist traditions</li>
+                        <li>Ã°Å¸Â§Ëœ Understand meditation practices and spiritual teachings</li>
+                        <li>Ã°Å¸Å½Â­ Experience the culture and festivals of Bodh Gaya</li>
                     </ul>
                     <p><em>A complete guide to Bodh Gaya's heritage, accessible right from your hotel!</em></p>
                 </div>
@@ -1145,7 +1168,7 @@
         const nights = Math.max(1, Math.ceil((outDate - inDate) / (1000 * 60 * 60 * 24)));
         const baseRate = roomType === 'non-ac' || roomType === 'budget' ? 1200 : roomType === 'family' ? 2800 : 2000;
         const estimate = nights * baseRate;
-        document.getElementById('stayEstimate').textContent = `${nights} night(s) • ₹${estimate.toLocaleString('en-IN')}`;
+        document.getElementById('stayEstimate').textContent = `${nights} night(s) Ã¢â‚¬Â¢ Ã¢â€šÂ¹${estimate.toLocaleString('en-IN')}`;
         return { nights, estimate };
     }
 
@@ -1225,7 +1248,7 @@
                             <strong>2. Information Collected:</strong> Preferences, search patterns, feedback, and interaction style.<br><br>
                             <strong>3. Data Protection:</strong> All data stored locally in your browser with end-to-end security. No data shared with third parties.<br><br>
                             <strong>4. Learning Benefits:</strong> Personalized recommendations, better understanding of your preferences, optimized response times.<br><br>
-                            <strong>5. Your Rights:</strong> You can withdraw consent anytime. Click "Settings" → "Privacy" to clear all learning data.<br><br>
+                            <strong>5. Your Rights:</strong> You can withdraw consent anytime. Click "Settings" Ã¢â€ â€™ "Privacy" to clear all learning data.<br><br>
                             <strong>6. Copyright Safe:</strong> AI references are fact-checked against verified sources. Educational use only.
                         </small>
                     </div>
@@ -1358,10 +1381,10 @@
                     addChatbotMessage(failText, 'assistant');
                     recordAIInteraction(userText, failText);
                 } else {
-                    addChatbotMessage(matches.length === 1 ? 'Found one perfect match! 🎯' : 'Found two excellent properties! 🎯', 'assistant');
+                    addChatbotMessage(matches.length === 1 ? 'Found one perfect match! Ã°Å¸Å½Â¯' : 'Found two excellent properties! Ã°Å¸Å½Â¯', 'assistant');
                     matches.forEach((h, idx) => {
                         const price = h.acRoomPrice || h.nonAcRoomPrice || h.roomRate || 0;
-                        const priceText = price > 0 ? `₹${price}/Night` : 'Price on Request';
+                        const priceText = price > 0 ? `Ã¢â€šÂ¹${price}/Night` : 'Price on Request';
                         const landmarkText = h.distanceFromLandmark ? `${h.distanceFromLandmark.landmark || 'Mahabodhi Temple'}: ${h.distanceFromLandmark.value || '0.5'} ${h.distanceFromLandmark.unit || 'km'}` : 'Mahabodhi Temple: 0.5 km';
                         const highlightsText = (h.gyanGarbhHighlights || 'Peaceful environment, vegetarian meals available').replace(/'/g, "\\'");
 
@@ -1370,7 +1393,7 @@
                         recEl.innerHTML = `
                             <div class="ai-hotel-name">${idx + 1}. ${h.hotelName || 'Hotel'}</div>
                             <div class="ai-hotel-detail"><i class="bi bi-geo-alt"></i> ${h.location || 'Bodhgaya'}</div>
-                            <div class="ai-hotel-detail">⭐ ${h.rating || 4.5} | ${priceText}</div>
+                            <div class="ai-hotel-detail">Ã¢Â­Â ${h.rating || 4.5} | ${priceText}</div>
                             <div class="ai-hotel-detail" style="margin-top: 6px; font-size: 0.8rem;">${getAmenityIcons(h.facilities)}</div>`;
                         
                         recEl.onclick = () => {
@@ -1384,8 +1407,8 @@
                     feedbackEl.style.marginTop = '12px';
                     feedbackEl.innerHTML = `
                         <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 8px;">Was this helpful?</div>
-                        <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'helpful')">👍 Helpful</button>
-                        <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'notHelpful')">👎 Not Helpful</button>`;
+                        <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'helpful')">Ã°Å¸â€˜Â Helpful</button>
+                        <button class="feedback-pill" onclick="recordUserFeedback('${userText}', 'notHelpful')">Ã°Å¸â€˜Å½ Not Helpful</button>`;
                     document.getElementById('aiMessagesContainer').appendChild(feedbackEl);
                     document.getElementById('aiMessagesContainer').scrollTop = document.getElementById('aiMessagesContainer').scrollHeight;
                 }
@@ -1409,7 +1432,7 @@
 <div id="aiChatWindow" class="ai-chat-window" style="display: none;">
     <div class="ai-chat-header">
         <span><i class="bi bi-robot"></i> AI Trip Planner</span>
-        <button class="ai-close-btn" onclick="closeAIChatbot()">✕</button>
+        <button class="ai-close-btn" onclick="closeAIChatbot()">Ã¢Å“â€¢</button>
     </div>
     <div id="aiMessagesContainer" class="ai-messages"></div>
     <div class="ai-input-container">

@@ -705,10 +705,12 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
         const API_URL = (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '')).replace(/\/$/, '');
         const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1800&auto=format&fit=crop';
         let currentHotel = null;
+        const ADDON_FEES = { mitraAssistance: 700, pickupDrop: 1200, taxRate: 0.12 };
         let currentAvailability = null;
         let selectedReviewRating = 0;
 
@@ -824,6 +826,109 @@
             window.location.href = url.toString();
         }
 
+        function isHotelVerified(hotel = {}) {
+            const status = String(hotel.verificationStatus || hotel.kycStatus || '').toLowerCase();
+            return hotel.isVerified === true || status === 'verified' || status === 'approved';
+        }
+
+        function verifiedBadge(hotel = {}) {
+            return isHotelVerified(hotel)
+                ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Gyan Garbh Verified</span>'
+                : '';
+        }
+
+        function calculateCheckoutTotals(roomSubtotal, addons = {}) {
+            const mitraFee = addons.mitraAssistance ? ADDON_FEES.mitraAssistance : 0;
+            const pickupFee = addons.pickupDrop ? ADDON_FEES.pickupDrop : 0;
+            const addonTotal = mitraFee + pickupFee;
+            const taxAmount = Math.round((roomSubtotal + addonTotal) * ADDON_FEES.taxRate);
+            return { roomSubtotal, mitraFee, pickupFee, addonTotal, taxAmount, grandTotal: roomSubtotal + addonTotal + taxAmount };
+        }
+
+        function renderCheckoutTotal(roomSubtotal, addons = {}) {
+            const totals = calculateCheckoutTotals(roomSubtotal, addons);
+            const target = document.getElementById('checkoutTotalBreakdown');
+            if (!target) return totals;
+            target.innerHTML = `
+                <div class="d-flex justify-content-between"><span>Room tariff</span><strong>Rs. ${totals.roomSubtotal.toLocaleString('en-IN')}</strong></div>
+                <div class="d-flex justify-content-between"><span>Mitra guide</span><strong>Rs. ${totals.mitraFee.toLocaleString('en-IN')}</strong></div>
+                <div class="d-flex justify-content-between"><span>Pickup / drop</span><strong>Rs. ${totals.pickupFee.toLocaleString('en-IN')}</strong></div>
+                <div class="d-flex justify-content-between"><span>Taxes</span><strong>Rs. ${totals.taxAmount.toLocaleString('en-IN')}</strong></div>
+                <hr><div class="d-flex justify-content-between fs-5"><span>Total</span><strong>Rs. ${totals.grandTotal.toLocaleString('en-IN')}</strong></div>`;
+            return totals;
+        }
+        async function verifyMockAuthorization(token, booking, order) {
+            const verifyResponse = await fetch(`${API_URL}/api/payment/verify-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    bookingId: booking._id,
+                    razorpay_order_id: order.id,
+                    razorpay_payment_id: `pay_mock_${booking._id}`,
+                    razorpay_signature: 'mock-signature'
+                })
+            });
+            const verifyData = await verifyResponse.json().catch(() => ({}));
+            if (!verifyResponse.ok || verifyData.success === false) throw new Error(verifyData.message || 'Payment verification failed.');
+            return verifyData;
+        }
+
+        async function authorizeBookingPayment(token, booking) {
+            const orderResponse = await fetch(`${API_URL}/api/payment/create-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ bookingId: booking._id, mode: 'authorize' })
+            });
+            const orderData = await orderResponse.json().catch(() => ({}));
+            if (!orderResponse.ok || orderData.success === false) throw new Error(orderData.message || 'Unable to start payment authorization.');
+            const order = orderData.order || {};
+
+            if (orderData.mock || !window.Razorpay) {
+                return verifyMockAuthorization(token, booking, order);
+            }
+
+            return new Promise((resolve, reject) => {
+                const checkout = new Razorpay({
+                    key: orderData.keyId,
+                    amount: order.amount,
+                    currency: order.currency || 'INR',
+                    name: 'Gyan Garbh',
+                    description: `Stay authorization for ${booking.hotelName}`,
+                    order_id: order.id,
+                    prefill: { name: booking.userName || '', email: booking.userEmail || '', contact: booking.guestDetails?.phone || '' },
+                    notes: { bookingId: booking._id, reference: order.receipt || booking.bookingReference || '' },
+                    theme: { color: '#1e3c72' },
+                    handler: async (response) => {
+                        try {
+                            const verifyResponse = await fetch(`${API_URL}/api/payment/verify-payment`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ bookingId: booking._id, ...response })
+                            });
+                            const verifyData = await verifyResponse.json().catch(() => ({}));
+                            if (!verifyResponse.ok || verifyData.success === false) throw new Error(verifyData.message || 'Payment verification failed.');
+                            resolve(verifyData);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    },
+                    modal: { ondismiss: () => reject(new Error('Payment authorization was cancelled.')) }
+                });
+                checkout.open();
+            });
+        }
+
+        function showBookingSuccess(verification) {
+            const booking = verification?.booking || {};
+            const pass = verification?.pass || booking.bookingPass || {};
+            return Swal.fire({
+                icon: 'success',
+                title: 'Booking Confirmed',
+                html: `<div class="text-start"><p>Your stay is authorized and confirmed.</p><p><strong>Booking ID:</strong> ${escapeHTML(pass.reference || booking.bookingReference || booking._id || '')}</p><p class="mb-0">Digital Stay Pass is ready in My Bookings.</p></div>`,
+                confirmButtonText: 'View My Bookings',
+                confirmButtonColor: '#1e3c72'
+            });
+        }
         async function handleBookRoom(button) {
             if (!hasSelectedStayDates()) {
                 promptForStayDates();
@@ -854,21 +959,43 @@
 
             const confirmResult = await Swal.fire({
                 icon: 'question',
-                title: 'Confirm Room Booking',
+                title: 'Prepare Booking',
                 html: `
                     <div class="text-start">
                         <p class="mb-2"><strong>${escapeHTML(currentHotel?.hotelName || 'Gyan Garbh Stay')}</strong></p>
                         <p class="mb-1">Room: ${escapeHTML(roomType)}</p>
                         <p class="mb-1">Dates: ${escapeHTML(checkIn)} to ${escapeHTML(checkOut)}</p>
-                        <p class="mb-1">Guests: ${escapeHTML(guests || '1')}</p>
-                        <p class="mb-0 fw-bold">Total: Rs. ${totalPrice.toLocaleString('en-IN')}</p>
+                        <p class="mb-3">Guests: ${escapeHTML(guests || '1')}</p>
+                        <label class="d-flex gap-2 align-items-start mb-2"><input id="addonMitra" type="checkbox"> <span><strong>Add Verified Bodh Gaya Mitra</strong><br><small>Local heritage guide (+ Rs. ${ADDON_FEES.mitraAssistance.toLocaleString('en-IN')})</small></span></label>
+                        <label class="d-flex gap-2 align-items-start mb-3"><input id="addonPickup" type="checkbox"> <span><strong>Airport / Railway Pickup & Drop</strong><br><small>Standard cab support (+ Rs. ${ADDON_FEES.pickupDrop.toLocaleString('en-IN')})</small></span></label>
+                        <label class="small fw-bold text-muted">Remarks / arrival details</label>
+                        <textarea id="addonRemarks" class="form-control mb-3" rows="2" placeholder="Train/flight details, preferred language, special requests"></textarea>
+                        <div id="checkoutTotalBreakdown" class="border rounded-3 p-3 bg-light"></div>
                     </div>`,
                 showCancelButton: true,
                 confirmButtonText: 'Confirm Booking',
-                confirmButtonColor: '#1e3c72'
+                confirmButtonColor: '#1e3c72',
+                didOpen: () => {
+                    const update = () => renderCheckoutTotal(totalPrice, {
+                        mitraAssistance: document.getElementById('addonMitra')?.checked,
+                        pickupDrop: document.getElementById('addonPickup')?.checked
+                    });
+                    document.getElementById('addonMitra')?.addEventListener('change', update);
+                    document.getElementById('addonPickup')?.addEventListener('change', update);
+                    update();
+                },
+                preConfirm: () => {
+                    const addons = {
+                        mitraAssistance: document.getElementById('addonMitra')?.checked || false,
+                        pickupDrop: document.getElementById('addonPickup')?.checked || false,
+                        remarks: document.getElementById('addonRemarks')?.value || ''
+                    };
+                    return { addons, totals: calculateCheckoutTotals(totalPrice, addons) };
+                }
             });
 
             if (!confirmResult.isConfirmed) return;
+            const checkout = confirmResult.value || { addons: {}, totals: calculateCheckoutTotals(totalPrice, {}) };
 
             try {
                 button.disabled = true;
@@ -892,6 +1019,9 @@
                         nightlyRate,
                         totalPrice,
                         price: totalPrice,
+                        selectedAddons: checkout.addons,
+                        pricingBreakdown: checkout.totals,
+                        guestDetails: { guests: Number(guests || 1) },
                         status: 'Pending'
                     })
                 });
@@ -901,13 +1031,9 @@
                     throw new Error(data.message || 'Booking could not be created.');
                 }
 
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Booking Created',
-                    text: 'Your stay request is now visible in My Bookings.',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                button.textContent = 'Authorizing...';
+                const verification = await authorizeBookingPayment(token, data.booking);
+                await showBookingSuccess(verification);
                 window.location.href = 'my-booking.html';
             } catch (error) {
                 button.disabled = false;
@@ -1020,13 +1146,17 @@
                 <article class="review-item">
                     <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
                         <div class="review-stars">${renderStaticStars(review.rating)}</div>
-                        <span class="text-muted small fw-bold">${escapeHTML(formatReviewDate(review.date))}</span>
+                        <span class="text-muted small fw-bold">${escapeHTML(formatReviewDate(review.createdAt || review.date))}</span>
                     </div>
-                    <p>${escapeHTML(review.comment || '')}</p>
+                    <p class="mb-1"><strong>${escapeHTML(review.userName || 'Verified Guest')}</strong> <span class="badge bg-primary-subtle text-primary ms-1">Verified Stay</span></p><p>${escapeHTML(review.comment || '')}</p>
                 </article>
             `).join('');
         }
 
+        function renderCategoryBreakdown(categories = {}) {
+            const labels = { cleanliness:'Cleanliness', staffBehavior:'Staff Behavior', amenitiesAccuracy:'Amenities Accuracy', location:'Location', valueForMoney:'Value for Money' };
+            return `<div class="row g-2 mt-3">${Object.keys(labels).map((key) => `<div class="col-md-6"><div class="d-flex justify-content-between small border rounded-3 p-2"><span>${labels[key]}</span><strong>${Number(categories[key] || 0).toFixed(1)}</strong></div></div>`).join('')}</div>`;
+        }
         function updateRatingPicker(value, commit = false) {
             const displayRating = Number(value) || 0;
             if (commit) selectedReviewRating = displayRating;
@@ -1228,8 +1358,8 @@
                         <div class="container">
                             <div class="row align-items-end g-4">
                                 <div class="col-lg-8">
-                                    <span class="eyebrow"><i class="fa-solid fa-shield-heart"></i> Verified Gyan Garbh Stay</span>
-                                    <h1>${escapeHTML(hotel.hotelName || 'Premium Stay')}</h1>
+                                    <span class="eyebrow"><i class="fa-solid fa-shield-heart"></i> ${isHotelVerified(hotel) ? 'Verified Gyan Garbh Stay' : 'Gyan Garbh Stay'}</span>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap"><h1 class="mb-0">${escapeHTML(hotel.hotelName || 'Premium Stay')}</h1>${verifiedBadge(hotel)}</div>
                                     <div class="hero-meta">
                                         <span><i class="fa-solid fa-location-dot text-warning me-2"></i>${escapeHTML(hotel.location || hotel.address || 'Bodhgaya')}</span>
                                         <span><i class="fa-solid fa-star text-warning me-2"></i>${escapeHTML(rating)} rating</span>
@@ -1316,8 +1446,8 @@
                                             </ul>
                                         </div>
                                         <div class="room-package">
-                                            <div class="price">₹${roomPrice.toLocaleString('en-IN')}</div>
-                                            <div class="meta">Per night • ${escapeHTML(breakfastLabel)}</div>
+                                            <div class="price">Ã¢â€šÂ¹${roomPrice.toLocaleString('en-IN')}</div>
+                                            <div class="meta">Per night Ã¢â‚¬Â¢ ${escapeHTML(breakfastLabel)}</div>
                                             <div class="meta">${escapeHTML(room.roomsAvailable ? `${room.roomsAvailable} room available` : 'Flexible booking window')}</div>
                                             ${availabilityBadge}
                                             ${totalMeta}
@@ -1360,16 +1490,16 @@
                             <div class="review-summary">
                                 <div>
                                     <h2 class="section-title mb-2">Customer Ratings & Reviews</h2>
-                                    <p class="text-muted mb-0">Share your stay experience and help future Bodhgaya visitors choose with confidence.</p>
+                                    <p class="text-muted mb-0">Only completed Gyan Garbh bookings can publish Verified Stay reviews.</p>
                                 </div>
                                 <div class="score-badge">
                                     <strong>${escapeHTML(rating)}</strong>
-                                    <div class="review-stars my-2">${renderStaticStars(rating)}</div>
-                                    <span class="small fw-bold">${escapeHTML(totalReviews)} review${totalReviews === 1 ? '' : 's'}</span>
+                                    <div class="review-stars my-2">${renderStaticStars(rating)}</div>${renderCategoryBreakdown(hotel.categoryRatings || hotel.gvs?.categoryBreakdown || {})}
+                                    <span class="small fw-bold">${escapeHTML(totalReviews)} verified review${totalReviews === 1 ? '' : 's'}</span>
                                 </div>
                             </div>
 
-                            <form id="reviewForm">
+                            <div class="alert alert-info mb-4"><strong>Verified reviews unlock after checkout.</strong> Open My Bookings after your stay is completed to write a category-wise review.</div><form id="reviewForm" style="display:none">
                                 <label class="fw-bold mb-1" for="ratingPicker">Your Rating</label>
                                 <div id="ratingPicker" class="rating-picker" aria-label="Choose a rating from 1 to 5">
                                     ${[1, 2, 3, 4, 5].map((value) => `<button type="button" data-rating="${value}" aria-label="${value} star"><i class="far fa-star"></i></button>`).join('')}
@@ -1423,3 +1553,5 @@
     <script src="mobile-responsive.js"></script>
 </body>
 </html>
+
+
