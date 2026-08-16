@@ -379,7 +379,16 @@ const enrichHotelsWithGvs = async (hotels = []) => {
         };
     }).sort((a, b) => (b.gvs?.gvsScore || 0) - (a.gvs?.gvsScore || 0));
 };
-const publicHotelQuery = (query) => query.where({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }).select('-password');
+const publicHotelVisibilityFilter = {
+    isLocked: { $ne: true },
+    isAvailable: { $ne: false },
+    status: { $ne: 'Inactive' },
+    $or: [
+        { isVerified: true },
+        { verificationStatus: { $regex: /^(verified|approved)$/i } }
+    ]
+};
+const publicHotelQuery = (query) => query.where(publicHotelVisibilityFilter).select('-password');
 
 const publicUserQuery = (query) => query.select('-password');
 
@@ -3524,7 +3533,7 @@ app.put('/api/user/refund-preferences', requireSession(['customer', 'guest', 'mi
 // Create mitra (Admin / Assistant)
 app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {
-        const { name, email, phone, address, experience, imageUrl, createdBy, createdByRole } = req.body;
+        const { name, email, phone, address, experience, imageUrl, createdBy, createdByRole, documentType, documentNumber, documentFileName, documentPreviewUrl, emergencyContactName, emergencyContactPhone, emergencyContactRelation, serviceArea, languagesSpoken } = req.body;
         const actorEmail = req.actor?.email || createdBy;
         const actorRole = await resolveActorRole(actorEmail, req.actor?.role || createdByRole);
 
@@ -3558,6 +3567,21 @@ app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (re
             villageCity: cleanAddress,
             role: 'mitra',
             experience: String(experience || '').trim(),
+            serviceArea: String(serviceArea || '').trim(),
+            languagesSpoken: String(languagesSpoken || '').split(',').map(lang => lang.trim()).filter(Boolean),
+            emergencyContact: {
+                name: String(emergencyContactName || '').trim(),
+                phone: normalizePhone(emergencyContactPhone || ''),
+                relation: String(emergencyContactRelation || '').trim()
+            },
+            mitraVerification: {
+                documentType: String(documentType || '').trim(),
+                documentNumber: String(documentNumber || '').trim(),
+                documentFileName: String(documentFileName || '').trim(),
+                documentPreviewUrl: String(documentPreviewUrl || '').trim(),
+                submittedAt: documentType || documentNumber || documentFileName ? new Date() : null
+            },
+            kycStatus: documentType || documentNumber || documentFileName ? 'Pending Verification' : 'Not Submitted',
             photoURL: imageUrl || placeholderPhoto,
             profilePic: imageUrl || placeholderPhoto,
             updatedBy: actorEmail,
@@ -4055,10 +4079,10 @@ app.post(['/hotel-login', '/api/hotel-login'], async (req, res) => {
 
 
 
-app.get('/all-hotels', async (req, res) => {
+app.get(['/all-hotels', '/api/hotels/public-list'], async (req, res) => {
 
     try {
-        const hotels = await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
+        const hotels = await publicHotelQuery(Hotel.find({}));
         res.json(await enrichHotelsWithGvs(hotels));
     } catch (err) { res.status(500).send(err.message); }
 
@@ -4068,7 +4092,7 @@ app.get('/api/hotels', async (req, res) => {
 
     try {
 
-        const hotels = await publicHotelQuery(Hotel.find({ isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
+        const hotels = await publicHotelQuery(Hotel.find({}));
         const rankedHotels = await enrichHotelsWithGvs(hotels);
 
         res.json({ success: true, data: rankedHotels, hotels: rankedHotels });

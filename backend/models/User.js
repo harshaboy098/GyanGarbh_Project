@@ -79,6 +79,31 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    serviceArea: {
+        type: String,
+        default: '',
+        trim: true
+    },
+    languagesSpoken: {
+        type: [String],
+        default: []
+    },
+    emergencyContact: {
+        name: { type: String, default: '', trim: true },
+        phone: { type: String, default: '', trim: true },
+        relation: { type: String, default: '', trim: true }
+    },
+    mitraVerification: {
+        documentType: { type: String, default: '', trim: true },
+        documentNumber: { type: String, default: '', trim: true },
+        documentFileName: { type: String, default: '', trim: true },
+        documentPreviewUrl: { type: String, default: '', trim: true },
+        submittedAt: { type: Date, default: null }
+    },
+    kycStatus: {
+        type: String,
+        default: 'Not Submitted'
+    },
     googleId: {
         type: String,
         required: false

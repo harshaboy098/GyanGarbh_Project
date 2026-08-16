@@ -624,6 +624,36 @@
 <script>
     const API_URL = (window.GYAN_GARBH_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : '')).replace(/\/$/, '');
 
+    function apiCandidate(path) {
+        if (window.GYAN_GARBH_API_URL) return `${API_URL}${path}`;
+        return path;
+    }
+
+    async function fetchPublicHotels() {
+        const endpoints = ['/api/hotels/public-list', '/api/hotels', '/all-hotels'];
+        let lastError = null;
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(apiCandidate(endpoint), { cache: 'no-store' });
+                const payload = await response.json().catch(() => null);
+                if (!response.ok) throw new Error(payload?.message || `Hotel API failed: ${response.status}`);
+                const list = Array.isArray(payload) ? payload : (payload?.hotels || payload?.data || []);
+                if (Array.isArray(list)) return list.filter(isPublicVerifiedHotel);
+            } catch (error) {
+                lastError = error;
+                console.warn(`Hotel endpoint skipped: ${endpoint}`, error.message);
+            }
+        }
+        throw lastError || new Error('Unable to load hotels');
+    }
+
+    function isPublicVerifiedHotel(hotel = {}) {
+        const verification = String(hotel.verificationStatus || '').trim().toLowerCase();
+        const status = String(hotel.status || 'Active').trim().toLowerCase();
+        const active = hotel.isLocked !== true && hotel.isAvailable !== false && status !== 'inactive';
+        const verified = hotel.isVerified === true || verification === 'verified' || verification === 'approved';
+        return active && verified;
+    }
     function getCookieValue(name) {
         const cookies = (document.cookie || '').split(';').map(cookie => cookie.trim());
         const match = cookies.find(cookie => cookie.startsWith(`${name}=`));
@@ -874,8 +904,7 @@
     async function loadHotels() {
         const container = document.getElementById('hotelsContainer');
         try {
-            const res = await fetch(`${API_URL}/all-hotels`);
-            const hotels = await res.json();
+            const hotels = await fetchPublicHotels();
             allHotels = hotels; 
             container.innerHTML = "";
             let renderedHotelCount = 0;
