@@ -382,7 +382,7 @@ const enrichHotelsWithGvs = async (hotels = []) => {
 const publicHotelVisibilityFilter = {
     isLocked: { $ne: true },
     isAvailable: { $ne: false },
-    status: { $ne: 'Inactive' },
+    status: { $regex: /^active$/i },
     $or: [
         { isVerified: true },
         { verificationStatus: { $regex: /^(verified|approved)$/i } }
@@ -3530,6 +3530,40 @@ app.put('/api/user/refund-preferences', requireSession(['customer', 'guest', 'mi
     }
 });
 
+app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
+    try {
+        const body = req.body || {};
+        const actorEmail = req.actor?.email || body.createdBy || '';
+        const actorRole = await resolveActorRole(actorEmail, req.actor?.role || body.createdByRole);
+        if (!actorRole) return res.status(403).json({ success: false, message: 'Unauthorized to create hotels' });
+        const hotelName = String(body.hotelName || '').trim();
+        const ownerEmail = normalizeEmail(body.ownerEmail || body.email || '');
+        const phone = String(body.phone || '').trim();
+        const location = String(body.location || body.address || 'Bodhgaya').trim() || 'Bodhgaya';
+        if (!hotelName || !isValidEmail(ownerEmail)) return res.status(400).json({ success: false, message: 'Hotel name and valid owner email are required.' });
+        if (phone && !isValidPhone(phone)) return res.status(400).json({ success: false, message: 'Please provide a valid hotel phone number.' });
+        const existingHotel = await Hotel.findOne({ ownerEmail });
+        if (existingHotel) return res.status(409).json({ success: false, message: 'A hotel already exists for this owner email.' });
+        const generatedPassword = crypto.randomBytes(9).toString('base64url');
+        const hotel = await Hotel.create({
+            hotelName, ownerEmail, password: generatedPassword, phone,
+            address: String(body.address || '').trim(), location,
+            description: String(body.description || 'Luxury stay in Bodhgaya').trim(),
+            roomRate: Number(body.roomRate) || 1500, totalRooms: Number(body.totalRooms) || 10,
+            acRoomPrice: Number(body.acRoomPrice) || 2000, nonAcRoomPrice: Number(body.nonAcRoomPrice) || 1200,
+            tradeLicense: String(body.tradeLicense || '').trim(), gstNumber: String(body.gstNumber || '').trim(),
+            aadhaarPan: String(body.aadhaarPan || '').trim(), policeNoc: String(body.policeNoc || '').trim(),
+            status: 'Active', isVerified: false, verificationStatus: 'Pending Verification',
+            isLocked: false, isAvailable: true, updatedBy: actorEmail, updatedAt: new Date()
+        });
+        await logActivity('CREATE', 'Hotel', hotel._id, hotel.hotelName, actorEmail, actorRole, { verificationStatus: hotel.verificationStatus });
+        emitRealtime('hotel-created', { hotelId: hotel._id, hotelName: hotel.hotelName, verificationStatus: hotel.verificationStatus });
+        return res.status(201).json({ success: true, message: 'Hotel created and queued for verification.', hotel: hotel.toObject(), credentials: { email: hotel.ownerEmail, password: generatedPassword } });
+    } catch (err) {
+        console.error('Error creating hotel:', err);
+        return res.status(500).json({ success: false, message: err.code === 11000 ? 'A hotel already exists for this owner email.' : 'Unable to create hotel.' });
+    }
+});
 // Create mitra (Admin / Assistant)
 app.post('/admin/create-mitra', verifyAdminOrAssistant('manageMitra'), async (req, res) => {
     try {

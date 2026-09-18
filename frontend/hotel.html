@@ -649,8 +649,8 @@
 
     function isPublicVerifiedHotel(hotel = {}) {
         const verification = String(hotel.verificationStatus || '').trim().toLowerCase();
-        const status = String(hotel.status || 'Active').trim().toLowerCase();
-        const active = hotel.isLocked !== true && hotel.isAvailable !== false && status !== 'inactive';
+        const status = String(hotel.status || '').trim().toLowerCase();
+        const active = hotel.isLocked !== true && hotel.isAvailable !== false && status === 'active';
         const verified = hotel.isVerified === true || verification === 'verified' || verification === 'approved';
         return active && verified;
     }

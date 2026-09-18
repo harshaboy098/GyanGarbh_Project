@@ -59,6 +59,17 @@ const HotelSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now },
     isLocked: { type: Boolean, default: false }, // Status toggle for lock
     isAvailable: { type: Boolean, default: true },
+    status: { type: String, default: 'Active', trim: true },
+    isVerified: { type: Boolean, default: false },
+    verificationStatus: { type: String, default: 'Pending Verification', trim: true },
+    kycDocuments: { type: mongoose.Schema.Types.Mixed, default: {} },
+    verifiedBy: { type: String, default: '' },
+    verifiedAt: { type: Date, default: null },
+    rejectionReason: { type: String, default: '' },
+    tradeLicense: { type: String, default: '' },
+    gstNumber: { type: String, default: '' },
+    aadhaarPan: { type: String, default: '' },
+    policeNoc: { type: String, default: '' },
     reviews: [{
         rating: Number,
         comment: String,
