@@ -4230,6 +4230,65 @@ app.get('/api/hotels/:id/availability', async (req, res) => {
 
 });
 
+app.post('/api/bookings', requireSession(['customer', 'guest', 'mitra']), async (req, res) => {
+    try {
+        const body = req.body || {};
+        const hotelId = String(body.hotelId || '').trim();
+        const userEmail = String(req.session.email || body.userEmail || '').trim().toLowerCase();
+        const userName = String(body.userName || body.name || userEmail.split('@')[0] || 'Guest').trim();
+        const hotelName = String(body.hotelName || '').trim();
+        const roomType = String(body.roomType || 'Standard Room').trim();
+        const checkIn = String(body.checkIn || '').trim();
+        const checkOut = String(body.checkOut || '').trim();
+        const nightlyRate = Number(body.price || body.nightlyRate || 0);
+        const guests = Math.max(1, Number(body.guests || body.guestDetails?.guests || 1));
+        const validationError = validateBookingPayload({ userName, hotelName, roomType, price: nightlyRate, checkIn, checkOut });
+        if (validationError) return res.status(400).json({ success: false, message: validationError });
+        if (!mongoose.Types.ObjectId.isValid(hotelId)) return res.status(400).json({ success: false, message: 'A valid hotel is required' });
+        const hotel = await publicHotelQuery(Hotel.findOne({ _id: hotelId, isLocked: { $ne: true }, isAvailable: { $ne: false }, isVerified: { $ne: false } }));
+        if (!hotel) return res.status(404).json({ success: false, message: 'This hotel is not available for booking' });
+        const matchedRoom = Array.isArray(hotel.rooms) ? hotel.rooms.find((room) => String(room.roomType || '').toLowerCase() === roomType.toLowerCase() && Number(room.price) > 0) : null;
+        const verifiedNightlyRate = Number(matchedRoom?.price || hotel.acRoomPrice || hotel.roomRate || hotel.nonAcRoomPrice || nightlyRate);
+        if (verifiedNightlyRate > 0) nightlyRate = verifiedNightlyRate;
+        const checkInDate = new Date(checkIn + 'T00:00:00');
+        const checkOutDate = new Date(checkOut + 'T00:00:00');
+        const nights = Math.max(1, Math.ceil((checkOutDate - checkInDate) / 86400000));
+        const activeBookings = await Booking.find({ hotelId, status: { $nin: ['Cancelled', 'Completed'] } }).select('checkIn checkOut');
+        const hasOverlap = activeBookings.some((booking) => new Date(booking.checkIn + 'T00:00:00') < checkOutDate && new Date(booking.checkOut + 'T00:00:00') > checkInDate);
+        if (hasOverlap && Number(hotel.totalRooms || 1) <= activeBookings.length) return res.status(409).json({ success: false, message: 'This hotel is full for the selected dates. Please choose another stay.' });
+        const requestedAddons = body.selectedAddons || {};
+        const mitraSelected = Boolean(requestedAddons.mitraAssistance?.selected || requestedAddons.mitraAssistance === true);
+        const pickupSelected = Boolean(requestedAddons.pickupDrop?.selected || requestedAddons.pickupDrop === true);
+        const mitraFee = mitraSelected ? Math.max(0, Number(requestedAddons.mitraAssistance?.fee || 0)) : 0;
+        const pickupFee = pickupSelected ? Math.max(0, Number(requestedAddons.pickupDrop?.fee || 0)) : 0;
+        const roomSubtotal = nightlyRate * nights;
+        const addonTotal = mitraFee + pickupFee;
+        const taxAmount = Math.round((roomSubtotal + addonTotal) * 0.05);
+        const grandTotal = roomSubtotal + addonTotal + taxAmount;
+        const booking = new Booking({
+            userId: mongoose.Types.ObjectId.isValid(String(body.userId || '')) ? body.userId : undefined,
+            userEmail, userName, hotelId, hotelName: hotel.hotelName || hotelName, roomType,
+            price: grandTotal, nightlyRate, totalPrice: grandTotal, guests,
+            selectedAddons: {
+                mitraAssistance: { selected: mitraSelected, fee: mitraFee, status: mitraSelected ? 'requested' : 'not_requested' },
+                pickupDrop: { selected: pickupSelected, fee: pickupFee, vehicleType: String(requestedAddons.pickupDrop?.vehicleType || 'Standard Cab'), status: pickupSelected ? 'requested' : 'not_requested' },
+                remarks: String(requestedAddons.remarks || '').trim()
+            },
+            guestDetails: { name: userName, phone: String(body.guestDetails?.phone || body.phone || '').trim(), email: userEmail, guests },
+            pricingBreakdown: { roomSubtotal, addonTotal, taxAmount, grandTotal },
+            assignmentStatus: mitraSelected ? 'assignment_requested' : 'not_required', checkIn, checkOut,
+            status: 'Pending', paymentStatus: 'Pay at Hotel', freeCancellationUntil: calculateFreeCancellationUntil({ checkIn })
+        });
+        booking.bookingReference = createBookingReference(booking);
+        await booking.save();
+        emitRealtime('new-booking', { bookingId: booking._id, hotelName: booking.hotelName, status: booking.status });
+        res.status(201).json({ success: true, message: 'Stay booking created successfully', booking: decorateBookingForClient(booking) });
+    } catch (err) {
+        console.error('Customer booking create error:', err);
+        res.status(500).json({ success: false, message: err.message || 'Unable to create booking' });
+    }
+});
+
 app.put('/api/hotels/:id', requireSession(['hotel', 'admin', 'assistant']), async (req, res) => {
 
     try {
