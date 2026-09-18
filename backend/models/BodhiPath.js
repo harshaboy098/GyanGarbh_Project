@@ -52,6 +52,12 @@ const bodhiPathSchema = new mongoose.Schema({
     visitingHours: String,
     openingHours: String,
     entryFee: String,
+    listingPrice: { type: Number, default: 0, min: 0 },
+    originalPrice: { type: Number, default: 0, min: 0 },
+    discountPercent: { type: Number, default: 0, min: 0, max: 100 },
+    dealBadge: { type: String, trim: true, default: 'Verified Experience' },
+    listingStatus: { type: String, enum: ['Published', 'Draft', 'Archived'], default: 'Published' },
+
     estimatedVisitTime: String, // e.g., "2-3 hours"
     relatedTemples: [String], // Names of related temples
     spiritualSignificance: {
