@@ -1006,9 +1006,9 @@
             const rawResponse = await response.text();
             let data = {};
             try { data = rawResponse ? JSON.parse(rawResponse) : {}; } catch {
-                throw new Error(Admin API returned HTTP . Please redeploy the latest Vercel build.);
+                throw new Error('Admin API returned HTTP ' + response.status + '. Please redeploy the latest Vercel build.');
             }
-            if (!response.ok) throw new Error(data.message || Admin login failed ().);
+            if (!response.ok) throw new Error(data.message || ('Admin login failed (' + response.status + ').'));
             if (data.success && data.otpRequired) {
                 adminOtpPhase = true;
                 document.getElementById('adminOtpGroup').style.display = 'block';
