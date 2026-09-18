@@ -1003,7 +1003,12 @@
                 body: JSON.stringify(adminOtpPhase ? { email, password, otp, adminPin } : { email, password })
             });
 
-            const data = await response.json();
+            const rawResponse = await response.text();
+            let data = {};
+            try { data = rawResponse ? JSON.parse(rawResponse) : {}; } catch {
+                throw new Error(Admin API returned HTTP . Please redeploy the latest Vercel build.);
+            }
+            if (!response.ok) throw new Error(data.message || Admin login failed ().);
             if (data.success && data.otpRequired) {
                 adminOtpPhase = true;
                 document.getElementById('adminOtpGroup').style.display = 'block';
