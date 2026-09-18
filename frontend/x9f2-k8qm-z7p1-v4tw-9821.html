@@ -454,7 +454,7 @@
                 grid-template-columns: 1fr;
             }
         }
-    </style>
+     .ops-command{background:#07111f;color:#dbeafe;border:1px solid rgba(55,230,212,.2);padding:18px;margin:0 0 22px}.ops-command h2{color:#f8fafc;margin:0 0 4px}.ops-command p{color:#94a3b8;margin:0 0 15px}.ops-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}.ops-box{background:#0d1b2a;border:1px solid rgba(148,163,184,.18);padding:16px}.ops-box h3{color:#f8fafc;font-size:1rem;margin:0 0 12px}.ops-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.ops-action{background:#10263a;border:1px solid rgba(148,163,184,.18);color:#dbeafe;padding:12px;text-align:left;cursor:pointer;border-radius:7px}.ops-action:hover{border-color:#37e6d4}.ops-action i{display:block;color:#37e6d4;margin-bottom:7px}.ops-health{display:grid;gap:8px}.ops-health-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(148,163,184,.16);font-size:.85rem}.ops-pill{padding:3px 7px;border-radius:999px;font-size:.68rem;font-weight:700}.ops-ok{color:#bbf7d0;background:rgba(34,197,94,.15)}.ops-warn{color:#fde68a;background:rgba(245,158,11,.15)}.ops-alert{color:#fecaca;background:rgba(239,68,68,.15)}@media(max-width:800px){.ops-grid{grid-template-columns:1fr}.ops-actions{grid-template-columns:1fr 1fr}}</style>
     <script src="api-client.js"></script>
     <link rel="stylesheet" href="mobile-responsive.css">
 </head>
@@ -523,7 +523,7 @@
                     <!-- Stats will be loaded here -->
                 </div>
 
-                <div class="table-container">
+<div class="ops-command"><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap"><div><h2>Operations Command Center</h2><p>Central control for hotels, bookings, people and platform health.</p></div><strong id="opsLastSync" style="color:#76f7a6;font:700 .75rem monospace">SYNC PENDING</strong></div><div class="ops-grid"><section class="ops-box"><h3>Quick Control</h3><div class="ops-actions"><button class="ops-action" onclick="showSection('hotels')"><i class="bi bi-buildings"></i>Hotels &amp; KYC</button><button class="ops-action" onclick="showSection('assistants')"><i class="bi bi-people"></i>Assistants</button><button class="ops-action" onclick="showSection('customers')"><i class="bi bi-person-check"></i>Customers</button><button class="ops-action" onclick="showSection('mitras')"><i class="bi bi-person-badge"></i>Mitras</button><button class="ops-action" onclick="showSection('activity-log')"><i class="bi bi-shield-check"></i>Audit Log</button><button class="ops-action" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i>Refresh Signals</button></div></section><section class="ops-box"><h3>Platform Health</h3><div class="ops-health" id="opsHealthList"><div class="ops-health-row"><span>API gateway</span><span class="ops-pill ops-warn">CHECKING</span></div><div class="ops-health-row"><span>Hotel discovery</span><span class="ops-pill ops-warn">CHECKING</span></div><div class="ops-health-row"><span>Payment / OTP</span><span class="ops-pill ops-warn">PROTECTED</span></div></div></section></div><div id="opsIncidentPanel" style="margin-top:14px;color:#cbd5e1;font-size:.85rem">Incident monitor loading...</div></div>                <div class="table-container">
                     <h4>📅 Recent Bookings</h4>
                     <table id="recentBookingsTable">
                         <thead>
@@ -1084,6 +1084,7 @@
         if (booking.selectedAddons?.mitraAssistance?.selected) return 'Assignment requested';
         return 'Not requested';
     }
+    async function loadOpsHealth(){const list=document.getElementById('opsHealthList');const incident=document.getElementById('opsIncidentPanel');const stamp=document.getElementById('opsLastSync');const checks=[['API gateway','/api/health'],['Hotel discovery','/api/hotels/public-list']];const results=[];for(const check of checks){try{const response=await fetch(API_URL+check[1],{cache:'no-store'});results.push({label:check[0],ok:response.ok});}catch(error){results.push({label:check[0],ok:false});}}list.innerHTML=results.map(item=>'<div class="ops-health-row"><span>'+item.label+'</span><span class="ops-pill '+(item.ok?'ops-ok':'ops-alert')+'">'+(item.ok?'OPERATIONAL':'ATTENTION')+'</span></div>').join('')+'<div class="ops-health-row"><span>Payment / OTP</span><span class="ops-pill ops-warn">PROTECTED</span></div>';stamp.textContent='SYNC '+new Date().toLocaleTimeString();incident.textContent=results.every(item=>item.ok)?'No public service outage detected. Review Audit Log for department-level failures.':'Attention required: one or more public services are not responding.';}
     async function loadDashboard() {
         try {
             const response = await fetch(`${API_URL}/admin/dashboard?userEmail=${encodeURIComponent(adminEmail)}&userRole=admin`);
@@ -1108,6 +1109,8 @@
                     <div class="number">${data.dashboard.stats.totalAssistants}</div>
                 </div>
             `;
+
+            await loadOpsHealth();
 
             // Load recent bookings
             const tbody = document.querySelector('#recentBookingsTable tbody');
