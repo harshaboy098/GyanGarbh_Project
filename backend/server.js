@@ -3530,7 +3530,7 @@ app.put('/api/user/refund-preferences', requireSession(['customer', 'guest', 'mi
     }
 });
 
-app.post('/admin/create-hotel', verifyAdminOrAssistant('manageHotels'), async (req, res) => {
+app.post(['/admin/create-hotel', '/api/admin/create-hotel'], verifyAdminOrAssistant('manageHotels'), async (req, res) => {
     try {
         const body = req.body || {};
         const actorEmail = req.actor?.email || body.createdBy || '';
